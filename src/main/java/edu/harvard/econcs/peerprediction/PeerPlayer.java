@@ -1,5 +1,6 @@
 package edu.harvard.econcs.peerprediction;
 
+import net.andrewmao.misc.Pair;
 import edu.harvard.econcs.peerprediction.TestPlayer.WrongStateException;
 
 /**
@@ -46,6 +47,21 @@ abstract class PeerPlayer {
 	 * @param object
 	 */
 	public abstract void sendResults(String results);
+
+	@Override
+	public boolean equals(Object other) {
+		if( other instanceof PeerPlayer ) {
+			return this.name.equals(((PeerPlayer) other).name);
+		}
+		else {
+			return false;
+		}
+	}
+	
+	@Override
+	public int hashCode() {
+		return this.name.hashCode();
+	}
 
 
 }

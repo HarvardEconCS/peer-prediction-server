@@ -1,5 +1,6 @@
 package edu.harvard.econcs.peerprediction;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -37,6 +38,11 @@ public class PeerGame {
 	 */
 	AtomicReference<PeerRound> currentRound;
 	
+	/**
+	 * 
+	 */
+	List<PeerResult> results;
+	
 	/*
 	 * Constructor
 	 */
@@ -48,6 +54,8 @@ public class PeerGame {
 		
 		currentRound = new AtomicReference<PeerRound>(null);
 		currentRoundNum = new AtomicInteger();
+		
+		results = new ArrayList<PeerResult>();
 	}
 	
 	/**
@@ -72,26 +80,35 @@ public class PeerGame {
 		
 		// start current round
 		r.startRound();
-		System.out.printf("Started round %d", currentRoundNum.get());
+		System.out.printf("\n\nGame:\t Started round %d\n", currentRoundNum.get());
 	}
 	
 	/**
 	 * Called when a round is completed
 	 */
 	public void roundCompleted() {
+		
 		if (!currentRound.get().isCompleted()) {
-			System.out
-					.println("Error: trying to start next round before current one is completed");
+			System.out.println("Error: trying to start next round before current one is completed");
 			return;
 		}
 
+		// store the results
+		this.results.add(currentRound.get().getResult());
+		
 		if (currentRoundNum.incrementAndGet() > nRounds) {
+			
 			// Send players to debrief
+			System.out.println("\nGame:\t All games are finished");
+			
 		} else {
+			
+			// create a new round
 			PeerRound r = new PeerRound(this, probs, paymentRule);
 			currentRound.set(r);
 
 			r.startRound();
+			System.out.printf("\n\nGame:\t Started round %d\n", currentRoundNum.get());
 		}
 	}
 

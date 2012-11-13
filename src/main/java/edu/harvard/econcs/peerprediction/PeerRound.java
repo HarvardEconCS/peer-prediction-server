@@ -33,12 +33,15 @@ public class PeerRound {
 	 */
 	private double[] probArray;
 
+	/**
+	 * 
+	 */
+	private PeerResult result;
+
 	private Random r;
 	
 	private volatile boolean isStarted = false, isCompleted = false;
 
-	private PeerResult results; 
-	
 	/**
 	 * Constructor
 	 * 
@@ -63,7 +66,7 @@ public class PeerRound {
 			i++;
 		}
 
-		results = new PeerResult(game);
+		result = new PeerResult(game);
 		
 	}
 
@@ -75,7 +78,9 @@ public class PeerRound {
 	 * Start the round
 	 */
 	public void startRound() {
+		
 		isStarted = true;
+		
 		for (PeerPlayer p : game.players) {
 
 			// select signal
@@ -83,7 +88,7 @@ public class PeerRound {
 			String selected = objArray[objIdx];
 			
 			// record signal
-			results.recordSignal(p, selected);
+			result.recordSignal(p, selected);
 			
 			// send signal to player
 			p.sendSignal(selected);
@@ -99,22 +104,23 @@ public class PeerRound {
 	 */
 	public void reportReceived(PeerPlayer reporter, String report) {
 
-		if (results.containsReport(reporter)) {
-			System.out.printf("Warning: player %s already reported this round",
-					reporter);
+		if (result.containsReport(reporter)) {
+			System.out.printf("Warning: %s already reported this round", reporter);
 			return;
 		}
 
 		// record the report received
-		results.recordReport(reporter, report);
+		result.recordReport(reporter, report);
+		System.out.printf("Round:\t received report %s from %s\n", report, reporter.name);
 
 		// send report confirmation message to each player
 		for (PeerPlayer p : game.players) {
 			p.sendReportConfirmation(reporter);
+			System.out.printf("Round:\t sent confirmation of report from %s to %s \n", reporter.name, p.name);
 		}
 
 		// TODO deal with synchronization issues
-		if (results.getReportSize() == game.players.size()) {
+		if (result.getReportSize() == game.players.size()) {
 			computePayments();
 		}
 	}
@@ -124,16 +130,21 @@ public class PeerRound {
 	 */
 	private void computePayments() {
 
-		results.computePayments(this.paymentRule);
+		// compute payments
+		result.computePayments(this.paymentRule);
 
 		// Send all payments out to players
 		for (PeerPlayer p : game.players) {
-			String resultForPlayer = results.getResultForPlayer(p);
+			String resultForPlayer = result.getResultForPlayer(p);
 			p.sendResults(resultForPlayer);
 		}
 
 		isCompleted = true;
 		game.roundCompleted();
+	}
+
+	public PeerResult getResult() {
+		return this.result;
 	}
 
 }

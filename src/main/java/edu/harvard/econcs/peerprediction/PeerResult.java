@@ -37,7 +37,6 @@ public class PeerResult {
 		rewards = new HashMap<PeerPlayer, Double>();
 	}
 
-
 	public void recordSignal(PeerPlayer p, String selected) {
 		signals.put(p, selected);
 	}
@@ -69,7 +68,19 @@ public class PeerResult {
 
 
 	public String getResultForPlayer(PeerPlayer p) {
-		return null;
+		
+		// TODO: return result as a proper json string
+		StringBuilder sb = new StringBuilder();
+		for (PeerPlayer player: signals.keySet()) {
+			if (player.name.equals(p.name)) {
+				sb.append(String.format("%s: %s, %s, %s, %.2f;", 
+						p.name, signals.get(p), reports.get(p), refPlayers.get(p).name, rewards.get(p)));
+			} else {
+				sb.append(String.format("%s: %s, %s, %.2f;", 
+						player.name, reports.get(player), refPlayers.get(player).name, rewards.get(player)));
+			}
+		}
+		return sb.toString();
 	}
 	
 	public void computePayments(PaymentRule paymentRule) {
