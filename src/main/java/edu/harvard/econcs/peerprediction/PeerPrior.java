@@ -10,52 +10,64 @@ import com.google.common.collect.ImmutableMap;
 public class PeerPrior {
 
 	/**
-	 * number of worlds
-	 */
-	public static final int nWorlds = 2;
-
-	/**
 	 * the signal array
 	 */
-	public static final String[] signals = new String[]{"MM", "GM"};
+	private String[] signals;
 
 	/**
 	 * prior on the two worlds
 	 */
-	public static final double[] priorOnWorlds = new double[] {0.3, 0.7};
+	private double[] priorOnWorlds;
 
-	/**
-	 * world 1
-	 */
-	public static final Map<String, Double> probs1 = ImmutableMap.of(
-			"MM", 0.4,
-			"GM", 0.6);
-	
-	/**
-	 * world 2
-	 */
-	public static final Map<String, Double> probs2 = ImmutableMap.of(
-			"MM", 0.8,
-			"GM", 0.2);	
-	
 	/**
 	 * the two worlds
 	 */
-	public static final Object[] worlds = new Object[]{probs1, probs2};
+	private Object[] worlds;
 	
-	public static final Random rnd = new Random();
+	private Random rnd = new Random();
+	
+	/**
+	 * 
+	 */
+	public PeerPrior() {
+		signals = new String[]{"MM", "GM"};
+		priorOnWorlds = new double[] {0.5, 0.5};
+		Map<String, Double> probs1 = ImmutableMap.of(
+				"MM", 0.4,
+				"GM", 0.6);
+		Map<String, Double> probs2 = ImmutableMap.of(
+				"MM", 0.8,
+				"GM", 0.2);	
+		this.worlds = new Object[]{probs1, probs2};
+	}
+	
+	/**
+	 * 
+	 * @param signals
+	 * @param priorOnWorlds
+	 * @param world1
+	 * @param world2
+	 */
+	public PeerPrior(String[] signals, double[] priorOnWorlds, 
+			Map<String, Double> world1, Map<String, Double> world2) {
+		this.worlds  = new Object[]{world1, world2};
+		this.priorOnWorlds = priorOnWorlds;
+		this.signals = signals;
+		
+	}
 	
 	/**
 	 * Choose a world based on the prior
 	 * @return
 	 */
-	public static Map<String, Double> chooseWorld(){
-		int worldIdx = RandomSelection.selectRandomWeighted(priorOnWorlds, rnd);
+	@SuppressWarnings("unchecked")
+	public Map<String, Double> chooseWorld(){
+		int worldIdx = RandomSelection.selectRandomWeighted(this.priorOnWorlds, rnd);
 		Map<String, Double> probs = null;
 		if (worldIdx == 0)
-			probs = probs1;
+			probs = (Map<String, Double>) this.worlds[0];
 		else
-			probs = probs2;
+			probs = (Map<String, Double>) this.worlds[1];
 		return probs;
 	}
 	
@@ -64,13 +76,17 @@ public class PeerPrior {
 	 * @param chosenWorld
 	 * @return
 	 */
-	public static String chooseSignal(Map<String, Double> chosenWorld) {
+	public String chooseSignal(Map<String, Double> chosenWorld) {
 		double[] probArray = new double[chosenWorld.size()];
-		for (int i = 0; i < PeerPrior.signals.length; i++) {
-			probArray[i] = chosenWorld.get(PeerPrior.signals[i]);
+		for (int i = 0; i < this.signals.length; i++) {
+			probArray[i] = chosenWorld.get(this.signals[i]);
 		}
 		int signalIdx = RandomSelection.selectRandomWeighted(priorOnWorlds, rnd);
-		return PeerPrior.signals[signalIdx];
+		return this.signals[signalIdx];
+	}
+	
+	public String[] getSignalArray() {
+		return this.signals;
 	}
 	
 }

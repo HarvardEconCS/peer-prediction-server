@@ -9,6 +9,8 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class PeerResult {
 	
+	private Map<String, Double> chosenWorld;
+	
 	/**
 	 * 
 	 */
@@ -30,13 +32,15 @@ public class PeerResult {
 	private Map<PeerPlayer, Double> rewards;
 
 	
-	public PeerResult(PeerGame game) {
+	public PeerResult(Map<String, Double> chosenWorld) {
+		this.chosenWorld = chosenWorld;
 		signals = new HashMap<PeerPlayer, String>();
 		reports = new ConcurrentHashMap<PeerPlayer, String>();
 		refPlayers = new HashMap<PeerPlayer, PeerPlayer>();
 		rewards = new HashMap<PeerPlayer, Double>();
 	}
 
+	
 	public void recordSignal(PeerPlayer p, String selected) {
 		signals.put(p, selected);
 	}
@@ -71,6 +75,7 @@ public class PeerResult {
 		
 		// TODO: return result as a proper json string
 		StringBuilder sb = new StringBuilder();
+		sb.append(String.format("chosenWorld: %s", this.chosenWorld.toString()));
 		for (PeerPlayer player: signals.keySet()) {
 			if (player.name.equals(p.name)) {
 				sb.append(String.format("%s: %s, %s, %s, %.2f;", 

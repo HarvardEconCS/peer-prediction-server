@@ -9,12 +9,16 @@ public class PaymentRule {
 	
 	Map<Pair<String, String>, Double> rules;
 	
+	PeerPrior prior;
+	
 	/**
 	 * Default constructor
 	 */
 	public PaymentRule() {
 		rules = new HashMap<Pair<String, String>, Double>();
 	}
+	
+	// TODO: payment rule should be related to the prior
 	
 	/**
 	 * Constructor
@@ -50,13 +54,13 @@ public class PaymentRule {
 	 * Get the payment rule in array form
 	 * @return
 	 */
-	public double[] getPaymentArray() {
-		double[] array = new double[PeerPrior.signals.length * PeerPrior.signals.length];
+	public double[] getPaymentArray(String[] signals) {
+		double[] array = new double[signals.length * signals.length];
 		
-		for (int i = 0; i < PeerPrior.signals.length; i++) {
-			for (int j = 0; j < PeerPrior.signals.length; j++) {
+		for (int i = 0; i < signals.length; i++) {
+			for (int j = 0; j < signals.length; j++) {
 				int index = i * 2 + j;
-				array[index] = rules.get(new Pair<String, String>(PeerPrior.signals[i], PeerPrior.signals[j]));
+				array[index] = rules.get(new Pair<String, String>(signals[i], signals[j]));
 			}
 		}
 		

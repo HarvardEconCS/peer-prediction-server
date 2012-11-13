@@ -14,62 +14,63 @@ public class PeerRound {
 	private PeerGame game;
 
 	/**
-	 * Jar
-	 */
-	private Map<String, Double> probs;
-
-	/**
 	 * Payment rule
 	 */
 	private PaymentRule paymentRule;
 
 	/**
-	 * Objects, both the signals and the reports
+	 * Chosen world
 	 */
-	private String[] objArray;
-
+	private Map<String, Double> chosenWorld;
+	
 	/**
-	 * Array of probabilities
-	 */
-	private double[] probArray;
-
-	/**
-	 * 
+	 * Result of this round
 	 */
 	private PeerResult result;
 
-	private Random r;
+	private volatile boolean isStarted = false;
 	
-	private volatile boolean isStarted = false, isCompleted = false;
+	private volatile boolean isCompleted = false;
 
 	/**
 	 * Constructor
 	 * 
 	 * @param game
-	 * @param probs
+	 * @param chosenWorld
 	 * @param paymentRule
 	 */
-	public PeerRound(PeerGame game, Map<String, Double> probs,
+	public PeerRound(PeerGame game, Map<String, Double> chosenWorld,
 			PaymentRule paymentRule) {
+		
 		this.game = game;
-		this.probs = probs;
+		this.chosenWorld = chosenWorld;
 		this.paymentRule = paymentRule;
 
-		r = new Random();
+		result = new PeerResult(this.chosenWorld);
+	}
 
-		objArray = new String[probs.size()];
-		probArray = new double[probs.size()];
+	/**
+	 * Choose a signal from the chosenWorld
+	 * @return
+	 */
+	private String chooseSignal() {
+		
+		String[] signalArray = new String[chosenWorld.size()];
+		double[] probArray = new double[chosenWorld.size()];
 		int i = 0;
-		for (Entry<String, Double> e : probs.entrySet()) {
-			objArray[i] = e.getKey();
+		for (Entry<String, Double> e : chosenWorld.entrySet()) {
+			signalArray[i] = e.getKey();
 			probArray[i] = e.getValue();
 			i++;
 		}
-
-		result = new PeerResult(game);
 		
+		Random r = new Random();
+		int chosenSignalIdx = RandomSelection.selectRandomWeighted(probArray, r);
+		String selectedSignal = signalArray[chosenSignalIdx];
+		
+		return selectedSignal;
 	}
-
+	
 	public boolean isCompleted() {
 		return isCompleted;
 	}
@@ -84,8 +85,7 @@ public class PeerRound {
 		for (PeerPlayer p : game.players) {
 
 			// select signal
-			int objIdx = RandomSelection.selectRandomWeighted(probArray, r);
-			String selected = objArray[objIdx];
+			String selected = this.chooseSignal();
 			
 			// record signal
 			result.recordSignal(p, selected);
@@ -143,6 +143,10 @@ public class PeerRound {
 		game.roundCompleted();
 	}
 
+	/**
+	 * Getter: result
+	 * @return
+	 */
 	public PeerResult getResult() {
 		return this.result;
 	}

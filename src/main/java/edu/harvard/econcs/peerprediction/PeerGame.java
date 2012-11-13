@@ -17,12 +17,12 @@ public class PeerGame {
 	 * Number of rounds
 	 */
 	int nRounds;
-	
+		
 	/**
-	 * Jar
+	 * Prior
 	 */
-	Map<String, Double> probs;
-	
+	PeerPrior prior;
+
 	/**
 	 * Payment rule
 	 */
@@ -43,21 +43,25 @@ public class PeerGame {
 	 */
 	List<PeerResult> results;
 	
-	/*
+
+	/**
 	 * Constructor
+	 * @param nRounds2
+	 * @param prior
+	 * @param rule
 	 */
-	public PeerGame(int nRounds, Map<String, Double> probs, PaymentRule paymentRule) {
-		
-		this.nRounds = nRounds;
-		this.probs = probs;
-		this.paymentRule = paymentRule;
+	public PeerGame(int nRounds2, PeerPrior prior, PaymentRule rule) {
+		this.nRounds = nRounds2;
+		this.prior = prior;
+		this.paymentRule = rule;
 		
 		currentRound = new AtomicReference<PeerRound>(null);
 		currentRoundNum = new AtomicInteger();
 		
 		results = new ArrayList<PeerResult>();
+
 	}
-	
+
 	/**
 	 * Start the game
 	 * @param players
@@ -68,14 +72,16 @@ public class PeerGame {
 		this.players = players;
 		
 		// send each player general information
-		double[] paymentArray = paymentRule.getPaymentArray();
+		double[] paymentArray = paymentRule.getPaymentArray(this.prior.getSignalArray());
 		for (PeerPlayer p: players) {
 			p.sendGeneralInfo(nRounds, players.size(), paymentArray);
 		}
 		
 		// set current round number and create current round
 		currentRoundNum.set(1);
-		PeerRound r = new PeerRound(this, probs, paymentRule);
+		
+		Map<String, Double> chosenWorld = this.prior.chooseWorld();
+		PeerRound r = new PeerRound(this, chosenWorld, paymentRule);
 		currentRound.set(r);
 		
 		// start current round
@@ -104,7 +110,8 @@ public class PeerGame {
 		} else {
 			
 			// create a new round
-			PeerRound r = new PeerRound(this, probs, paymentRule);
+			Map<String, Double> chosenWorld = this.prior.chooseWorld();
+			PeerRound r = new PeerRound(this, chosenWorld, paymentRule);
 			currentRound.set(r);
 
 			r.startRound();

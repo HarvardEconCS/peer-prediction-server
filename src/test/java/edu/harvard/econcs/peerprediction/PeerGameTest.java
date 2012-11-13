@@ -2,7 +2,6 @@ package edu.harvard.econcs.peerprediction;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
 import org.junit.After;
 import org.junit.Before;
@@ -23,10 +22,11 @@ public class PeerGameTest {
 	@Test
 	public void test() {
 		
-		int rounds = 3; // number of rounds
+		int nRounds = 3; // number of rounds
 		int nplayers = 3;  // number of players
-		
-		Map<String, Double> world = PeerPrior.chooseWorld();
+
+		// create prior
+		PeerPrior prior = new PeerPrior();
 		
 		// create payment rule
 		PaymentRule rule = new PaymentRule();
@@ -34,14 +34,19 @@ public class PeerGameTest {
 		rule.addRule("MM", "GM", 0.36);
 		rule.addRule("GM", "MM", 0.43);
 		rule.addRule("GM", "GM", 0.54);
-		
-		PeerGame game = new PeerGame(rounds, world, rule);
-		
+
+		// create the game
+		PeerGame game = new PeerGame(nRounds, prior, rule);
+
+		// create the players
 		List<TestPlayer> players = new ArrayList<TestPlayer>(nplayers);
 		for (int i = 0; i < nplayers; i++)
 			players.add(new TestPlayer(game, "Player " + (i + 1)));
 
+		// start the game
 		game.startGame(players);
+		
+		// create the player threads and start them
 		List<Thread> threads = new ArrayList<Thread>();
 		for(TestPlayer p: players) {
 			Thread curr = new Thread(p);
