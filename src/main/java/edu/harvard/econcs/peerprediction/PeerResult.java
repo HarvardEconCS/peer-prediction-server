@@ -5,37 +5,52 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
-import java.util.concurrent.ConcurrentHashMap;
 
 public class PeerResult {
-	
+
+	/**
+	 * the chosen world
+	 */
 	private Map<String, Double> chosenWorld;
 	
 	/**
-	 * 
+	 * Players' signals
 	 */
 	private HashMap<PeerPlayer, String> signals;
 	
 	/** 
 	 * Players' reports
 	 */
-	private ConcurrentHashMap<PeerPlayer, String> reports;
+	private HashMap<PeerPlayer, String> reports;
 
 	/**
-	 * 
+	 * Players' reference players
 	 */
 	private Map<PeerPlayer, PeerPlayer> refPlayers;
 	
 	/**
-	 * 
+	 * Players' rewards
 	 */
 	private Map<PeerPlayer, Double> rewards;
 
+//	private Map<String, Map<String, Double>> results;
 	
+	/**
+	 * 
+	 * @param chosenWorld
+	 */
 	public PeerResult(Map<String, Double> chosenWorld) {
+		
+//		this.results = new HashMap<String, Map<String, Double>>();
+//		results.put("chosenWorld", new HashMap<String, Double>());
+//		results.put("signals", new HashMap<String, Double>());
+//		results.put("reports", new HashMap<String, Double>());
+//		results.put("refPlayers", new HashMap<String, Double>());
+//		results.put("rewards", new HashMap<String, Double>());
+
 		this.chosenWorld = chosenWorld;
 		signals = new HashMap<PeerPlayer, String>();
-		reports = new ConcurrentHashMap<PeerPlayer, String>();
+		reports = new HashMap<PeerPlayer, String>();
 		refPlayers = new HashMap<PeerPlayer, PeerPlayer>();
 		rewards = new HashMap<PeerPlayer, Double>();
 	}
@@ -62,7 +77,7 @@ public class PeerResult {
 
 
 	public boolean containsReport(PeerPlayer reporter) {
-		return reports.contains(reporter);
+		return reports.containsKey(reporter);
 	}
 
 

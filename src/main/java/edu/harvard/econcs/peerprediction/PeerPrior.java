@@ -1,5 +1,7 @@
 package edu.harvard.econcs.peerprediction;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.Random;
 
@@ -22,23 +24,25 @@ public class PeerPrior {
 	/**
 	 * the two worlds
 	 */
-	private Object[] worlds;
+	private List<Map<String, Double>> worlds;
 	
 	private Random rnd = new Random();
 	
 	/**
 	 * 
 	 */
-	public PeerPrior() {
-		signals = new String[]{"MM", "GM"};
-		priorOnWorlds = new double[] {0.5, 0.5};
+	public static PeerPrior getTestPrior() {
+		
+		String[] signals = new String[]{"MM", "GM"};
+		double[] priorOnWorlds = new double[] {0.5, 0.5};
 		Map<String, Double> probs1 = ImmutableMap.of(
 				"MM", 0.4,
 				"GM", 0.6);
 		Map<String, Double> probs2 = ImmutableMap.of(
 				"MM", 0.8,
 				"GM", 0.2);	
-		this.worlds = new Object[]{probs1, probs2};
+		return new PeerPrior(signals, priorOnWorlds, probs1, probs2); 
+
 	}
 	
 	/**
@@ -50,7 +54,9 @@ public class PeerPrior {
 	 */
 	public PeerPrior(String[] signals, double[] priorOnWorlds, 
 			Map<String, Double> world1, Map<String, Double> world2) {
-		this.worlds  = new Object[]{world1, world2};
+		this.worlds = new ArrayList<Map<String, Double>>();
+		worlds.add(world1);
+		worlds.add(world2);
 		this.priorOnWorlds = priorOnWorlds;
 		this.signals = signals;
 		
@@ -60,14 +66,13 @@ public class PeerPrior {
 	 * Choose a world based on the prior
 	 * @return
 	 */
-	@SuppressWarnings("unchecked")
 	public Map<String, Double> chooseWorld(){
 		int worldIdx = RandomSelection.selectRandomWeighted(this.priorOnWorlds, rnd);
 		Map<String, Double> probs = null;
 		if (worldIdx == 0)
-			probs = (Map<String, Double>) this.worlds[0];
+			probs = worlds.get(0);
 		else
-			probs = (Map<String, Double>) this.worlds[1];
+			probs = worlds.get(1);
 		return probs;
 	}
 	

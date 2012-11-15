@@ -1,6 +1,5 @@
 package edu.harvard.econcs.peerprediction;
 
-import net.andrewmao.misc.Pair;
 import edu.harvard.econcs.peerprediction.TestPlayer.WrongStateException;
 
 /**

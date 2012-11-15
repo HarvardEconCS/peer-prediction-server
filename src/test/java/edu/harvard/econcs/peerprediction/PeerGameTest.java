@@ -26,7 +26,7 @@ public class PeerGameTest {
 		int nplayers = 3;  // number of players
 
 		// create prior
-		PeerPrior prior = new PeerPrior();
+		PeerPrior prior = PeerPrior.getTestPrior();
 		
 		// create payment rule
 		PaymentRule rule = new PaymentRule();
