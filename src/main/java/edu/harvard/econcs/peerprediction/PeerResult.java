@@ -8,124 +8,100 @@ import java.util.Random;
 
 public class PeerResult {
 
-	/**
-	 * the chosen world
-	 */
+	private Map<String, Map<String, String>> resultObject;
 	private Map<String, Double> chosenWorld;
 	
 	/**
-	 * Players' signals
-	 */
-	private HashMap<PeerPlayer, String> signals;
-	
-	/** 
-	 * Players' reports
-	 */
-	private HashMap<PeerPlayer, String> reports;
-
-	/**
-	 * Players' reference players
-	 */
-	private Map<PeerPlayer, PeerPlayer> refPlayers;
-	
-	/**
-	 * Players' rewards
-	 */
-	private Map<PeerPlayer, Double> rewards;
-
-//	private Map<String, Map<String, Double>> results;
-	
-	/**
-	 * 
+	 * Constructor
 	 * @param chosenWorld
 	 */
 	public PeerResult(Map<String, Double> chosenWorld) {
 		
-//		this.results = new HashMap<String, Map<String, Double>>();
-//		results.put("chosenWorld", new HashMap<String, Double>());
-//		results.put("signals", new HashMap<String, Double>());
-//		results.put("reports", new HashMap<String, Double>());
-//		results.put("refPlayers", new HashMap<String, Double>());
-//		results.put("rewards", new HashMap<String, Double>());
-
 		this.chosenWorld = chosenWorld;
-		signals = new HashMap<PeerPlayer, String>();
-		reports = new HashMap<PeerPlayer, String>();
-		refPlayers = new HashMap<PeerPlayer, PeerPlayer>();
-		rewards = new HashMap<PeerPlayer, Double>();
+
+		this.resultObject = new HashMap<String, Map<String, String>>();
 	}
 
-	
 	public void recordSignal(PeerPlayer p, String selected) {
-		signals.put(p, selected);
+		if (resultObject.containsKey(p.name)) {
+			Map<String, String> playerResult = resultObject.get(p.name);
+			playerResult.put("signal", selected);
+		} else {
+			Map<String, String> playerResult = new HashMap<String, String>();
+			playerResult.put("signal", selected);
+			resultObject.put(p.name, playerResult);
+		}
+
 	}
 
 
 	public void recordReport(PeerPlayer reporter, String report) {
-		reports.put(reporter, report);
+		if (resultObject.containsKey(reporter.name)) {
+			Map<String, String> playerResult = resultObject.get(reporter.name);
+			playerResult.put("report", report);
+		} else {
+			Map<String, String> playerResult = new HashMap<String, String>();
+			playerResult.put("report", report);
+			resultObject.put(reporter.name, playerResult);
+		}
+
 	}
-
-
-	public void recordRefPlayer(PeerPlayer peerPlayer, PeerPlayer refPlayer) {
-		refPlayers.put(peerPlayer, refPlayer);
-	}
-
-
-	public void recordReward(PeerPlayer p, Double reward) {
-		rewards.put(p, reward);
-	}
-
 
 	public boolean containsReport(PeerPlayer reporter) {
-		return reports.containsKey(reporter);
+		return resultObject.containsKey(reporter.name) 
+				&& resultObject.get(reporter.name).containsKey("report");
 	}
 
 
 	public int getReportSize() {
-		return reports.size();
+		int numReports = 0;
+		for (String key : this.resultObject.keySet()) {
+			if (resultObject.get(key).containsKey("report"))
+				numReports++;
+		}
+		return numReports;
 	}
 
+	public Map<String, Map<String, String>> getResultForPlayer(PeerPlayer p) {
 
-	public String getResultForPlayer(PeerPlayer p) {
+		Map<String, Map<String, String>> currResult = new HashMap<String, Map<String, String>>();
 		
-		// TODO: return result as a proper json string
-		StringBuilder sb = new StringBuilder();
-		sb.append(String.format("chosenWorld: %s", this.chosenWorld.toString()));
-		for (PeerPlayer player: signals.keySet()) {
-			if (player.name.equals(p.name)) {
-				sb.append(String.format("%s: %s, %s, %s, %.2f;", 
-						p.name, signals.get(p), reports.get(p), refPlayers.get(p).name, rewards.get(p)));
-			} else {
-				sb.append(String.format("%s: %s, %s, %.2f;", 
-						player.name, reports.get(player), refPlayers.get(player).name, rewards.get(player)));
-			}
+		for (String playerName: resultObject.keySet()) {
+			Map<String, String> playerResult = new HashMap<String, String>();
+			playerResult.put("report", resultObject.get(playerName).get("report"));
+			playerResult.put("refPlayer", resultObject.get(playerName).get("refPlayer"));
+			currResult.put(playerName, playerResult);
 		}
-		return sb.toString();
+		return currResult;
 	}
 	
 	public void computePayments(PaymentRule paymentRule) {
 		
 		Random r = new Random();
-		List<PeerPlayer> players = new ArrayList<PeerPlayer>();
-		players.addAll(signals.keySet());
+		
+		List<String> playerNames = new ArrayList<String>();
+		playerNames.addAll(this.resultObject.keySet());
 		
 		// Choose reference reports for each player
-		for (int i = 0; i < players.size(); i++) {
-			int refPlayerIdx = r.nextInt(players.size() - 1);
+		for (int i = 0; i < playerNames.size(); i++) {
+			int refPlayerIdx = r.nextInt(playerNames.size() - 1);
 			if (refPlayerIdx >= i)
 				refPlayerIdx++;
 
-			this.recordRefPlayer(players.get(i), players.get(refPlayerIdx));
+			Map<String, String> playerResult = resultObject.get(playerNames.get(i));
+			playerResult.put("refPlayer", playerNames.get(refPlayerIdx));
 		}
 		
 		// Look up payment in the payment table, assign payment to each player
-		for (PeerPlayer p : players) {
-			PeerPlayer refPlayer = refPlayers.get(p);
-			String myReport = reports.get(p);
-			String otherReport = reports.get(refPlayer);
+		for (String playerName : playerNames) {
+			
+			String refPlayerName = resultObject.get(playerName).get("refPlayer");
+			String myReport = resultObject.get(playerName).get("report");
+			String otherReport = resultObject.get(refPlayerName).get("report");
 			Double reward = paymentRule.getPayment(myReport, otherReport);
 			
-			this.recordReward(p, reward);
+			Map<String, String> playerResult = resultObject.get(playerName);
+			playerResult.put("reward", String.format("%f", reward));
 		}
 	}
 	

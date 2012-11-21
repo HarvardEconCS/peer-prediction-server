@@ -36,15 +36,18 @@ public class PeerGameTest {
 		rule.addRule("GM", "GM", 0.54);
 
 		// create the game
-		PeerGame game = new PeerGame(nRounds, prior, rule);
+		PeerGame<TestPlayer> game = new TestPeerGame(nRounds, prior, rule);
 
 		// create the players
 		List<TestPlayer> players = new ArrayList<TestPlayer>(nplayers);
 		for (int i = 0; i < nplayers; i++)
 			players.add(new TestPlayer(game, "Player " + (i + 1)));
-
+		
+		// Pretend we injected the set of players
+		game.setPlayers(players);
+		
 		// start the game
-		game.startGame(players);
+		game.startGame();
 		
 		// create the player threads and start them
 		List<Thread> threads = new ArrayList<Thread>();

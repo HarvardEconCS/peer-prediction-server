@@ -11,19 +11,8 @@ import com.google.common.collect.ImmutableMap;
 
 public class PeerPrior {
 
-	/**
-	 * the signal array
-	 */
 	private String[] signals;
-
-	/**
-	 * prior on the two worlds
-	 */
 	private double[] priorOnWorlds;
-
-	/**
-	 * the two worlds
-	 */
 	private List<Map<String, Double>> worlds;
 	
 	private Random rnd = new Random();

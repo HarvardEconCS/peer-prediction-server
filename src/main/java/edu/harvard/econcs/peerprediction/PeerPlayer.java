@@ -1,66 +1,42 @@
 package edu.harvard.econcs.peerprediction;
 
+import java.util.Map;
+
 import edu.harvard.econcs.peerprediction.TestPlayer.WrongStateException;
 
 /**
  * The player class
+ * 
  * @author alicexigao
- *
+ * 
  */
 abstract class PeerPlayer {
-	protected PeerGame game;
+
 	protected String name;
 
-	public PeerPlayer(PeerGame game) {
-		this.game = game;
-	}
+	public abstract void sendGeneralInfo(int nRounds, int nPlayers,
+			String[] playerNames, String yourName, double[] paymentArray);
 
-	/**
-	 * Send general information before rounds start
-	 * @param nRounds
-	 * @param size
-	 * @param paymentArray
-	 */
-	public abstract void sendGeneralInfo(int nRounds, int size, double[] paymentArray) ;
+	public abstract void sendSignal(String selected) throws WrongStateException;
 
-	/**
-	 * Send signal to the player
-	 * 
-	 * @param selected
-	 * @throws WrongStateException
-	 */
-	public abstract void sendSignal(String selected)
-			throws WrongStateException;
-
-	/**
-	 * tells this player that reporter has submitted a report (may be
-	 * themself)
-	 * 
-	 * @param reporter
-	 */
 	public abstract void sendReportConfirmation(PeerPlayer reporter);
 
-	/**
-	 * Send the results of the current round to the player
-	 * 
-	 * @param object
-	 */
-	public abstract void sendResults(String results);
+	public abstract void sendResults(
+			Map<String, Map<String, String>> resultForPlayer);
 
+	
 	@Override
 	public boolean equals(Object other) {
-		if( other instanceof PeerPlayer ) {
+		if (other instanceof PeerPlayer) {
 			return this.name.equals(((PeerPlayer) other).name);
-		}
-		else {
+		} else {
 			return false;
 		}
 	}
-	
+
 	@Override
 	public int hashCode() {
 		return this.name.hashCode();
 	}
-
 
 }

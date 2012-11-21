@@ -6,10 +6,10 @@ import java.util.Map;
 import net.andrewmao.misc.Pair;
 
 public class PaymentRule {
-	
-	Map<Pair<String, String>, Double> rules;
-	
+
 	PeerPrior prior;
+
+	Map<Pair<String, String>, Double> rules;
 	
 	/**
 	 * Default constructor

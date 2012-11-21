@@ -6,30 +6,14 @@ import java.util.Random;
 
 import net.andrewmao.math.RandomSelection;
 
-public class PeerRound {
+public class PeerRound<P extends PeerPlayer> {
 
-	/**
-	 * Reference to the game
-	 */
-	private PeerGame game;
-
-	/**
-	 * Payment rule
-	 */
+	private PeerGame<P> game;
 	private PaymentRule paymentRule;
-
-	/**
-	 * Chosen world
-	 */
 	private Map<String, Double> chosenWorld;
-	
-	/**
-	 * Result of this round
-	 */
 	private PeerResult result;
 
-	private volatile boolean isStarted = false;
-	
+	private volatile boolean isStarted = false;	
 	private volatile boolean isCompleted = false;
 
 	/**
@@ -39,7 +23,7 @@ public class PeerRound {
 	 * @param chosenWorld
 	 * @param paymentRule
 	 */
-	public PeerRound(PeerGame game, Map<String, Double> chosenWorld,
+	public PeerRound(PeerGame<P> game, Map<String, Double> chosenWorld,
 			PaymentRule paymentRule) {
 		
 		this.game = game;
@@ -111,12 +95,12 @@ public class PeerRound {
 
 		// record the report received
 		result.recordReport(reporter, report);
-		System.out.printf("Round:\t received report %s from %s\n", report, reporter.name);
+//		System.out.printf("Round:\t received report %s from %s\n", report, reporter.name);
 
 		// send report confirmation message to each player
 		for (PeerPlayer p : game.players) {
 			p.sendReportConfirmation(reporter);
-			System.out.printf("Round:\t sent confirmation of report from %s to %s \n", reporter.name, p.name);
+//			System.out.printf("Round:\t sent confirmation of report from %s to %s \n", reporter.name, p.name);
 		}
 
 		// TODO deal with synchronization issues
@@ -135,7 +119,8 @@ public class PeerRound {
 
 		// Send all payments out to players
 		for (PeerPlayer p : game.players) {
-			String resultForPlayer = result.getResultForPlayer(p);
+			// TODO:  where should this happen?
+			Map<String, Map<String, String>> resultForPlayer = result.getResultForPlayer(p);
 			p.sendResults(resultForPlayer);
 		}
 
