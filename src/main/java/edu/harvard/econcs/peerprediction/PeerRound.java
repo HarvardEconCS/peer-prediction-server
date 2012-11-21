@@ -16,14 +16,10 @@ public class PeerRound<P extends PeerPlayer> {
 	private volatile boolean isStarted = false;	
 	private volatile boolean isCompleted = false;
 
-	/**
-	 * Constructor
-	 * 
-	 * @param game
-	 * @param chosenWorld
-	 * @param paymentRule
-	 */
-	public PeerRound(PeerGame<P> game, Map<String, Double> chosenWorld,
+
+	public PeerRound(
+			PeerGame<P> game, 
+			Map<String, Double> chosenWorld,
 			PaymentRule paymentRule) {
 		
 		this.game = game;
@@ -33,10 +29,6 @@ public class PeerRound<P extends PeerPlayer> {
 		result = new PeerResult(this.chosenWorld);
 	}
 
-	/**
-	 * Choose a signal from the chosenWorld
-	 * @return
-	 */
 	private String chooseSignal() {
 		
 		String[] signalArray = new String[chosenWorld.size()];
@@ -68,24 +60,16 @@ public class PeerRound<P extends PeerPlayer> {
 		
 		for (PeerPlayer p : game.players) {
 
-			// select signal
 			String selected = this.chooseSignal();
 			
-			// record signal
-			result.recordSignal(p, selected);
+			result.saveSignal(p, selected);
 			
-			// send signal to player
 			p.sendSignal(selected);
 
 		}
 	}
 
-	/**
-	 * Called when a report from a player is received
-	 * 
-	 * @param reporter
-	 * @param report
-	 */
+
 	public void reportReceived(PeerPlayer reporter, String report) {
 
 		if (result.containsReport(reporter)) {
@@ -93,14 +77,10 @@ public class PeerRound<P extends PeerPlayer> {
 			return;
 		}
 
-		// record the report received
-		result.recordReport(reporter, report);
-//		System.out.printf("Round:\t received report %s from %s\n", report, reporter.name);
+		result.saveReport(reporter, report);
 
-		// send report confirmation message to each player
 		for (PeerPlayer p : game.players) {
 			p.sendReportConfirmation(reporter);
-//			System.out.printf("Round:\t sent confirmation of report from %s to %s \n", reporter.name, p.name);
 		}
 
 		// TODO deal with synchronization issues
@@ -109,15 +89,10 @@ public class PeerRound<P extends PeerPlayer> {
 		}
 	}
 
-	/**
-	 * Compute and send payments to players
-	 */
 	private void computePayments() {
 
-		// compute payments
 		result.computePayments(this.paymentRule);
 
-		// Send all payments out to players
 		for (PeerPlayer p : game.players) {
 			// TODO:  where should this happen?
 			Map<String, Map<String, String>> resultForPlayer = result.getResultForPlayer(p);
@@ -128,10 +103,7 @@ public class PeerRound<P extends PeerPlayer> {
 		game.roundCompleted();
 	}
 
-	/**
-	 * Getter: result
-	 * @return
-	 */
+
 	public PeerResult getResult() {
 		return this.result;
 	}

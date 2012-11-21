@@ -4,12 +4,6 @@ import java.util.Map;
 
 import edu.harvard.econcs.peerprediction.TestPlayer.WrongStateException;
 
-/**
- * The player class
- * 
- * @author alicexigao
- * 
- */
 abstract class PeerPlayer {
 
 	protected String name;

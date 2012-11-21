@@ -3,7 +3,6 @@ package edu.harvard.econcs.peerprediction;
 import java.util.Arrays;
 import java.util.Map;
 import java.util.Random;
-import java.util.TimerTask;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 
@@ -16,7 +15,7 @@ public class TestPlayer extends PeerPlayer implements Runnable {
 	volatile RoundState state;
 
 	PeerGame<TestPlayer> game;
-	
+
 	private BlockingQueue<String> lastSignal;
 	private String localLastReport;
 	private BlockingQueue<PeerPlayer> lastReporter;
@@ -48,7 +47,8 @@ public class TestPlayer extends PeerPlayer implements Runnable {
 	}
 
 	@Override
-	public void sendGeneralInfo(int nPlayers, int nRounds, String[] playerNames, String yourName, double[] paymentArray) {
+	public void sendGeneralInfo(int nPlayers, int nRounds,
+			String[] playerNames, String yourName, double[] paymentArray) {
 
 		this.nPlayers = nPlayers;
 		this.nRounds = nRounds;
@@ -61,18 +61,8 @@ public class TestPlayer extends PeerPlayer implements Runnable {
 	@Override
 	public void sendSignal(String selectedSignal) throws WrongStateException {
 
-//		System.out.printf("sendSignal called: %s (%s)\n", this.name, this.state);
-		
-		// All 3 states are possible.
-//		if (state != RoundState.GOT_RESULTS 
-//				&& state != RoundState.SENT_REPORT 
-//				&& state != RoundState.CONFIRMED_REPORT
-//				)
-//			throw new WrongStateException(this.name, state, 
-//					RoundState.GOT_RESULTS 
-//					+ " or " + RoundState.SENT_REPORT
-//					+ " or " + RoundState.CONFIRMED_REPORT
-//					);
+		// System.out.printf("sendSignal called: %s (%s)\n", this.name,
+		// this.state);
 
 		lastSignal.add(selectedSignal);
 	}
@@ -80,23 +70,28 @@ public class TestPlayer extends PeerPlayer implements Runnable {
 	@Override
 	public void sendReportConfirmation(PeerPlayer reporter) {
 
-//		System.out.printf("sendReportConfirmation called: %s (%s)\n", this.name, this.state);
-		
+		// System.out.printf("sendReportConfirmation called: %s (%s)\n",
+		// this.name, this.state);
+
 		if (reporter.name.equals(this.name)) {
 			if (state != RoundState.SENT_REPORT)
-				throw new WrongStateException(this.name, state, RoundState.SENT_REPORT + "");
+				throw new WrongStateException(this.name, state,
+						RoundState.SENT_REPORT + "");
 		}
 
 		lastReporter.add(reporter);
 	}
-	
+
 	@Override
 	public void sendResults(Map<String, Map<String, String>> results) {
 
-//		System.out.printf("sendResults called: %s (%s)\n", this.name, this.state);
+		// System.out.printf("sendResults called: %s (%s)\n", this.name,
+		// this.state);
 
-		 if (state == RoundState.GOT_RESULTS)
-			 throw new WrongStateException(this.name, state, RoundState.CONFIRMED_REPORT + " or " + RoundState.SENT_REPORT);
+		if (state == RoundState.GOT_RESULTS)
+			throw new WrongStateException(this.name, state,
+					RoundState.CONFIRMED_REPORT + " or "
+							+ RoundState.SENT_REPORT);
 
 		lastResult.add(results);
 	}
@@ -107,10 +102,10 @@ public class TestPlayer extends PeerPlayer implements Runnable {
 		rnd = new Random();
 
 		int numPlayed = 0;
-		
+
 		// Repeat until game is finished:
 		while (true) {
-			
+
 			// Wait for round signal
 			this.otherStatus = 0;
 			String signal = null;
@@ -132,10 +127,8 @@ public class TestPlayer extends PeerPlayer implements Runnable {
 			// Send report
 			state = RoundState.SENT_REPORT;
 			localLastReport = signal;
-			System.out.printf("%s (%s): chosen report %s\n", 
-					this.name,
-					this.state, 
-					localLastReport);
+			System.out.printf("%s (%s): chosen report %s\n", this.name,
+					this.state, localLastReport);
 			this.game.reportReceived(this, localLastReport);
 
 			int count = 0;
@@ -146,29 +139,30 @@ public class TestPlayer extends PeerPlayer implements Runnable {
 					if (reporter.name.equals(this.name)) {
 						state = RoundState.CONFIRMED_REPORT;
 					}
-					System.out.printf("%s (%s): server confirmed report by %s\n", 
+					System.out.printf(
+							"%s (%s): server confirmed report by %s\n",
 							this.name, this.state, reporter.name);
 				} catch (InterruptedException e) {
 					e.printStackTrace();
 				}
 			}
-			
+
 			// Wait for results
 			try {
 				Map<String, Map<String, String>> result = lastResult.take();
 				state = RoundState.GOT_RESULTS;
-				System.out.printf("%s (%s): received results (%s)\n", 
+				System.out.printf("%s (%s): received results (%s)\n",
 						this.name, this.state, result);
 			} catch (InterruptedException e) {
 				e.printStackTrace();
 			}
-			
+
 			numPlayed++;
 			if (numPlayed == this.nRounds)
 				break;
 
 		}
-		
+
 		System.out.printf("%s: All games are finished\n", this.name);
 
 	}
@@ -179,8 +173,10 @@ public class TestPlayer extends PeerPlayer implements Runnable {
 		 */
 		private static final long serialVersionUID = 1L;
 
-		public WrongStateException(String playerName, RoundState curr, String expected) {
-			super(playerName + " is in state" + curr + " expected to be in state: " + expected);
+		public WrongStateException(String playerName, RoundState curr,
+				String expected) {
+			super(playerName + " is in state" + curr
+					+ " expected to be in state: " + expected);
 		}
 	}
 }

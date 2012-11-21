@@ -11,18 +11,14 @@ public class PeerResult {
 	private Map<String, Map<String, String>> resultObject;
 	private Map<String, Double> chosenWorld;
 	
-	/**
-	 * Constructor
-	 * @param chosenWorld
-	 */
 	public PeerResult(Map<String, Double> chosenWorld) {
 		
 		this.chosenWorld = chosenWorld;
-
 		this.resultObject = new HashMap<String, Map<String, String>>();
+		
 	}
 
-	public void recordSignal(PeerPlayer p, String selected) {
+	public void saveSignal(PeerPlayer p, String selected) {
 		if (resultObject.containsKey(p.name)) {
 			Map<String, String> playerResult = resultObject.get(p.name);
 			playerResult.put("signal", selected);
@@ -35,7 +31,7 @@ public class PeerResult {
 	}
 
 
-	public void recordReport(PeerPlayer reporter, String report) {
+	public void saveReport(PeerPlayer reporter, String report) {
 		if (resultObject.containsKey(reporter.name)) {
 			Map<String, String> playerResult = resultObject.get(reporter.name);
 			playerResult.put("report", report);
@@ -82,7 +78,7 @@ public class PeerResult {
 		List<String> playerNames = new ArrayList<String>();
 		playerNames.addAll(this.resultObject.keySet());
 		
-		// Choose reference reports for each player
+		// choose reference player
 		for (int i = 0; i < playerNames.size(); i++) {
 			int refPlayerIdx = r.nextInt(playerNames.size() - 1);
 			if (refPlayerIdx >= i)
@@ -92,7 +88,7 @@ public class PeerResult {
 			playerResult.put("refPlayer", playerNames.get(refPlayerIdx));
 		}
 		
-		// Look up payment in the payment table, assign payment to each player
+		// find payment
 		for (String playerName : playerNames) {
 			
 			String refPlayerName = resultObject.get(playerName).get("refPlayer");

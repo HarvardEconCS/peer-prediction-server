@@ -8,7 +8,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 public class PeerGameTest {
-
+	
 	@Before
 	public void setup() {
 		
@@ -20,7 +20,17 @@ public class PeerGameTest {
 	}
 	
 	@Test
-	public void test() {
+	public void testPrior() {
+		
+	}
+	
+	@Test
+	public void testPaymentComputation() {
+		
+	}
+	
+	@Test
+	public void testRunningTheGame() {
 		
 		int nRounds = 3; // number of rounds
 		int nplayers = 3;  // number of players
