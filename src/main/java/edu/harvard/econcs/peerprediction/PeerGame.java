@@ -6,6 +6,8 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
+import edu.harvard.econcs.turkserver.api.ExperimentLog;
+
 public abstract class PeerGame<P extends PeerPlayer> {
 
 	int nRounds;
@@ -18,14 +20,15 @@ public abstract class PeerGame<P extends PeerPlayer> {
 	AtomicInteger currentRoundNum;
 	AtomicReference<PeerRound<P>> currentRound;
 
+	ExperimentLog expLog;
 	List<PeerResult> results;
-
-	public PeerGame(int nRounds2, PeerPrior prior, PaymentRule rule) {
-
+	
+	public void init(int nRounds2, PeerPrior prior, PaymentRule rule, ExperimentLog expLog) {
 		this.nRounds = nRounds2;
 		this.prior = prior;
 		this.paymentRule = rule;
-
+		this.expLog = expLog;
+		
 		currentRound = new AtomicReference<PeerRound<P>>(null);
 		currentRoundNum = new AtomicInteger();
 
@@ -50,48 +53,45 @@ public abstract class PeerGame<P extends PeerPlayer> {
 					paymentArray);
 		}
 
-		// set current round number and create current round
 		currentRoundNum.set(1);
-
-		Map<String, Double> chosenWorld = this.prior.chooseWorld();
-		PeerRound<P> r = new PeerRound<P>(this, chosenWorld, paymentRule);
-		currentRound.set(r);
-
-		// start current round
-		r.startRound();
-		System.out.printf("\n\nGame:\t Started round %d\n",
-				currentRoundNum.get());
+		startRound();
 	}
 
+	public void startRound() {
+
+		Map<String, Double> chosenWorld = this.prior.chooseWorld();
+		PeerRound<P> r = new PeerRound<P>(this, chosenWorld, paymentRule, expLog);
+		currentRound.set(r);
+
+		r.startRound();
+		expLog.printf("Game:\t started round %d", currentRoundNum.get());
+	}
+	
 	public void roundCompleted() {
 
+		expLog.printf("Game:\t round %d completed", currentRoundNum.get());
+		
 		if (!currentRound.get().isCompleted()) {
-			System.out
-					.println("Error: trying to start next round before current one is completed");
+			expLog.printf("Error: trying to start next round before current one is completed");
 			return;
 		}
 
 		// store the results
 		this.results.add(currentRound.get().getResult());
-
+		
 		if (currentRoundNum.incrementAndGet() > nRounds) {
 
 			// Send players to debrief
-			System.out.println("\nGame:\t All games are finished");
+			expLog.printf("\nGame:\t All games are finished");
+			finishGame();
 
-		} else {
+		} else 
+			startRound();
 
-			// create a new round
-			Map<String, Double> chosenWorld = this.prior.chooseWorld();
-			PeerRound<P> r = new PeerRound<P>(this, chosenWorld, paymentRule);
-			currentRound.set(r);
-
-			r.startRound();
-			System.out.printf("\n\nGame:\t Started round %d\n",
-					currentRoundNum.get());
-		}
 	}
 
+	public abstract void finishGame();
+	
 	public void reportReceived(P reporter, String report) {
 		currentRound.get().reportReceived(reporter, report);
 	}

@@ -25,11 +25,6 @@ public class PeerGameTest {
 	}
 	
 	@Test
-	public void testPaymentComputation() {
-		
-	}
-	
-	@Test
 	public void testRunningTheGame() {
 		
 		int nRounds = 3; // number of rounds
@@ -46,7 +41,8 @@ public class PeerGameTest {
 		rule.addRule("GM", "GM", 0.54);
 
 		// create the game
-		PeerGame<TestPlayer> game = new TestPeerGame(nRounds, prior, rule);
+		TestPeerGame game = new TestPeerGame();
+		game.init(nRounds, prior, rule);
 
 		// create the players
 		List<TestPlayer> players = new ArrayList<TestPlayer>(nplayers);

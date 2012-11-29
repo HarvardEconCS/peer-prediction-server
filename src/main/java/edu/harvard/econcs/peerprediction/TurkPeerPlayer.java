@@ -28,13 +28,13 @@ public class TurkPeerPlayer extends PeerPlayer {
 		msg.put("numRounds"		, nRounds);
 		msg.put("payments"		, paymentArray);
 		
-		worker.sendMessage(msg);
+		worker.sendExperimentMessage(msg);
 	}
 
 	@Override
 	public void sendSignal(String selected) throws WrongStateException {		
 		
-		worker.sendMessage(ImmutableMap.of(
+		worker.sendExperimentMessage(ImmutableMap.of(
 				"status", "signal",
 				"signal", selected
 				));
@@ -42,7 +42,7 @@ public class TurkPeerPlayer extends PeerPlayer {
 
 	@Override
 	public void sendReportConfirmation(PeerPlayer reporter) {
-		worker.sendMessage(ImmutableMap.of(
+		worker.sendExperimentMessage(ImmutableMap.of(
 				"status", "confirmReport",
 				"playerName", reporter.name
 				));
@@ -50,7 +50,7 @@ public class TurkPeerPlayer extends PeerPlayer {
 
 	@Override
 	public void sendResults(Map<String, Map<String, String>> results) {
-		worker.sendMessage(results);
+		worker.sendExperimentMessage(results);
 	}
 
 }

@@ -8,8 +8,8 @@ import java.util.Random;
 
 public class PeerResult {
 
-	private Map<String, Map<String, String>> resultObject;
-	private Map<String, Double> chosenWorld;
+	Map<String, Map<String, String>> resultObject;
+	Map<String, Double> chosenWorld;
 	
 	public PeerResult(Map<String, Double> chosenWorld) {
 		

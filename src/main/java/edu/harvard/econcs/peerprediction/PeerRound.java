@@ -4,6 +4,8 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Random;
 
+import edu.harvard.econcs.turkserver.api.ExperimentLog;
+
 import net.andrewmao.math.RandomSelection;
 
 public class PeerRound<P extends PeerPlayer> {
@@ -15,16 +17,18 @@ public class PeerRound<P extends PeerPlayer> {
 
 	private volatile boolean isStarted = false;	
 	private volatile boolean isCompleted = false;
+	private ExperimentLog expLog;
 
 
 	public PeerRound(
 			PeerGame<P> game, 
 			Map<String, Double> chosenWorld,
-			PaymentRule paymentRule) {
+			PaymentRule paymentRule, ExperimentLog expLog) {
 		
 		this.game = game;
 		this.chosenWorld = chosenWorld;
 		this.paymentRule = paymentRule;
+		this.expLog = expLog;
 
 		result = new PeerResult(this.chosenWorld);
 	}
@@ -70,10 +74,11 @@ public class PeerRound<P extends PeerPlayer> {
 	}
 
 
-	public void reportReceived(PeerPlayer reporter, String report) {
-
+	public void reportReceived(PeerPlayer reporter, String report) {		
+		expLog.printf("Round:\t received report %s from %s", report, reporter.name);
+		
 		if (result.containsReport(reporter)) {
-			System.out.printf("Warning: %s already reported this round", reporter);
+			expLog.printf("Warning: %s already reported this round", reporter);
 			return;
 		}
 
@@ -92,13 +97,14 @@ public class PeerRound<P extends PeerPlayer> {
 	private void computePayments() {
 
 		result.computePayments(this.paymentRule);
+		// TODO: Log reference payment and reference player for each payment
 
 		for (PeerPlayer p : game.players) {
 			// TODO:  where should this happen?
 			Map<String, Map<String, String>> resultForPlayer = result.getResultForPlayer(p);
 			p.sendResults(resultForPlayer);
 		}
-
+		
 		isCompleted = true;
 		game.roundCompleted();
 	}

@@ -53,8 +53,8 @@ public class TestPlayer extends PeerPlayer implements Runnable {
 		this.nPlayers = nPlayers;
 		this.nRounds = nRounds;
 
-		System.out.printf("%s: Received for display purposes: "
-				+ "# of rounds %d, # of players %d, paymentArray %s\n",
+		game.expLog.printf("%s: Received for display purposes: "
+				+ "# of rounds %d, # of players %d, paymentArray %s",
 				this.name, nRounds, nPlayers, Arrays.toString(paymentArray));
 	}
 
@@ -127,8 +127,8 @@ public class TestPlayer extends PeerPlayer implements Runnable {
 			// Send report
 			state = RoundState.SENT_REPORT;
 			localLastReport = signal;
-			System.out.printf("%s (%s): chosen report %s\n", this.name,
-					this.state, localLastReport);
+			game.expLog.printf("%s:\t chosen report %s\n", 
+					this.name, localLastReport);
 			this.game.reportReceived(this, localLastReport);
 
 			int count = 0;
@@ -139,9 +139,9 @@ public class TestPlayer extends PeerPlayer implements Runnable {
 					if (reporter.name.equals(this.name)) {
 						state = RoundState.CONFIRMED_REPORT;
 					}
-					System.out.printf(
-							"%s (%s): server confirmed report by %s\n",
-							this.name, this.state, reporter.name);
+					game.expLog.printf(
+							"%s:\t server confirmed report by %s",
+							this.name, reporter.name);
 				} catch (InterruptedException e) {
 					e.printStackTrace();
 				}
@@ -151,8 +151,8 @@ public class TestPlayer extends PeerPlayer implements Runnable {
 			try {
 				Map<String, Map<String, String>> result = lastResult.take();
 				state = RoundState.GOT_RESULTS;
-				System.out.printf("%s (%s): received results (%s)\n",
-						this.name, this.state, result);
+				game.expLog.printf("%s:\t received results (%s)",
+						this.name,  result);
 			} catch (InterruptedException e) {
 				e.printStackTrace();
 			}
@@ -162,8 +162,6 @@ public class TestPlayer extends PeerPlayer implements Runnable {
 				break;
 
 		}
-
-		System.out.printf("%s: All games are finished\n", this.name);
 
 	}
 
