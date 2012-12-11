@@ -6,6 +6,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 
+import edu.harvard.econcs.turkserver.api.HITWorker;
+
 public class PeerResult {
 
 	Map<String, Map<String, String>> resultObject;
@@ -18,34 +20,34 @@ public class PeerResult {
 		
 	}
 
-	public void saveSignal(PeerPlayer p, String selected) {
-		if (resultObject.containsKey(p.name)) {
-			Map<String, String> playerResult = resultObject.get(p.name);
+	public void saveSignal(HITWorker p, String selected) {
+		if (resultObject.containsKey(p.getHitId())) {
+			Map<String, String> playerResult = resultObject.get(p.getHitId());
 			playerResult.put("signal", selected);
 		} else {
 			Map<String, String> playerResult = new HashMap<String, String>();
 			playerResult.put("signal", selected);
-			resultObject.put(p.name, playerResult);
+			resultObject.put(p.getHitId(), playerResult);
 		}
 
 	}
 
 
-	public void saveReport(PeerPlayer reporter, String report) {
-		if (resultObject.containsKey(reporter.name)) {
-			Map<String, String> playerResult = resultObject.get(reporter.name);
+	public void saveReport(HITWorker reporter, String report) {
+		if (resultObject.containsKey(reporter.getHitId())) {
+			Map<String, String> playerResult = resultObject.get(reporter.getHitId());
 			playerResult.put("report", report);
 		} else {
 			Map<String, String> playerResult = new HashMap<String, String>();
 			playerResult.put("report", report);
-			resultObject.put(reporter.name, playerResult);
+			resultObject.put(reporter.getHitId(), playerResult);
 		}
 
 	}
 
-	public boolean containsReport(PeerPlayer reporter) {
-		return resultObject.containsKey(reporter.name) 
-				&& resultObject.get(reporter.name).containsKey("report");
+	public boolean containsReport(HITWorker reporter) {
+		return resultObject.containsKey(reporter.getHitId()) 
+				&& resultObject.get(reporter.getHitId()).containsKey("report");
 	}
 
 
@@ -58,7 +60,7 @@ public class PeerResult {
 		return numReports;
 	}
 
-	public Map<String, Map<String, String>> getResultForPlayer(PeerPlayer p) {
+	public Map<String, Map<String, String>> getResultForPlayer(HITWorker p) {
 
 		Map<String, Map<String, String>> currResult = new HashMap<String, Map<String, String>>();
 		

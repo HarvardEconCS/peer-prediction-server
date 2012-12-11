@@ -7,6 +7,11 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import edu.harvard.econcs.turkserver.api.ExperimentLog;
+import edu.harvard.econcs.turkserver.server.FakeExperimentController;
+import edu.harvard.econcs.turkserver.server.FakeHITWorkerGroup;
+import edu.harvard.econcs.turkserver.server.TestUtils;
+
 public class PeerGameTest {
 	
 	@Before
@@ -25,7 +30,7 @@ public class PeerGameTest {
 	}
 	
 	@Test
-	public void testRunningTheGame() {
+	public void testRunningTheGame() throws Exception {
 		
 		int nRounds = 3; // number of rounds
 		int nplayers = 3;  // number of players
@@ -41,23 +46,21 @@ public class PeerGameTest {
 		rule.addRule("GM", "GM", 0.54);
 
 		// create the game
-		TestPeerGame game = new TestPeerGame();
+		ExperimentLog fakeLog = TestUtils.getFakeLog();
+		FakeHITWorkerGroup<TestPlayer> fakeGroup = TestUtils.getFakeGroup(nplayers, TestPlayer.class);
+		FakeExperimentController fakeCont = TestUtils.getFakeController(fakeGroup);
+		
+		PeerGame game = new PeerGame(fakeGroup, fakeLog, fakeCont);
+		
 		game.init(nRounds, prior, rule);
-
-		// create the players
-		List<TestPlayer> players = new ArrayList<TestPlayer>(nplayers);
-		for (int i = 0; i < nplayers; i++)
-			players.add(new TestPlayer(game, "Player " + (i + 1)));
 		
-		// Pretend we injected the set of players
-		game.setPlayers(players);
-		
+		fakeCont.setBean(game);
 		// start the game
-		game.startGame();
+		fakeCont.startExperiment();
 		
 		// create the player threads and start them
 		List<Thread> threads = new ArrayList<Thread>();
-		for(TestPlayer p: players) {
+		for(TestPlayer p: fakeGroup.getClassedHITWorkers()) {
 			Thread curr = new Thread(p);
 			threads.add(curr);
 			curr.start();

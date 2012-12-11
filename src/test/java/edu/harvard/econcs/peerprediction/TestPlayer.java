@@ -6,7 +6,11 @@ import java.util.Random;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 
-public class TestPlayer extends PeerPlayer implements Runnable {
+import com.google.common.collect.ImmutableMap;
+
+import edu.harvard.econcs.turkserver.server.FakeHITWorker;
+
+public class TestPlayer extends FakeHITWorker implements Runnable {
 
 	static enum RoundState {
 		SENT_REPORT, CONFIRMED_REPORT, GOT_RESULTS
@@ -14,11 +18,9 @@ public class TestPlayer extends PeerPlayer implements Runnable {
 
 	volatile RoundState state;
 
-	PeerGame<TestPlayer> game;
-
 	private BlockingQueue<String> lastSignal;
 	private String localLastReport;
-	private BlockingQueue<PeerPlayer> lastReporter;
+	private BlockingQueue<String> lastReporter;
 	private BlockingQueue<Map<String, Map<String, String>>> lastResult;
 
 	private int otherStatus;
@@ -31,65 +33,89 @@ public class TestPlayer extends PeerPlayer implements Runnable {
 	 * @param game
 	 * @param name
 	 */
-	public TestPlayer(PeerGame<TestPlayer> game, String name) {
-		this.game = game;
+	public TestPlayer() {
 
 		lastSignal = new LinkedBlockingQueue<String>();
-		lastReporter = new LinkedBlockingQueue<PeerPlayer>();
+		lastReporter = new LinkedBlockingQueue<String>();
 		lastResult = new LinkedBlockingQueue<Map<String, Map<String, String>>>();
-
-		this.name = name;
+		
 		this.state = RoundState.GOT_RESULTS;
-	}
+	}	
+	
+	@Override
+	public void rcvBroadcast(Object msg) {
 
-	public String toString() {
-		return name;
 	}
 
 	@Override
-	public void sendGeneralInfo(int nPlayers, int nRounds,
+	public void rcvPrivate(Object msg) {
+		Map<String, Object> castedMsg = (Map<String, Object>) msg;
+		
+		if (castedMsg.containsKey("status")) {
+			String status = (String) castedMsg.get("status");
+			if (status.equals("startRound")) {
+				int nPlayers = (Integer) castedMsg.get("numPlayers");
+				int nRounds = (Integer) castedMsg.get("numRounds");
+				String[] playerNames = (String[]) castedMsg.get("playerNames");
+				String yourName = (String) castedMsg.get("yourName");
+				double[] paymentArray = (double[]) castedMsg.get("payments");
+				this.rcvGeneralInfo(nPlayers, nRounds, playerNames, yourName, paymentArray);
+				
+			} else if (status.equals("signal")) {
+				String signal = (String) castedMsg.get("signal");
+				this.rcvSignal(signal);
+				
+			} else if (status.equals("confirmReport")) {
+				String playerName = (String) castedMsg.get("playerName");
+				this.rcvReportConfirmation(playerName);
+				
+			} else if (status.equals("results")) { 
+				Map<String, Map<String, String>> results 
+					= (Map<String, Map<String, String>>) castedMsg.get("results");
+				this.rcvResults(results);
+				
+			} else {
+				// unrecognized message
+			}
+				
+		} else {
+			// error
+		}
+			
+	}
+
+	public void rcvGeneralInfo(int nPlayers, int nRounds,
 			String[] playerNames, String yourName, double[] paymentArray) {
 
 		this.nPlayers = nPlayers;
 		this.nRounds = nRounds;
 
-		game.expLog.printf("%s: Received for display purposes: "
+		System.out.printf("%s: Received for display purposes: "
 				+ "# of rounds %d, # of players %d, paymentArray %s",
-				this.name, nRounds, nPlayers, Arrays.toString(paymentArray));
+				super.getHitId(), nRounds, nPlayers, Arrays.toString(paymentArray));
+		System.out.println();
 	}
 
-	@Override
-	public void sendSignal(String selectedSignal) throws WrongStateException {
-
-		// System.out.printf("sendSignal called: %s (%s)\n", this.name,
-		// this.state);
+	public void rcvSignal(String selectedSignal) throws WrongStateException {
 
 		lastSignal.add(selectedSignal);
 	}
+	
+	public void rcvReportConfirmation(String reporter) {
 
-	@Override
-	public void sendReportConfirmation(PeerPlayer reporter) {
-
-		// System.out.printf("sendReportConfirmation called: %s (%s)\n",
-		// this.name, this.state);
-
-		if (reporter.name.equals(this.name)) {
+		if (reporter.equals(this.hitId)) {
 			if (state != RoundState.SENT_REPORT)
-				throw new WrongStateException(this.name, state,
+				throw new WrongStateException(super.getHitId(), state,
 						RoundState.SENT_REPORT + "");
 		}
 
 		lastReporter.add(reporter);
 	}
-
-	@Override
-	public void sendResults(Map<String, Map<String, String>> results) {
-
-		// System.out.printf("sendResults called: %s (%s)\n", this.name,
-		// this.state);
+	
+	public void rcvResults(Map<String, Map<String, String>> results) {
 
 		if (state == RoundState.GOT_RESULTS)
-			throw new WrongStateException(this.name, state,
+			throw new WrongStateException(super.getHitId(), state,
 					RoundState.CONFIRMED_REPORT + " or "
 							+ RoundState.SENT_REPORT);
 
@@ -127,21 +153,22 @@ public class TestPlayer extends PeerPlayer implements Runnable {
 			// Send report
 			state = RoundState.SENT_REPORT;
 			localLastReport = signal;
-			game.expLog.printf("%s:\t chosen report %s\n", 
-					this.name, localLastReport);
-			this.game.reportReceived(this, localLastReport);
+			System.out.printf("%s:\t chosen report %s\n", 
+					super.getHitId(), localLastReport);
+			
+			super.sendPrivate(ImmutableMap.of("report", (Object) localLastReport));			
 
 			int count = 0;
 			while (count < nPlayers) {
 				try {
-					PeerPlayer reporter = lastReporter.take();
+					String reporter = lastReporter.take();
 					count++;
-					if (reporter.name.equals(this.name)) {
+					if (reporter.equals(super.getHitId())) {
 						state = RoundState.CONFIRMED_REPORT;
 					}
-					game.expLog.printf(
-							"%s:\t server confirmed report by %s",
-							this.name, reporter.name);
+					System.out.printf(
+							"%s:\t server confirmed report by %s\n",
+							super.getHitId(), reporter);
 				} catch (InterruptedException e) {
 					e.printStackTrace();
 				}
@@ -151,8 +178,8 @@ public class TestPlayer extends PeerPlayer implements Runnable {
 			try {
 				Map<String, Map<String, String>> result = lastResult.take();
 				state = RoundState.GOT_RESULTS;
-				game.expLog.printf("%s:\t received results (%s)",
-						this.name,  result);
+				System.out.printf("%s:\t received results (%s)\n",
+						super.getHitId(),  result);
 			} catch (InterruptedException e) {
 				e.printStackTrace();
 			}

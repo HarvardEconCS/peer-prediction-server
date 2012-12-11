@@ -5,12 +5,14 @@ import java.util.Map.Entry;
 import java.util.Random;
 
 import edu.harvard.econcs.turkserver.api.ExperimentLog;
+import edu.harvard.econcs.turkserver.api.HITWorker;
+import edu.harvard.econcs.turkserver.api.HITWorkerGroup;
 
 import net.andrewmao.math.RandomSelection;
 
-public class PeerRound<P extends PeerPlayer> {
+public class PeerRound {
 
-	private PeerGame<P> game;
+	private HITWorkerGroup group;
 	private PaymentRule paymentRule;
 	private Map<String, Double> chosenWorld;
 	private PeerResult result;
@@ -19,13 +21,12 @@ public class PeerRound<P extends PeerPlayer> {
 	private volatile boolean isCompleted = false;
 	private ExperimentLog expLog;
 
-
 	public PeerRound(
-			PeerGame<P> game, 
+			HITWorkerGroup group, 
 			Map<String, Double> chosenWorld,
 			PaymentRule paymentRule, ExperimentLog expLog) {
 		
-		this.game = game;
+		this.group = group;
 		this.chosenWorld = chosenWorld;
 		this.paymentRule = paymentRule;
 		this.expLog = expLog;
@@ -62,51 +63,54 @@ public class PeerRound<P extends PeerPlayer> {
 		
 		isStarted = true;
 		
-		for (PeerPlayer p : game.players) {
+		for (HITWorker p : group.getHITWorkers()) {
 
 			String selected = this.chooseSignal();
 			
 			result.saveSignal(p, selected);
 			
-			p.sendSignal(selected);
-
+			PlayerUtils.sendSignal(p, selected);
 		}
 	}
 
-
-	public void reportReceived(PeerPlayer reporter, String report) {		
-		expLog.printf("Round:\t received report %s from %s", report, reporter.name);
+	/**
+	 * @param reporter
+	 * @param report
+	 * @return true if all reports have been received for the round
+	 */
+	public boolean reportReceived(HITWorker reporter, String report) {		
+		expLog.printf("Round:\t received report %s from %s", report, reporter);
 		
 		if (result.containsReport(reporter)) {
 			expLog.printf("Warning: %s already reported this round", reporter);
-			return;
+			return isCompleted;
 		}
 
 		result.saveReport(reporter, report);
 
-		for (PeerPlayer p : game.players) {
-			p.sendReportConfirmation(reporter);
+		for (HITWorker p : group.getHITWorkers()) {
+			PlayerUtils.sendReportConfirmation(p, reporter.getHitId());
 		}
 
 		// TODO deal with synchronization issues
-		if (result.getReportSize() == game.players.size()) {
-			computePayments();
+		if (result.getReportSize() == group.groupSize()) {
+			computePayments();			
 		}
+		
+		return isCompleted;
 	}
 
 	private void computePayments() {
-
 		result.computePayments(this.paymentRule);
 		// TODO: Log reference payment and reference player for each payment
 
-		for (PeerPlayer p : game.players) {
+		for (HITWorker p : group.getHITWorkers()) {
 			// TODO:  where should this happen?
 			Map<String, Map<String, String>> resultForPlayer = result.getResultForPlayer(p);
-			p.sendResults(resultForPlayer);
+			PlayerUtils.sendResults(p, resultForPlayer);
 		}
 		
 		isCompleted = true;
-		game.roundCompleted();
 	}
 
 

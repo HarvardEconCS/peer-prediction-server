@@ -3,73 +3,87 @@ package edu.harvard.econcs.peerprediction;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
+import com.google.inject.Inject;
+
+import edu.harvard.econcs.turkserver.api.Experiment;
+import edu.harvard.econcs.turkserver.api.ExperimentController;
 import edu.harvard.econcs.turkserver.api.ExperimentLog;
+import edu.harvard.econcs.turkserver.api.HITWorker;
+import edu.harvard.econcs.turkserver.api.HITWorkerGroup;
+import edu.harvard.econcs.turkserver.api.ServiceMessage;
+import edu.harvard.econcs.turkserver.api.StartExperiment;
+import edu.harvard.econcs.turkserver.api.StartRound;
+import edu.harvard.econcs.turkserver.api.TimeLimit;
 
-public abstract class PeerGame<P extends PeerPlayer> {
+@Experiment("Peer Prediction Game")
+public class PeerGame {
 
-	int nRounds;
-	List<P> players;
+	int nRounds;	
 
 	PeerPrior prior;
 
 	PaymentRule paymentRule;
-
-	AtomicInteger currentRoundNum;
-	AtomicReference<PeerRound<P>> currentRound;
-
-	ExperimentLog expLog;
+		
+	AtomicReference<PeerRound> currentRound;
+	
 	List<PeerResult> results;
 	
-	public void init(int nRounds2, PeerPrior prior, PaymentRule rule, ExperimentLog expLog) {
+	HITWorkerGroup group;
+	ExperimentLog expLog;
+	ExperimentController controller;
+	
+	@Inject
+	public PeerGame(
+			HITWorkerGroup group,
+			ExperimentLog expLog,
+			ExperimentController controller) {
+		
+		this.group = group;
+		this.expLog = expLog;
+		this.controller = controller;			
+	}
+	
+	public void init(int nRounds2, PeerPrior prior, PaymentRule rule) {
 		this.nRounds = nRounds2;
 		this.prior = prior;
-		this.paymentRule = rule;
-		this.expLog = expLog;
+		this.paymentRule = rule;		
 		
-		currentRound = new AtomicReference<PeerRound<P>>(null);
-		currentRoundNum = new AtomicInteger();
+		currentRound = new AtomicReference<PeerRound>();		
 
 		results = new ArrayList<PeerResult>();
-
 	}
-
-	public void setPlayers(List<P> players) {
-		this.players = players;
-	}
-
+	
+	@StartExperiment
 	public void startGame() {
-
-		String[] playerNames = new String[players.size()];
-		for (int i = 0; i < playerNames.length; i++) {
-			playerNames[i] = players.get(i).name;
-		}
+		int numPlayers = group.groupSize();
+		
+		String[] playerNames = new String[numPlayers];
+		group.getHITIds().toArray(playerNames);
+		
 		double[] paymentArray = paymentRule.getPaymentArray();
 
-		for (P p : players) {
-			p.sendGeneralInfo(players.size(), nRounds, playerNames, p.name,
-					paymentArray);
+		for (HITWorker p : group.getHITWorkers()) {
+			PlayerUtils.sendGeneralInfo(p, numPlayers, nRounds, playerNames, p.getHitId(), paymentArray);
 		}
-
-		currentRoundNum.set(1);
-		startRound();
+		
+		controller.startRounds();
 	}
 
-	public void startRound() {
-
+	@StartRound
+	public void startRound(int round) {
 		Map<String, Double> chosenWorld = this.prior.chooseWorld();
-		PeerRound<P> r = new PeerRound<P>(this, chosenWorld, paymentRule, expLog);
+		PeerRound r = new PeerRound(group, chosenWorld, paymentRule, expLog);
 		currentRound.set(r);
 
 		r.startRound();
-		expLog.printf("Game:\t started round %d", currentRoundNum.get());
-	}
-	
+		expLog.printf("Game:\t started round %d", round);
+	}		
+
 	public void roundCompleted() {
 
-		expLog.printf("Game:\t round %d completed", currentRoundNum.get());
+		expLog.printf("Game:\t round %d completed", controller.getCurrentRound());
 		
 		if (!currentRound.get().isCompleted()) {
 			expLog.printf("Error: trying to start next round before current one is completed");
@@ -79,21 +93,25 @@ public abstract class PeerGame<P extends PeerPlayer> {
 		// store the results
 		this.results.add(currentRound.get().getResult());
 		
-		if (currentRoundNum.incrementAndGet() > nRounds) {
-
+		if (controller.getCurrentRound() > nRounds) {
 			// Send players to debrief
 			expLog.printf("\nGame:\t All games are finished");
-			finishGame();
-
-		} else 
-			startRound();
-
+			controller.finishExperiment();
+		} else {
+			// TODO call this asynchronously at some later time
+			controller.finishRound();
+		}		
 	}
-
-	public abstract void finishGame();
 	
-	public void reportReceived(P reporter, String report) {
-		currentRound.get().reportReceived(reporter, report);
+	@ServiceMessage(key="report")
+	public void reportReceived(HITWorker worker, Map<String, Object> data) {
+		if (currentRound.get().reportReceived(worker, (String) data.get("report")))			
+			roundCompleted();
+	}
+	
+	@TimeLimit
+	public void outOfTime() {
+		// Force end of experiment if people take too long
 	}
 
 }
