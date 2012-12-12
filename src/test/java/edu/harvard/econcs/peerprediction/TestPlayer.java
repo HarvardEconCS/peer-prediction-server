@@ -17,13 +17,11 @@ public class TestPlayer extends FakeHITWorker implements Runnable {
 	};
 
 	volatile RoundState state;
-
 	private BlockingQueue<String> lastSignal;
 	private String localLastReport;
 	private BlockingQueue<String> lastReporter;
 	private BlockingQueue<Map<String, Map<String, String>>> lastResult;
 
-	private int otherStatus;
 	private int nPlayers;
 	private int nRounds;
 	private Random rnd;
@@ -53,12 +51,15 @@ public class TestPlayer extends FakeHITWorker implements Runnable {
 		
 		if (castedMsg.containsKey("status")) {
 			String status = (String) castedMsg.get("status");
+			
 			if (status.equals("startRound")) {
-				int nPlayers = (Integer) castedMsg.get("numPlayers");
-				int nRounds = (Integer) castedMsg.get("numRounds");
-				String[] playerNames = (String[]) castedMsg.get("playerNames");
-				String yourName = (String) castedMsg.get("yourName");
+				
+				int nPlayers = 	(Integer) castedMsg.get("numPlayers");
+				int nRounds = 	(Integer) castedMsg.get("numRounds");
+				String[] playerNames = 	(String[]) castedMsg.get("playerNames");
+				String yourName = 		(String) castedMsg.get("yourName");
 				double[] paymentArray = (double[]) castedMsg.get("payments");
+				
 				this.rcvGeneralInfo(nPlayers, nRounds, playerNames, yourName, paymentArray);
 				
 			} else if (status.equals("signal")) {
@@ -71,7 +72,7 @@ public class TestPlayer extends FakeHITWorker implements Runnable {
 				
 			} else if (status.equals("results")) { 
 				Map<String, Map<String, String>> results 
-					= (Map<String, Map<String, String>>) castedMsg.get("results");
+					= (Map<String, Map<String, String>>) castedMsg.get("result");
 				this.rcvResults(results);
 				
 			} else {
@@ -133,7 +134,6 @@ public class TestPlayer extends FakeHITWorker implements Runnable {
 		while (true) {
 
 			// Wait for round signal
-			this.otherStatus = 0;
 			String signal = null;
 			try {
 				signal = lastSignal.take();

@@ -10,7 +10,7 @@ import edu.harvard.econcs.turkserver.api.HITWorker;
 import edu.harvard.econcs.turkserver.server.MessageException;
 
 public class PlayerUtils {
-	
+
 	public static void sendGeneralInfo(HITWorker worker, int nPlayers, int nRounds, 
 			String[] playerNames, String yourName, double[] paymentArray) {		
 		
@@ -55,7 +55,7 @@ public class PlayerUtils {
 		try {
 			worker.sendExperimentPrivate(ImmutableMap.of(
 					"status", "results",
-					"results", results));
+					"result", results));
 		} catch (MessageException e) {			
 			e.printStackTrace();
 		}

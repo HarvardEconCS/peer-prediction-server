@@ -12,11 +12,12 @@ import edu.harvard.econcs.turkserver.api.ExperimentLog;
 import edu.harvard.econcs.turkserver.api.HITWorker;
 import edu.harvard.econcs.turkserver.api.HITWorkerGroup;
 import edu.harvard.econcs.turkserver.server.FakeExperimentController;
+import edu.harvard.econcs.turkserver.server.FakeHITWorkerGroup;
 import edu.harvard.econcs.turkserver.server.TestUtils;
 
 public class PeerResultTest {
 
-	HITWorkerGroup players;
+	FakeHITWorkerGroup<TestPlayer> players;
 	int nplayers;
 	PeerResult result;
 	PeerPrior prior;

@@ -16,6 +16,8 @@ import edu.harvard.econcs.turkserver.api.ServiceMessage;
 import edu.harvard.econcs.turkserver.api.StartExperiment;
 import edu.harvard.econcs.turkserver.api.StartRound;
 import edu.harvard.econcs.turkserver.api.TimeLimit;
+import edu.harvard.econcs.turkserver.api.WorkerConnect;
+import edu.harvard.econcs.turkserver.api.WorkerDisconnect;
 
 @Experiment("Peer Prediction Game")
 public class PeerGame {
@@ -107,6 +109,16 @@ public class PeerGame {
 	public void reportReceived(HITWorker worker, Map<String, Object> data) {
 		if (currentRound.get().reportReceived(worker, (String) data.get("report")))			
 			roundCompleted();
+	}
+	
+	@WorkerConnect
+	public void workerReconnect(HITWorker worker) {
+		// TODO send current round state and any received reports
+	}
+	
+	@WorkerDisconnect
+	public void workerDisconnect(HITWorker worker) {
+		// TODO check if we should end the game prematurely, update client interfaces
 	}
 	
 	@TimeLimit
