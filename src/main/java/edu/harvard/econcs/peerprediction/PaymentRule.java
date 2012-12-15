@@ -26,6 +26,17 @@ public class PaymentRule {
 
 	}
 	
+	public static PaymentRule getTestPaymentRule() {
+		PaymentRule rule = new PaymentRule();
+		
+		rule.addRule("MM", "MM", 0.58);
+		rule.addRule("MM", "GM", 0.36);
+		rule.addRule("GM", "MM", 0.43);
+		rule.addRule("GM", "GM", 0.54);
+		
+		return rule;
+	}
+	
 	public PaymentRule(PeerPrior prior) {
 		// TODO: payment rule should be related to the prior
 	}

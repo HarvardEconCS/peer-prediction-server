@@ -17,7 +17,7 @@ import edu.harvard.econcs.turkserver.server.TestUtils;
 
 public class PeerResultTest {
 
-	FakeHITWorkerGroup<TestPlayer> players;
+	FakeHITWorkerGroup players;
 	int nplayers;
 	PeerResult result;
 	PeerPrior prior;

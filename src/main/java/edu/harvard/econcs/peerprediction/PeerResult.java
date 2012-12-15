@@ -6,6 +6,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 
+import com.google.common.collect.Maps;
+
 import edu.harvard.econcs.turkserver.api.HITWorker;
 
 public class PeerResult {
@@ -18,6 +20,25 @@ public class PeerResult {
 		this.chosenWorld = chosenWorld;
 		this.resultObject = new HashMap<String, Map<String, String>>();
 		
+	}
+
+	public static Map<String, Map<String, String>> deserialize(Object object) {		
+		Map<String, Map<String, String>> returnMap = Maps.newHashMap();
+		
+		Map<String, Object> inputMap = (Map<String, Object>) object;
+		for( Map.Entry<String, Object> firstLevelMapping : inputMap.entrySet() ) {
+			
+			HashMap<String, String> resultFirstLevelValue = Maps.newHashMap();
+			Map<String, Object> secondLevelMappings = (Map<String, Object>) firstLevelMapping.getValue();
+			for( Map.Entry<String, Object> secondLevelMapping : secondLevelMappings.entrySet() ) {
+				resultFirstLevelValue.put(secondLevelMapping.getKey(), secondLevelMapping.getValue().toString());
+			}
+			
+			String firstLevelKey = firstLevelMapping.getKey();
+			returnMap.put(firstLevelKey, resultFirstLevelValue);
+		}
+		
+		return returnMap;
 	}
 
 	public void saveSignal(HITWorker p, String selected) {
@@ -102,7 +123,6 @@ public class PeerResult {
 			playerResult.put("reward", String.format("%f", reward));
 		}
 	}
-	
-	
+		
 	
 }

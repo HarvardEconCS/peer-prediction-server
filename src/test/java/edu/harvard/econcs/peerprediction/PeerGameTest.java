@@ -8,7 +8,9 @@ import org.junit.Before;
 import org.junit.Test;
 
 import edu.harvard.econcs.turkserver.api.ExperimentLog;
+import edu.harvard.econcs.turkserver.api.HITWorker;
 import edu.harvard.econcs.turkserver.server.FakeExperimentController;
+import edu.harvard.econcs.turkserver.server.FakeHITWorker;
 import edu.harvard.econcs.turkserver.server.FakeHITWorkerGroup;
 import edu.harvard.econcs.turkserver.server.TestUtils;
 
@@ -39,15 +41,12 @@ public class PeerGameTest {
 		PeerPrior prior = PeerPrior.getTestPrior();
 		
 		// create payment rule
-		PaymentRule rule = new PaymentRule();
-		rule.addRule("MM", "MM", 0.58);
-		rule.addRule("MM", "GM", 0.36);
-		rule.addRule("GM", "MM", 0.43);
-		rule.addRule("GM", "GM", 0.54);
+		// TODO create payment rule from prior
+		PaymentRule rule = PaymentRule.getTestPaymentRule();
 
 		// create the game
 		ExperimentLog fakeLog = TestUtils.getFakeLog();
-		FakeHITWorkerGroup<TestPlayer> fakeGroup = TestUtils.getFakeGroup(nplayers, TestPlayer.class);
+		FakeHITWorkerGroup fakeGroup = TestUtils.getFakeGroup(nplayers, TestPlayer.class);
 		FakeExperimentController fakeCont = TestUtils.getFakeController(fakeGroup);
 		
 		PeerGame game = new PeerGame(fakeGroup, fakeLog, fakeCont);
@@ -60,8 +59,9 @@ public class PeerGameTest {
 		
 		// create the player threads and start them
 		List<Thread> threads = new ArrayList<Thread>();
-		for(TestPlayer p: fakeGroup.getClassedHITWorkers()) {
-			Thread curr = new Thread(p);
+		for(HITWorker p: fakeGroup.getHITWorkers()) {
+			FakeHITWorker fake = (FakeHITWorker) p;
+			Thread curr = new Thread((TestPlayer) fake.getClientBean());
 			threads.add(curr);
 			curr.start();
 		}

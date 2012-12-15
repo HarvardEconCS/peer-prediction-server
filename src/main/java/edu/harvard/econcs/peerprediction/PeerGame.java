@@ -7,9 +7,9 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import com.google.inject.Inject;
 
-import edu.harvard.econcs.turkserver.api.Experiment;
 import edu.harvard.econcs.turkserver.api.ExperimentController;
 import edu.harvard.econcs.turkserver.api.ExperimentLog;
+import edu.harvard.econcs.turkserver.api.ExperimentServer;
 import edu.harvard.econcs.turkserver.api.HITWorker;
 import edu.harvard.econcs.turkserver.api.HITWorkerGroup;
 import edu.harvard.econcs.turkserver.api.ServiceMessage;
@@ -19,7 +19,7 @@ import edu.harvard.econcs.turkserver.api.TimeLimit;
 import edu.harvard.econcs.turkserver.api.WorkerConnect;
 import edu.harvard.econcs.turkserver.api.WorkerDisconnect;
 
-@Experiment("Peer Prediction Game")
+@ExperimentServer("Peer Prediction Game")
 public class PeerGame {
 
 	int nRounds;	

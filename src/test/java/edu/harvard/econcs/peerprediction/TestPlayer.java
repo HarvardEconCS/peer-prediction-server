@@ -8,9 +8,13 @@ import java.util.concurrent.LinkedBlockingQueue;
 
 import com.google.common.collect.ImmutableMap;
 
+import edu.harvard.econcs.turkserver.api.ClientController;
+import edu.harvard.econcs.turkserver.api.ExperimentClient;
+import edu.harvard.econcs.turkserver.api.ServiceMessage;
 import edu.harvard.econcs.turkserver.server.FakeHITWorker;
 
-public class TestPlayer extends FakeHITWorker implements Runnable {
+@ExperimentClient("peer-prediction-test")
+public class TestPlayer implements Runnable {
 
 	static enum RoundState {
 		SENT_REPORT, CONFIRMED_REPORT, GOT_RESULTS
@@ -26,12 +30,15 @@ public class TestPlayer extends FakeHITWorker implements Runnable {
 	private int nRounds;
 	private Random rnd;
 
+	final ClientController cont;
+	
 	/**
 	 * 
 	 * @param game
 	 * @param name
 	 */
-	public TestPlayer() {
+	public TestPlayer(ClientController cont) {
+		this.cont = cont;		
 
 		lastSignal = new LinkedBlockingQueue<String>();
 		lastReporter = new LinkedBlockingQueue<String>();
@@ -39,41 +46,77 @@ public class TestPlayer extends FakeHITWorker implements Runnable {
 		
 		this.state = RoundState.GOT_RESULTS;
 	}	
-	
-	@Override
-	public void rcvBroadcast(Object msg) {
 
-	}
-
-	@Override
-	public void rcvPrivate(Object msg) {
-		Map<String, Object> castedMsg = (Map<String, Object>) msg;
+	@ServiceMessage(key="status", value="startRound")
+	public void rcvStatusMsg(Map<String, Object> msg) {
+		int nPlayers = 	((Number) msg.get("numPlayers")).intValue();
+		int nRounds = 	((Number) msg.get("numRounds")).intValue();				
 		
-		if (castedMsg.containsKey("status")) {
-			String status = (String) castedMsg.get("status");
+		Object[] playerNameObjs = (Object[]) msg.get("playerNames");
+		String[] playerNames = new String[playerNameObjs.length];
+		for( int i = 0; i < playerNameObjs.length; i++ ) playerNames[i] = playerNameObjs[i].toString();
+		
+		String yourName = 		(String) msg.get("yourName");				
+		
+		Object[] paymentArrayDoubles = (Object[]) msg.get("payments");
+		double[] paymentArray = new double[paymentArrayDoubles.length];
+		for( int i = 0; i < paymentArrayDoubles.length; i++ ) paymentArray[i] = ((Number) paymentArrayDoubles[i]).doubleValue();
+		
+		this.rcvGeneralInfo(nPlayers, nRounds, playerNames, yourName, paymentArray);
+	}
+	
+	@ServiceMessage(key="status", value="signal")
+	public void rcvSignalMsg(Map<String, Object> msg) {
+		String signal = (String) msg.get("signal");
+		this.rcvSignal(signal);
+	}
+	
+	@ServiceMessage(key="status", value="confirmReport")
+	public void rcvConfirmReportMsg(Map<String, Object> msg) {
+		String playerName = (String) msg.get("playerName");
+		this.rcvReportConfirmation(playerName);
+	}
+	  
+	@ServiceMessage(key="status", value="results")
+	public void rcvResultsMsg(Map<String, Object> msg) {
+		Map<String, Map<String, String>> results = PeerResult.deserialize(msg.get("result")); 					
+		this.rcvResults(results);
+	}
+	
+	@ServiceMessage
+	public void rcvPrivate(Map<String, Object> msg) {		
+		
+		if (msg.containsKey("status")) {
+			String status = (String) msg.get("status");
 			
 			if (status.equals("startRound")) {
 				
-				int nPlayers = 	(Integer) castedMsg.get("numPlayers");
-				int nRounds = 	(Integer) castedMsg.get("numRounds");
-				String[] playerNames = 	(String[]) castedMsg.get("playerNames");
-				String yourName = 		(String) castedMsg.get("yourName");
-				double[] paymentArray = (double[]) castedMsg.get("payments");
-				
-				this.rcvGeneralInfo(nPlayers, nRounds, playerNames, yourName, paymentArray);
+//				int nPlayers = 	((Number) msg.get("numPlayers")).intValue();
+//				int nRounds = 	((Number) msg.get("numRounds")).intValue();				
+//				
+//				Object[] playerNameObjs = (Object[]) msg.get("playerNames");
+//				String[] playerNames = new String[playerNameObjs.length];
+//				for( int i = 0; i < playerNameObjs.length; i++ ) playerNames[i] = playerNameObjs[i].toString();
+//				
+//				String yourName = 		(String) msg.get("yourName");				
+//				
+//				Object[] paymentArrayDoubles = (Object[]) msg.get("payments");
+//				double[] paymentArray = new double[paymentArrayDoubles.length];
+//				for( int i = 0; i < paymentArrayDoubles.length; i++ ) paymentArray[i] = ((Number) paymentArrayDoubles[i]).doubleValue();
+//				
+//				this.rcvGeneralInfo(nPlayers, nRounds, playerNames, yourName, paymentArray);
 				
 			} else if (status.equals("signal")) {
-				String signal = (String) castedMsg.get("signal");
-				this.rcvSignal(signal);
+//				String signal = (String) msg.get("signal");
+//				this.rcvSignal(signal);
 				
 			} else if (status.equals("confirmReport")) {
-				String playerName = (String) castedMsg.get("playerName");
-				this.rcvReportConfirmation(playerName);
+//				String playerName = (String) msg.get("playerName");
+//				this.rcvReportConfirmation(playerName);
 				
 			} else if (status.equals("results")) { 
-				Map<String, Map<String, String>> results 
-					= (Map<String, Map<String, String>>) castedMsg.get("result");
-				this.rcvResults(results);
+//				Map<String, Map<String, String>> results = PeerResult.deserialize(msg.get("result")); 					
+//				this.rcvResults(results);
 				
 			} else {
 				// unrecognized message
@@ -93,30 +136,36 @@ public class TestPlayer extends FakeHITWorker implements Runnable {
 
 		System.out.printf("%s: Received for display purposes: "
 				+ "# of rounds %d, # of players %d, paymentArray %s",
-				super.getHitId(), nRounds, nPlayers, Arrays.toString(paymentArray));
+				cont.getHitId(), nRounds, nPlayers, Arrays.toString(paymentArray));
 		System.out.println();
 	}
 
 	public void rcvSignal(String selectedSignal) throws WrongStateException {
 
 		lastSignal.add(selectedSignal);
+		
+		System.out.printf("%s: Received signal %s", cont.getHitId(), selectedSignal);
+		System.out.println();
 	}
 	
 	public void rcvReportConfirmation(String reporter) {
 
-		if (reporter.equals(this.hitId)) {
+		if (reporter.equals(cont.getHitId())) {
 			if (state != RoundState.SENT_REPORT)
-				throw new WrongStateException(super.getHitId(), state,
+				throw new WrongStateException(cont.getHitId(), state,
 						RoundState.SENT_REPORT + "");
 		}
 
 		lastReporter.add(reporter);
+		
+		System.out.printf("%s: Received report confirmation by %s", cont.getHitId(), reporter);
+		System.out.println();
 	}
 	
 	public void rcvResults(Map<String, Map<String, String>> results) {
 
 		if (state == RoundState.GOT_RESULTS)
-			throw new WrongStateException(super.getHitId(), state,
+			throw new WrongStateException(cont.getHitId(), state,
 					RoundState.CONFIRMED_REPORT + " or "
 							+ RoundState.SENT_REPORT);
 
@@ -153,22 +202,22 @@ public class TestPlayer extends FakeHITWorker implements Runnable {
 			// Send report
 			state = RoundState.SENT_REPORT;
 			localLastReport = signal;
-			System.out.printf("%s:\t chosen report %s\n", 
-					super.getHitId(), localLastReport);
+			System.out.printf("%s: chosen report %s\n", 
+					cont.getHitId(), localLastReport);
 			
-			super.sendPrivate(ImmutableMap.of("report", (Object) localLastReport));			
+			cont.sendExperimentService(ImmutableMap.of("report", (Object) localLastReport));			
 
 			int count = 0;
 			while (count < nPlayers) {
 				try {
 					String reporter = lastReporter.take();
 					count++;
-					if (reporter.equals(super.getHitId())) {
+					if (reporter.equals(cont.getHitId())) {
 						state = RoundState.CONFIRMED_REPORT;
 					}
-					System.out.printf(
-							"%s:\t server confirmed report by %s\n",
-							super.getHitId(), reporter);
+//					System.out.printf(
+//							"%s:\t server confirmed report by %s\n",
+//							cont.getHitId(), reporter);
 				} catch (InterruptedException e) {
 					e.printStackTrace();
 				}
@@ -179,7 +228,7 @@ public class TestPlayer extends FakeHITWorker implements Runnable {
 				Map<String, Map<String, String>> result = lastResult.take();
 				state = RoundState.GOT_RESULTS;
 				System.out.printf("%s:\t received results (%s)\n",
-						super.getHitId(),  result);
+						cont.getHitId(),  result);
 			} catch (InterruptedException e) {
 				e.printStackTrace();
 			}

@@ -23,7 +23,7 @@ public class PlayerUtils {
 		msg.put("payments"		, paymentArray);
 		
 		try {
-			worker.sendExperimentPrivate(msg);
+			worker.deliverExperimentService(msg);
 		} catch (MessageException e) {			
 			e.printStackTrace(); 
 		}
@@ -31,9 +31,9 @@ public class PlayerUtils {
 
 	public static void sendSignal(HITWorker worker, String selected) throws WrongStateException {				
 		try {
-			worker.sendExperimentPrivate(ImmutableMap.of(
+			worker.deliverExperimentService(ImmutableMap.of(
 					"status", "signal",
-					"signal", selected
+					"signal", (Object) selected
 					));
 		} catch (MessageException e) {			
 			e.printStackTrace();
@@ -42,9 +42,9 @@ public class PlayerUtils {
 
 	public static void sendReportConfirmation(HITWorker worker, String reporter) {
 		try {
-			worker.sendExperimentPrivate(ImmutableMap.of(
+			worker.deliverExperimentService(ImmutableMap.of(
 					"status", "confirmReport",
-					"playerName", reporter
+					"playerName", (Object) reporter
 					));
 		} catch (MessageException e) {			
 			e.printStackTrace();
@@ -53,7 +53,7 @@ public class PlayerUtils {
 	
 	public static void sendResults(HITWorker worker, Map<String, Map<String, String>> results) {
 		try {
-			worker.sendExperimentPrivate(ImmutableMap.of(
+			worker.deliverExperimentService(ImmutableMap.of(
 					"status", "results",
 					"result", results));
 		} catch (MessageException e) {			
