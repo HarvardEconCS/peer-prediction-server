@@ -117,7 +117,7 @@ public class PeerResult {
 			String refPlayerName = resultObject.get(playerName).get("refPlayer");
 			String myReport = resultObject.get(playerName).get("report");
 			String otherReport = resultObject.get(refPlayerName).get("report");
-			Double reward = paymentRule.getPayment(myReport, otherReport);
+			double reward = paymentRule.getPayment(myReport, otherReport);
 			
 			Map<String, String> playerResult = resultObject.get(playerName);
 			playerResult.put("reward", String.format("%f", reward));

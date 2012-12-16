@@ -67,7 +67,8 @@ public class PeerGame {
 		double[] paymentArray = paymentRule.getPaymentArray();
 
 		for (HITWorker p : group.getHITWorkers()) {
-			PlayerUtils.sendGeneralInfo(p, numPlayers, nRounds, playerNames, p.getHitId(), paymentArray);
+			PlayerUtils.sendGeneralInfo(p, numPlayers, nRounds, playerNames,
+					p.getHitId(), paymentArray);
 		}
 		
 		controller.startRounds();

@@ -5,6 +5,9 @@ import static org.junit.Assert.*;
 import org.junit.Before;
 import org.junit.Test;
 
+import edu.harvard.econcs.peerprediction.PaymentRule;
+import edu.harvard.econcs.peerprediction.PeerPrior;
+
 public class PaymentRuleTest {
 
 	double eps = 0.00000000000001;

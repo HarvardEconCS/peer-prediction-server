@@ -8,6 +8,8 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import edu.harvard.econcs.peerprediction.PeerPrior;
+
 public class PeerPriorTest {
 
 	PeerPrior prior;

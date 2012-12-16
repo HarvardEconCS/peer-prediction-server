@@ -11,7 +11,6 @@ import com.google.common.collect.ImmutableMap;
 import edu.harvard.econcs.turkserver.api.ClientController;
 import edu.harvard.econcs.turkserver.api.ExperimentClient;
 import edu.harvard.econcs.turkserver.api.ServiceMessage;
-import edu.harvard.econcs.turkserver.server.FakeHITWorker;
 
 @ExperimentClient("peer-prediction-test")
 public class TestPlayer implements Runnable {
@@ -47,6 +46,17 @@ public class TestPlayer implements Runnable {
 		this.state = RoundState.GOT_RESULTS;
 	}	
 
+	/**
+	 * Message format:
+	 * status: startRound
+	 * numPlayers
+	 * numRounds
+	 * playersNames
+	 * yourName
+	 * payments
+	 * 
+	 * @param msg
+	 */
 	@ServiceMessage(key="status", value="startRound")
 	public void rcvStatusMsg(Map<String, Object> msg) {
 		int nPlayers = 	((Number) msg.get("numPlayers")).intValue();
@@ -56,30 +66,53 @@ public class TestPlayer implements Runnable {
 		String[] playerNames = new String[playerNameObjs.length];
 		for( int i = 0; i < playerNameObjs.length; i++ ) playerNames[i] = playerNameObjs[i].toString();
 		
-		String yourName = 		(String) msg.get("yourName");				
+		String yourName = (String) msg.get("yourName");				
 		
 		Object[] paymentArrayDoubles = (Object[]) msg.get("payments");
 		double[] paymentArray = new double[paymentArrayDoubles.length];
-		for( int i = 0; i < paymentArrayDoubles.length; i++ ) paymentArray[i] = ((Number) paymentArrayDoubles[i]).doubleValue();
-		
+		for( int i = 0; i < paymentArrayDoubles.length; i++ ) {
+			paymentArray[i] = ((Double) paymentArrayDoubles[i]).doubleValue();
+		}
 		this.rcvGeneralInfo(nPlayers, nRounds, playerNames, yourName, paymentArray);
 	}
 	
+	/**
+	 * Message format:
+	 * status: signal
+	 * signal
+	 * 
+	 * @param msg
+	 */
 	@ServiceMessage(key="status", value="signal")
 	public void rcvSignalMsg(Map<String, Object> msg) {
 		String signal = (String) msg.get("signal");
 		this.rcvSignal(signal);
 	}
 	
+	/**
+	 * Message format:
+	 * status: confirmReport
+	 * playerName
+	 * 
+	 * @param msg
+	 */
 	@ServiceMessage(key="status", value="confirmReport")
 	public void rcvConfirmReportMsg(Map<String, Object> msg) {
 		String playerName = (String) msg.get("playerName");
 		this.rcvReportConfirmation(playerName);
 	}
 	  
+	/**
+	 * Message format:
+	 * status: results
+	 * result
+	 * 
+	 * @param msg
+	 */
 	@ServiceMessage(key="status", value="results")
 	public void rcvResultsMsg(Map<String, Object> msg) {
-		Map<String, Map<String, String>> results = PeerResult.deserialize(msg.get("result")); 					
+		Map<String, Map<String, String>> results 
+		= PeerResult.deserialize(msg.get("result")); 					
 		this.rcvResults(results);
 	}
 	

@@ -7,6 +7,9 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import edu.harvard.econcs.peerprediction.PaymentRule;
+import edu.harvard.econcs.peerprediction.PeerGame;
+import edu.harvard.econcs.peerprediction.PeerPrior;
 import edu.harvard.econcs.turkserver.api.ExperimentLog;
 import edu.harvard.econcs.turkserver.api.HITWorker;
 import edu.harvard.econcs.turkserver.server.FakeExperimentController;

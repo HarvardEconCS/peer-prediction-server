@@ -46,7 +46,8 @@ public class PaymentRule {
 	}
 	
 	public double getPayment(String myReport, String otherReport) {
-		return rules.get(new Pair<String, String>(myReport, otherReport));
+		Pair<String, String> key = new Pair<String, String>(myReport, otherReport);
+		return rules.get(key);
 	}
 
 	public double[] getPaymentArray() {
