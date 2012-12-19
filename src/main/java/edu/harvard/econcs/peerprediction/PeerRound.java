@@ -119,4 +119,15 @@ public class PeerRound {
 		return this.result;
 	}
 
+	public void resendState(HITWorker worker) {
+		String signal = result.getSignal(worker);
+		if( signal != null) PlayerUtils.sendSignal(worker, signal );
+			
+		for (HITWorker p : group.getHITWorkers()) {
+			if (p.getHitId().equals(worker.getHitId()))
+				continue;
+			String report = result.getReport(p);
+			if (report != null) PlayerUtils.sendReportConfirmation(worker, p.getHitId());
+		}
+	}
 }

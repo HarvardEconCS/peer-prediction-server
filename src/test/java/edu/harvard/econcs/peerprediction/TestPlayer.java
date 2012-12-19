@@ -28,6 +28,7 @@ public class TestPlayer implements Runnable {
 	private int nPlayers;
 	private int nRounds;
 	private Random rnd;
+	private String[] signalList;
 
 	final ClientController cont;
 	
@@ -73,7 +74,14 @@ public class TestPlayer implements Runnable {
 		for( int i = 0; i < paymentArrayDoubles.length; i++ ) {
 			paymentArray[i] = ((Double) paymentArrayDoubles[i]).doubleValue();
 		}
-		this.rcvGeneralInfo(nPlayers, nRounds, playerNames, yourName, paymentArray);
+		
+		Object[] signalObjs = (Object[]) msg.get("signalList");
+		String[] signalList = new String[signalObjs.length];
+		for (int i = 0; i < signalObjs.length; i++) {
+			signalList[i] = signalObjs[i].toString();
+		}
+		
+		this.rcvGeneralInfo(nPlayers, nRounds, playerNames, yourName, paymentArray, signalList);
 	}
 	
 	/**
@@ -124,33 +132,12 @@ public class TestPlayer implements Runnable {
 			
 			if (status.equals("startRound")) {
 				
-//				int nPlayers = 	((Number) msg.get("numPlayers")).intValue();
-//				int nRounds = 	((Number) msg.get("numRounds")).intValue();				
-//				
-//				Object[] playerNameObjs = (Object[]) msg.get("playerNames");
-//				String[] playerNames = new String[playerNameObjs.length];
-//				for( int i = 0; i < playerNameObjs.length; i++ ) playerNames[i] = playerNameObjs[i].toString();
-//				
-//				String yourName = 		(String) msg.get("yourName");				
-//				
-//				Object[] paymentArrayDoubles = (Object[]) msg.get("payments");
-//				double[] paymentArray = new double[paymentArrayDoubles.length];
-//				for( int i = 0; i < paymentArrayDoubles.length; i++ ) paymentArray[i] = ((Number) paymentArrayDoubles[i]).doubleValue();
-//				
-//				this.rcvGeneralInfo(nPlayers, nRounds, playerNames, yourName, paymentArray);
-				
 			} else if (status.equals("signal")) {
-//				String signal = (String) msg.get("signal");
-//				this.rcvSignal(signal);
 				
 			} else if (status.equals("confirmReport")) {
-//				String playerName = (String) msg.get("playerName");
-//				this.rcvReportConfirmation(playerName);
 				
 			} else if (status.equals("results")) { 
-//				Map<String, Map<String, String>> results = PeerResult.deserialize(msg.get("result")); 					
-//				this.rcvResults(results);
-				
+
 			} else {
 				// unrecognized message
 			}
@@ -162,14 +149,15 @@ public class TestPlayer implements Runnable {
 	}
 
 	public void rcvGeneralInfo(int nPlayers, int nRounds,
-			String[] playerNames, String yourName, double[] paymentArray) {
+			String[] playerNames, String yourName, double[] paymentArray, String[] signalList) {
 
 		this.nPlayers = nPlayers;
 		this.nRounds = nRounds;
 
 		System.out.printf("%s: Received for display purposes: "
-				+ "# of rounds %d, # of players %d, paymentArray %s",
-				cont.getHitId(), nRounds, nPlayers, Arrays.toString(paymentArray));
+				+ "# of rounds %d, # of players %d, paymentArray %s, signalList %s",
+				cont.getHitId(), nRounds, nPlayers, 
+				Arrays.toString(paymentArray), Arrays.toString(signalList));
 		System.out.println();
 	}
 

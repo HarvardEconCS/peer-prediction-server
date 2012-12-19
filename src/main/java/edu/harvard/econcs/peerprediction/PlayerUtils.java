@@ -12,13 +12,14 @@ import edu.harvard.econcs.turkserver.server.MessageException;
 public class PlayerUtils {
 
 	public static void sendGeneralInfo(HITWorker worker, int nPlayers, int nRounds, 
-			String[] playerNames, String yourName, double[] paymentArray) {		
+			String[] playerNames, String yourName, double[] paymentArray, String[] signalList) {		
 		
 		Map<String, Object> msg = new HashMap<String, Object>();
 		msg.put("status"		, "startRound");
 		msg.put("numPlayers"	, nPlayers);
 		msg.put("playerNames"	, playerNames);
 		msg.put("yourName"		, yourName);
+		msg.put("signalList"    , signalList);	
 		msg.put("numRounds"		, nRounds);
 		msg.put("payments"		, paymentArray);
 		

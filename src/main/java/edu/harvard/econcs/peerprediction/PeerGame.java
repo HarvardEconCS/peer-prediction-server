@@ -28,6 +28,8 @@ public class PeerGame {
 	List<PeerResult> results;	
 	AtomicReference<PeerRound> currentRound;
 	
+	String[] playerNames;
+	
 	HITWorkerGroup group;
 	ExperimentLog expLog;
 	ExperimentController controller;
@@ -57,14 +59,17 @@ public class PeerGame {
 	public void startGame() {
 		int numPlayers = group.groupSize();
 		
-		String[] playerNames = new String[numPlayers];
+		playerNames = new String[numPlayers];
 		group.getHITIds().toArray(playerNames);
-		
-		double[] paymentArray = paymentRule.getPaymentArray();
 
 		for (HITWorker p : group.getHITWorkers()) {
-			PlayerUtils.sendGeneralInfo(p, numPlayers, nRounds, playerNames,
-					p.getHitId(), paymentArray);
+			PlayerUtils.sendGeneralInfo(p, 
+					numPlayers, 
+					nRounds, 
+					playerNames,
+					p.getHitId(),  
+					paymentRule.getPaymentArray(), 
+					prior.getSignalArray());
 		}
 		
 		controller.startRounds();
@@ -108,7 +113,10 @@ public class PeerGame {
 	
 	@WorkerConnect
 	public void workerReconnect(HITWorker worker) {
-		// TODO send current round state and any received reports
+		PlayerUtils.sendGeneralInfo(worker, group.groupSize(), nRounds, playerNames,
+				worker.getHitId(), paymentRule.getPaymentArray(), prior.getSignalArray());
+		
+		currentRound.get().resendState(worker);
 	}
 	
 	@WorkerDisconnect

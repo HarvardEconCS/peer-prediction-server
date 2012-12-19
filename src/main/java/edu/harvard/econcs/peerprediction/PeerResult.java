@@ -1,5 +1,6 @@
 package edu.harvard.econcs.peerprediction;
 
+import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -89,6 +90,9 @@ public class PeerResult {
 			Map<String, String> playerResult = new HashMap<String, String>();
 			playerResult.put("report", resultObject.get(playerName).get("report"));
 			playerResult.put("refPlayer", resultObject.get(playerName).get("refPlayer"));
+			
+
+			playerResult.put("reward", resultObject.get(playerName).get("reward"));
 			currResult.put(playerName, playerResult);
 		}
 		return currResult;
@@ -118,10 +122,25 @@ public class PeerResult {
 			String myReport = resultObject.get(playerName).get("report");
 			String otherReport = resultObject.get(refPlayerName).get("report");
 			double reward = paymentRule.getPayment(myReport, otherReport);
-			
+
 			Map<String, String> playerResult = resultObject.get(playerName);
-			playerResult.put("reward", String.format("%f", reward));
+			DecimalFormat df = new DecimalFormat("#.##");
+			playerResult.put("reward", df.format(reward));
 		}
+	}
+
+	public String getSignal(HITWorker worker) {
+		Map<String, String> results = resultObject.get(worker.getHitId());
+		if ( results != null)
+			return results.get("signal");
+		return null;
+	}
+
+	public String getReport(HITWorker worker) {
+		Map<String, String> results = resultObject.get(worker.getHitId());
+		if (results != null)
+			return results.get("report");
+		return null;
 	}
 		
 	
