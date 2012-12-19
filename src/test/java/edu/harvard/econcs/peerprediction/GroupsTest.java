@@ -2,16 +2,16 @@ package edu.harvard.econcs.peerprediction;
 
 import edu.harvard.econcs.turkserver.client.LobbyClient;
 import edu.harvard.econcs.turkserver.server.ClientGenerator;
+import edu.harvard.econcs.turkserver.server.TSBaseModule.TSTestModule;
 import edu.harvard.econcs.turkserver.server.TSConfig;
 import edu.harvard.econcs.turkserver.server.TurkServer;
-import edu.harvard.econcs.turkserver.server.TSBaseModule.TSTestModule;
 
-public class SingleUserServerTest {
+public class GroupsTest {
 
 	static final int groupSize = 3;
 	static final int nRounds = 3;
 	
-	static final int totalHITs = 2;
+	static final int totalHITs = 30;
 	
 	static class TestModule extends TSTestModule {		
 		@Override
@@ -25,11 +25,11 @@ public class SingleUserServerTest {
 			bindString(TSConfig.EXP_SETID, "test set");
 		}		
 	}
+	
 	/**
 	 * @param args
 	 */
-	public static void main(String[] args) throws Exception {
-		
+	public static void main(String[] args) throws Exception {	
 		TurkServer.testExperiment(new TestModule());
 
 		Thread.sleep(1000);

@@ -23,14 +23,10 @@ import edu.harvard.econcs.turkserver.api.WorkerDisconnect;
 public class PeerGame {
 
 	int nRounds;	
-
 	PeerPrior prior;
-
 	PaymentRule paymentRule;
-		
+	List<PeerResult> results;	
 	AtomicReference<PeerRound> currentRound;
-	
-	List<PeerResult> results;
 	
 	HITWorkerGroup group;
 	ExperimentLog expLog;
@@ -81,12 +77,12 @@ public class PeerGame {
 		currentRound.set(r);
 
 		r.startRound();
-		expLog.printf("Game:\t started round %d", round);
+		expLog.printf("PeerGame: starting round %d", round);
 	}		
 
 	public void roundCompleted() {
 
-		expLog.printf("Game:\t round %d completed", controller.getCurrentRound());
+		expLog.printf("PeerGame: finishing round %d", controller.getCurrentRound());
 		
 		if (!currentRound.get().isCompleted()) {
 			expLog.printf("Error: trying to start next round before current one is completed");
@@ -96,14 +92,12 @@ public class PeerGame {
 		// store the results
 		this.results.add(currentRound.get().getResult());
 		
-		if (controller.getCurrentRound() > nRounds) {
-			// Send players to debrief
-			expLog.printf("\nGame:\t All games are finished");
+		if (controller.getCurrentRound() == nRounds) {
+			expLog.printf("PeerGame: all rounds are finished");
 			controller.finishExperiment();
 		} else {
-			// TODO call this asynchronously at some later time
-			controller.finishRound();
-		}		
+			controller.finishRound();			
+		}
 	}
 	
 	@ServiceMessage(key="report")

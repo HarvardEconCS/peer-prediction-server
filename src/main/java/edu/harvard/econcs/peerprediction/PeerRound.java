@@ -79,7 +79,7 @@ public class PeerRound {
 	 * @return true if all reports have been received for the round
 	 */
 	public boolean reportReceived(HITWorker reporter, String report) {		
-		expLog.printf("Round:\t received report %s from %s", report, reporter);
+		expLog.printf("Round: received report %s from %s", report, reporter);
 		
 		if (result.containsReport(reporter)) {
 			expLog.printf("Warning: %s already reported this round", reporter);
@@ -103,6 +103,7 @@ public class PeerRound {
 	private void computePayments() {
 		result.computePayments(this.paymentRule);
 		// TODO: Log reference payment and reference player for each payment
+		expLog.printf("PeerRound: result with payment is %s", result.toString());
 
 		for (HITWorker p : group.getHITWorkers()) {
 			// TODO:  where should this happen?
