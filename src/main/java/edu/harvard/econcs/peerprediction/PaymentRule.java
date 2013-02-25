@@ -29,16 +29,47 @@ public class PaymentRule {
 	public static PaymentRule getTestPaymentRule() {
 		PaymentRule rule = new PaymentRule();
 		
-		rule.addRule("MM", "MM", 0.58);
-		rule.addRule("MM", "GM", 0.36);
-		rule.addRule("GM", "MM", 0.43);
-		rule.addRule("GM", "GM", 0.54);
+		rule.addRule("MM", "MM", 0.50);
+		rule.addRule("MM", "GB", 0.10);
+		rule.addRule("GB", "MM", 0.23);
+		rule.addRule("GB", "GB", 0.43);
 		
 		return rule;
 	}
 	
 	public PaymentRule(PeerPrior prior) {
-		// TODO: payment rule should be related to the prior
+		rules = new HashMap<Pair<String, String>, Double>();
+		String[] signalList = prior.getSignalArray();
+		
+		double currMax = Double.NEGATIVE_INFINITY;
+		double currMin = Double.POSITIVE_INFINITY;
+		for (int i = 0; i < signalList.length; i++) {
+			for (int j = 0; j < signalList.length; j++) {
+				double prob = prior.getProbSignal1GivenSignal2(signalList[j], signalList[i]);
+				double reward = 2 * prob - prob * prob;
+				this.addRule(signalList[i], signalList[j], reward);
+				
+				if (reward > currMax)
+					currMax = reward;
+				else if (reward < currMin)
+					currMin = reward;
+			}
+		}
+		
+//		double scaleMax = 0.50;
+		double scaleDiff = 0.40;
+		double scaleMin = 0.10;
+		
+		double a = scaleDiff / (currMax - currMin);
+		double b = currMin * a - scaleMin;
+		
+		for (Pair<String, String> pair : rules.keySet()) {
+			double val = rules.get(pair);
+			val = val * a - b;
+			val = 1.0 * Math.round(val * 100) / 100;
+			rules.put(pair, val);
+		}
+		
 	}
 
 	public void addRule(String myReport, String otherReport, double myPayment) {
@@ -51,7 +82,6 @@ public class PaymentRule {
 	}
 
 	public double[] getPaymentArray() {
-		
 		String[] signals = prior.getSignalArray();
 		double[] array = new double[signals.length * signals.length];
 		

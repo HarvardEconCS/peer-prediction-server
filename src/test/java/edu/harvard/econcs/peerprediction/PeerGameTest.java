@@ -44,7 +44,6 @@ public class PeerGameTest {
 		PeerPrior prior = PeerPrior.getTestPrior();
 		
 		// create payment rule
-		// TODO create payment rule from prior
 		PaymentRule rule = PaymentRule.getTestPaymentRule();
 
 		// create the game

@@ -19,15 +19,15 @@ public class PeerPrior {
 	
 	public static PeerPrior getTestPrior() {
 		
-		String[] signals = new String[]{"MM", "GM"};
+		String[] signals = new String[]{"MM", "GB"};
 		double[] priorOnWorlds = new double[] {0.5, 0.5};
 		
 		Map<String, Double> probs1 = ImmutableMap.of(
-				"MM", 0.4,
-				"GM", 0.6);
+				"MM", 0.85,
+				"GB", 0.15);
 		Map<String, Double> probs2 = ImmutableMap.of(
-				"MM", 0.8,
-				"GM", 0.2);	
+				"MM", 0.30,
+				"GB", 0.70);	
 		List<Map<String, Double>> probs = new ArrayList<Map<String, Double>>();
 		probs.add(probs1);
 		probs.add(probs2);
@@ -79,4 +79,42 @@ public class PeerPrior {
 		return this.signals;
 	}
 	
+	/**
+	 * Return Pr(Signal)
+	 * @param signal
+	 * @return
+	 */
+	public double getProbForSignal(String signal) {
+		double prob = 0;
+		for (int i = 0; i < worlds.size(); i++) {
+			prob += priorOnWorlds[i] * worlds.get(i).get(signal);
+		}
+		return prob;
+	}
+	
+	/**
+	 * Return Pr(Signal1, Signal2)
+	 * @param signal1
+	 * @param signal2
+	 * @return
+	 */
+	public double getProbForSignalPair(String signal1, String signal2) {
+		double prob = 0;
+		for (int i = 0; i < worlds.size(); i++) {
+			prob += priorOnWorlds[i] * worlds.get(i).get(signal1) * worlds.get(i).get(signal2);
+		}
+		return prob;
+	}
+	
+	/**
+	 * Return Pr(Signal1 | Signal2)
+	 * @param signal1
+	 * @param signal2
+	 * @return
+	 */
+	public double getProbSignal1GivenSignal2(String signal1, String signal2) {
+		double probNum  = this.getProbForSignalPair(signal1, signal2);
+		double probDenom = this.getProbForSignal(signal2);
+		return probNum / probDenom;
+	}
 }

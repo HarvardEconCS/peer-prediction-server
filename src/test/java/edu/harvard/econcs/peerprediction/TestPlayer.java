@@ -55,6 +55,7 @@ public class TestPlayer implements Runnable {
 	 * playersNames
 	 * yourName
 	 * payments
+	 * signalList
 	 * 
 	 * @param msg
 	 */
@@ -125,25 +126,23 @@ public class TestPlayer implements Runnable {
 	}
 	
 	@ServiceMessage
-	public void rcvPrivate(Map<String, Object> msg) {		
+	public void rcvPrivate(Map<String, Object> msg) throws Exception {		
 		
 		if (msg.containsKey("status")) {
 			String status = (String) msg.get("status");
 			
-			if (status.equals("startRound")) {
-				
+			if (status.equals("startRound")) {	
 			} else if (status.equals("signal")) {
-				
 			} else if (status.equals("confirmReport")) {
-				
 			} else if (status.equals("results")) { 
-
 			} else {
-				// unrecognized message
-			}
-				
+				throw new Exception("Test player received unrecognized " +
+						"message " + msg.toString());
+			}	
 		} else {
-			// error
+			throw new Exception("Test player expected status " +
+					"in the received message, but did not find it." 
+					+ msg.toString());
 		}
 			
 	}
@@ -153,6 +152,7 @@ public class TestPlayer implements Runnable {
 
 		this.nPlayers = nPlayers;
 		this.nRounds = nRounds;
+		this.signalList = signalList;
 
 		System.out.printf("%s: Received for display purposes: "
 				+ "# of rounds %d, # of players %d, paymentArray %s, signalList %s",
@@ -220,12 +220,12 @@ public class TestPlayer implements Runnable {
 				e.printStackTrace();
 			}
 
-			// Send report
 			state = RoundState.SENT_REPORT;
-			localLastReport = signal;
-			System.out.printf("%s: chosen report %s\n", 
-					cont.getHitId(), localLastReport);
-			
+			String strategy = "honest";
+			localLastReport = this.chooseReport(signal, strategy);
+			System.out.printf("%s: chosen report %s\n", cont.getHitId(), localLastReport);
+
+			// Send report
 			cont.sendExperimentService(ImmutableMap.of("report", (Object) localLastReport));			
 
 			int count = 0;
@@ -236,9 +236,6 @@ public class TestPlayer implements Runnable {
 					if (reporter.equals(cont.getHitId())) {
 						state = RoundState.CONFIRMED_REPORT;
 					}
-//					System.out.printf(
-//							"%s:\t server confirmed report by %s\n",
-//							cont.getHitId(), reporter);
 				} catch (InterruptedException e) {
 					e.printStackTrace();
 				}
@@ -260,6 +257,19 @@ public class TestPlayer implements Runnable {
 
 		}
 
+	}
+
+	private String chooseReport(String signal, String strategy) {
+		if (strategy.equals("honest"))
+			return signal;
+		else if (strategy.equals("alwayssignal0"))
+			return this.signalList[0];
+		else if (strategy.equals("alwayssignal1"))
+			return this.signalList[1];
+		else {
+			Random rnd = new Random();
+			return signalList[rnd.nextInt(2)];
+		}
 	}
 
 	public class WrongStateException extends RuntimeException {

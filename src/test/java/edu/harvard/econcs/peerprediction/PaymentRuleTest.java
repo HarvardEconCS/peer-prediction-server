@@ -13,6 +13,7 @@ public class PaymentRuleTest {
 	double eps = 0.00000000000001;
 
 	PaymentRule rule;
+	PaymentRule rule2;
 	
 	PeerPrior prior;
 	
@@ -22,20 +23,31 @@ public class PaymentRuleTest {
 		prior = PeerPrior.getTestPrior();
 		
 		rule = new PaymentRule();
-		rule.addRule("MM", "MM", 0.58);
-		rule.addRule("MM", "GM", 0.36);
-		rule.addRule("GM", "MM", 0.43);
-		rule.addRule("GM", "GM", 0.54);
+		rule.addRule("MM", "MM", 0.5);
+		rule.addRule("MM", "GB", 0.1);
+		rule.addRule("GB", "MM", 0.23);
+		rule.addRule("GB", "GB", 0.43);
 		
+		rule2 = new PaymentRule(prior);
+		
+	}
+	
+	@Test
+	public void testPaymentFromPrior() {
+		
+		assertEquals(0.50, rule2.getPayment("MM", "MM"), eps);
+		assertEquals(0.10, rule2.getPayment("MM", "GB"), eps);
+		assertEquals(0.23, rule2.getPayment("GB", "MM"), eps);
+		assertEquals(0.43, rule2.getPayment("GB", "GB"), eps);
 	}
 	
 	@Test
 	public void testGetPayment() {
 
-		assertEquals(rule.getPayment("MM", "MM"), 0.58, eps);
-		assertEquals(rule.getPayment("MM", "GM"), 0.36, eps);
-		assertEquals(rule.getPayment("GM", "MM"), 0.43, eps);
-		assertEquals(rule.getPayment("GM", "GM"), 0.54, eps);
+		assertEquals(rule.getPayment("MM", "MM"), 0.5, eps);
+		assertEquals(rule.getPayment("MM", "GB"), 0.1, eps);
+		assertEquals(rule.getPayment("GB", "MM"), 0.23, eps);
+		assertEquals(rule.getPayment("GB", "GB"), 0.43, eps);
 		
 	}
 
@@ -43,18 +55,13 @@ public class PaymentRuleTest {
 	public void testPaymentArray() {
 		
 		double[] array = rule.getPaymentArray();
-		assertEquals(array[0], 0.58, eps);
-		assertEquals(array[1], 0.36, eps);
-		assertEquals(array[2], 0.43, eps);
-		assertEquals(array[3], 0.54, eps);
+		assertEquals(array[0], 0.5, eps);
+		assertEquals(array[1], 0.1, eps);
+		assertEquals(array[2], 0.23, eps);
+		assertEquals(array[3], 0.43, eps);
 		
 		assertEquals(rule.rules.size(), 4, 0);
 		
-//		array = rule.getPaymentArray(new String[]{"GM", "MM"});
-//		assertEquals(array[0], 0.54, eps);
-//		assertEquals(array[1], 0.43, eps);
-//		assertEquals(array[2], 0.36, eps);
-//		assertEquals(array[3], 0.58, eps);
 	
 	}
 	

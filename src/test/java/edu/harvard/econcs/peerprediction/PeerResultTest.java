@@ -67,8 +67,8 @@ public class PeerResultTest {
 	@Test
 	public void test() {
 		
-		String[] signals = new String[]{"MM", "MM", "GM"};
-		String[] reports = new String[]{"GM", "MM", "MM"};
+		String[] signals = new String[]{"MM", "MM", "GB"};
+		String[] reports = new String[]{"GB", "MM", "MM"};
 		
 		int i = 0;
 		for (HITWorker p : players.getHITWorkers()) {
