@@ -1,9 +1,5 @@
 package edu.harvard.econcs.peerprediction;
 
-import java.io.FileNotFoundException;
-
-import org.apache.commons.configuration.ConfigurationException;
-
 import edu.harvard.econcs.turkserver.client.LobbyClient;
 import edu.harvard.econcs.turkserver.server.ClientGenerator;
 import edu.harvard.econcs.turkserver.config.TSConfig;
