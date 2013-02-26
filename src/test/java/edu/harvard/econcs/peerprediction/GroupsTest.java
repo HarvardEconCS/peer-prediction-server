@@ -15,8 +15,9 @@ import com.google.inject.util.Providers;
 
 import edu.harvard.econcs.turkserver.api.ExperimentLog;
 import edu.harvard.econcs.turkserver.client.LobbyClient;
+
 import edu.harvard.econcs.turkserver.logging.ExperimentLogImpl;
-import edu.harvard.econcs.turkserver.logging.ServerLogController;
+import edu.harvard.econcs.turkserver.logging.LogController;
 import edu.harvard.econcs.turkserver.mturk.HITController;
 import edu.harvard.econcs.turkserver.schema.Experiment;
 import edu.harvard.econcs.turkserver.server.ClientGenerator;
@@ -31,7 +32,7 @@ import edu.harvard.econcs.turkserver.server.mysql.MySQLDataTracker;
 
 public class GroupsTest {
 
-	static final String configFile = "testing.properties";
+	static final String configFile = "testing-mao.properties";
 	
 	static final int groupSize = 3;
 	static final int nRounds = 3;
@@ -51,8 +52,8 @@ public class GroupsTest {
 			conf.addProperty(TSConfig.SERVER_HITGOAL, totalHITs);						
 			conf.addProperty(TSConfig.EXP_REPEAT_LIMIT, totalHITs);
 			
-			bind(ExperimentLog.class).to(ServerLogController.class);
-			bind(ServerLogController.class).to(ExperimentLogImpl.class);
+			bind(ExperimentLog.class).to(ExperimentLogImpl.class);
+			bind(LogController.class).to(ExperimentLogImpl.class);
 			
 			bind(HITController.class).to(FakeHITController.class);
 			bind(ExperimentDataTracker.class).to(MySQLDataTracker.class);
@@ -61,7 +62,7 @@ public class GroupsTest {
 			bind(QuizFactory.class).toProvider(Providers.of((QuizFactory) null));
 			bind(QuizPolicy.class).toProvider(Providers.of((QuizPolicy) null));			
 			
-			bind(Resource[].class).annotatedWith(Names.named(TSConfig.SERVER_RESOURCES)).toInstance(new Resource[] {});
+			bindResources(new Resource[] {});
 			
 			bind(new TypeLiteral<List<String>>() {})
 			.annotatedWith(Names.named(TSConfig.EXP_SPECIAL_WORKERS)).toInstance(new LinkedList<String>());

@@ -1,10 +1,11 @@
 package edu.harvard.econcs.peerprediction;
 
 import edu.harvard.econcs.turkserver.client.LobbyClient;
-import edu.harvard.econcs.turkserver.server.ClientGenerator;
 import edu.harvard.econcs.turkserver.config.TSConfig;
-import edu.harvard.econcs.turkserver.server.TurkServer;
 import edu.harvard.econcs.turkserver.config.TSBaseModule.TSTestModule;
+import edu.harvard.econcs.turkserver.server.ClientGenerator;
+
+import edu.harvard.econcs.turkserver.server.TurkServer;
 
 public class SingleUserServerTest {
 
