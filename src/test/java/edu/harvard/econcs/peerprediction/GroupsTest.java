@@ -1,33 +1,24 @@
 package edu.harvard.econcs.peerprediction;
 
-import java.io.FileNotFoundException;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
 
-import org.apache.commons.configuration.ConfigurationException;
 import org.eclipse.jetty.util.resource.Resource;
 
 import com.google.inject.TypeLiteral;
 import com.google.inject.name.Names;
 import com.google.inject.util.Providers;
 
-import edu.harvard.econcs.turkserver.api.ExperimentLog;
 import edu.harvard.econcs.turkserver.client.LobbyClient;
 
-import edu.harvard.econcs.turkserver.logging.ExperimentLogImpl;
-import edu.harvard.econcs.turkserver.logging.LogController;
-import edu.harvard.econcs.turkserver.mturk.HITController;
+import edu.harvard.econcs.turkserver.config.*;
 import edu.harvard.econcs.turkserver.schema.Experiment;
 import edu.harvard.econcs.turkserver.server.ClientGenerator;
 import edu.harvard.econcs.turkserver.server.QuizFactory;
 import edu.harvard.econcs.turkserver.server.QuizPolicy;
-import edu.harvard.econcs.turkserver.config.TSBaseModule;
-import edu.harvard.econcs.turkserver.config.TSConfig;
 import edu.harvard.econcs.turkserver.server.TurkServer;
-import edu.harvard.econcs.turkserver.server.mturk.FakeHITController;
-import edu.harvard.econcs.turkserver.server.mysql.ExperimentDataTracker;
 import edu.harvard.econcs.turkserver.server.mysql.MySQLDataTracker;
 
 public class GroupsTest {
@@ -39,28 +30,15 @@ public class GroupsTest {
 	
 	static final int totalHITs = 30;
 	
-	static class TestModule extends TSBaseModule {
-		
-		TestModule() throws FileNotFoundException, ConfigurationException {
-			super(configFile);
-		}
+	static class TestModule extends ServerModule {		
 		
 		@Override
 		public void configure() {
-			super.configure();
+			super.configure();						
 						
-			conf.addProperty(TSConfig.SERVER_HITGOAL, totalHITs);						
-			conf.addProperty(TSConfig.EXP_REPEAT_LIMIT, totalHITs);
-			
-			bind(ExperimentLog.class).to(ExperimentLogImpl.class);
-			bind(LogController.class).to(ExperimentLogImpl.class);
-			
-			bind(HITController.class).to(FakeHITController.class);
-			bind(ExperimentDataTracker.class).to(MySQLDataTracker.class);
-			
 			// No quiz
-			bind(QuizFactory.class).toProvider(Providers.of((QuizFactory) null));
-			bind(QuizPolicy.class).toProvider(Providers.of((QuizPolicy) null));			
+			bind(QuizFactory.class).toProvider(Providers.<QuizFactory>of(null));
+			bind(QuizPolicy.class).toProvider(Providers.<QuizPolicy>of(null));			
 			
 			bindResources(new Resource[] {});
 			
@@ -72,8 +50,7 @@ public class GroupsTest {
 			
 			// TODO replace this with actual list of past experiments
 			bind(new TypeLiteral<List<Experiment>>() {}).toProvider(Providers.of((List<Experiment>) null));	
-			
-			bindGroupExperiments();					
+						
 			bindExperimentClass(PeerGame.class);			
 			bindConfigurator(new SimpleConfigurator());	
 			bindString(TSConfig.EXP_SETID, "test set");
@@ -84,11 +61,20 @@ public class GroupsTest {
 	 * @param args
 	 */
 	public static void main(String[] args) throws Exception {
+		DataModule dataModule = new DataModule(configFile);
+		dataModule.setHITLimit(totalHITs);
+		
 		TestModule module = new TestModule();
 		// Create (or empty) database
-		MySQLDataTracker.createSchema(module.getConfiguration());
+		MySQLDataTracker.createSchema(dataModule.getConfiguration());
 		
-		TurkServer.testExperiment(module);
+		TurkServer.testExperiment(
+				dataModule,
+				DatabaseType.MYSQL_DATABASE,
+				LoggingType.PERSIST_LOGGING,
+				ExperimentType.GROUP_EXPERIMENTS,
+				HITCreation.NO_HITS,
+				module);
 
 		Thread.sleep(1000);
 		

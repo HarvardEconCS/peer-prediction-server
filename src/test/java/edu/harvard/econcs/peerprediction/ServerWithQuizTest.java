@@ -1,12 +1,10 @@
 package edu.harvard.econcs.peerprediction;
 
-import java.io.FileNotFoundException;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
 
-import org.apache.commons.configuration.ConfigurationException;
 import org.eclipse.jetty.util.resource.Resource;
 
 import com.google.inject.TypeLiteral;
@@ -18,7 +16,12 @@ import edu.harvard.econcs.turkserver.schema.Experiment;
 import edu.harvard.econcs.turkserver.server.ClientGenerator;
 import edu.harvard.econcs.turkserver.server.QuizFactory;
 import edu.harvard.econcs.turkserver.server.QuizPolicy;
-import edu.harvard.econcs.turkserver.config.TSBaseModule;
+import edu.harvard.econcs.turkserver.config.DataModule;
+import edu.harvard.econcs.turkserver.config.DatabaseType;
+import edu.harvard.econcs.turkserver.config.ExperimentType;
+import edu.harvard.econcs.turkserver.config.HITCreation;
+import edu.harvard.econcs.turkserver.config.LoggingType;
+import edu.harvard.econcs.turkserver.config.ServerModule;
 import edu.harvard.econcs.turkserver.config.TSConfig;
 import edu.harvard.econcs.turkserver.server.TurkServer;
 
@@ -35,25 +38,15 @@ public class ServerWithQuizTest {
 	static final double passRate = 0.8;
 	static final int maxTries = 2;
 	
-	static class TestModule extends TSBaseModule {
-		
-		TestModule() throws FileNotFoundException, ConfigurationException {
-			super(configFile);
-		}
+	static class TestModule extends ServerModule {
 		
 		@Override
 		public void configure() {
 			super.configure();
-			
-			conf.addProperty(TSConfig.SERVER_HITGOAL, totalHITs);						
-			conf.addProperty(TSConfig.EXP_REPEAT_LIMIT, totalHITs);
-						
-			bindGroupExperiments();					
+													
 			bindExperimentClass(PeerGame.class);			
 			bindConfigurator(new SimpleConfigurator());	
 			bindString(TSConfig.EXP_SETID, "test set");
-			
-			bindTestClasses();
 			
 			bind(QuizFactory.class).toInstance(new QuizFactory.NullQuizFactory());
 			bind(QuizPolicy.class).toInstance(new QuizPolicy.PercentageQuizPolicy(passRate, maxTries));			
@@ -74,8 +67,16 @@ public class ServerWithQuizTest {
 	 * @param args
 	 */
 	public static void main(String[] args) throws Exception {
+		DataModule dataModule = new DataModule(configFile);
+		dataModule.setHITLimit(totalHITs);
 		
-		TurkServer.testExperiment(new TestModule());
+		TurkServer.testExperiment(
+				dataModule,
+				DatabaseType.TEMP_DATABASE,
+				LoggingType.SCREEN_LOGGING,
+				ExperimentType.GROUP_EXPERIMENTS,
+				HITCreation.NO_HITS,
+				new TestModule());
 
 		Thread.sleep(1000);
 		

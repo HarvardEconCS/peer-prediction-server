@@ -1,8 +1,13 @@
 package edu.harvard.econcs.peerprediction;
 
 import edu.harvard.econcs.turkserver.client.LobbyClient;
+import edu.harvard.econcs.turkserver.config.DataModule;
+import edu.harvard.econcs.turkserver.config.DatabaseType;
+import edu.harvard.econcs.turkserver.config.ExperimentType;
+import edu.harvard.econcs.turkserver.config.HITCreation;
+import edu.harvard.econcs.turkserver.config.LoggingType;
 import edu.harvard.econcs.turkserver.config.TSConfig;
-import edu.harvard.econcs.turkserver.config.TSBaseModule.TSTestModule;
+import edu.harvard.econcs.turkserver.config.TestServerModule;
 import edu.harvard.econcs.turkserver.server.ClientGenerator;
 
 import edu.harvard.econcs.turkserver.server.TurkServer;
@@ -15,14 +20,12 @@ public class SingleUserServerTest {
 	static final int fakeWorkers = 0;
 	static final int totalHITs = 2;
 	
-	static class TestModule extends TSTestModule {	
+	static class TestModule extends TestServerModule {	
 		
 		@Override
 		public void configure() {
 			super.configure();
-			
-			setHITLimit(totalHITs);
-			bindGroupExperiments();					
+								
 			bindExperimentClass(PeerGame.class);			
 			bindConfigurator(new SimpleConfigurator());	
 			bindString(TSConfig.EXP_SETID, "test set");
@@ -32,8 +35,16 @@ public class SingleUserServerTest {
 	 * @param args
 	 */
 	public static void main(String[] args) throws Exception {
+		DataModule dm = new DataModule();
+		dm.setHITLimit(totalHITs);
 		
-		TurkServer.testExperiment(new TestModule());
+		TurkServer.testExperiment(
+				dm,
+				ExperimentType.GROUP_EXPERIMENTS,
+				DatabaseType.TEMP_DATABASE,
+				HITCreation.NO_HITS,
+				LoggingType.SCREEN_LOGGING,
+				new TestModule());
 
 		Thread.sleep(1000);
 		
