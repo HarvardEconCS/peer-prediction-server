@@ -139,9 +139,9 @@ public class PeerResult {
 	}
 
 	public String getSignal(HITWorker worker) {
-		Map<String, String> results = resultObject.get(worker.getHitId());
-		if ( results != null)
-			return results.get("signal");
+		Map<String, String> result = resultObject.get(worker.getHitId());
+		if ( result != null)
+			return result.get("signal");
 		return null;
 	}
 
@@ -152,6 +152,12 @@ public class PeerResult {
 		return null;
 	}
 		
+	public String getReward(HITWorker worker) {
+		Map<String, String> result = resultObject.get(worker.getHitId());
+		if ( result != null)
+			return result.get("reward");
+		return null;		
+	}
 	
 	
 }

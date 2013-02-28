@@ -99,10 +99,17 @@ public class PeerGame {
 		this.results.add(currentRound.get().getResult());				
 		
 		if (controller.getCurrentRound() == nRounds) {
-			expLog.printf("PeerGame: all rounds are finished");
+			expLog.printf("PeerGame: finish experiment");
 			
-			// TODO: Compute bonus for players
-//			controller.setBonusAmount(hitWorker, amount)
+			// set bonus amounts for workers
+			for (HITWorker worker : group.getHITWorkers()) {
+				double bonus = 0.0;
+				for (PeerResult res : this.results) {
+					bonus += Double.parseDouble(res.getReward(worker));
+				}
+				controller.setBonusAmount(worker, bonus);
+			}
+
 			
 			controller.finishExperiment();
 		} else {
