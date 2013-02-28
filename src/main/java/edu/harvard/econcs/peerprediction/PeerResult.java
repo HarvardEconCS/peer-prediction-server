@@ -23,6 +23,15 @@ public class PeerResult {
 		
 	}
 
+	@Override
+	public String toString() {
+		Map<String, String> mapString = new HashMap<String, String>();
+		for (String key: this.resultObject.keySet()) {
+			mapString.put(key, this.resultObject.get(key).toString());
+		}
+		return mapString.toString();
+	}
+	
 	public static Map<String, Map<String, String>> deserialize(Object object) {		
 		Map<String, Map<String, String>> returnMap = Maps.newHashMap();
 		

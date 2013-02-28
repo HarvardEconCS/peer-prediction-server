@@ -28,7 +28,7 @@ public class GroupsTest {
 	static final int groupSize = 3;
 	static final int nRounds = 3;
 	
-	static final int totalHITs = 30;
+	static final int totalHITs = 6;
 	
 	static class TestModule extends ServerModule {		
 		

@@ -104,6 +104,7 @@ public class PeerResultTest {
 			assertEquals(reward, Double.parseDouble(result.resultObject.get(p.getHitId()).get("reward")), eps);
 		}
 		
+		System.out.println(result.toString());
 		
 	}
 

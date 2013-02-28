@@ -65,10 +65,10 @@ public class PeerRound {
 		
 		for (HITWorker p : group.getHITWorkers()) {
 
-			String selected = this.chooseSignal();
-			
+			String selected = this.chooseSignal();			
 			result.saveSignal(p, selected);
-			
+			expLog.printf("Round: chosen signal %s for %s", selected, p);
+
 			PlayerUtils.sendSignal(p, selected);
 		}
 	}
@@ -102,8 +102,7 @@ public class PeerRound {
 
 	private void computePayments() {
 		result.computePayments(this.paymentRule);
-		// TODO: Log reference payment and reference player for each payment
-		expLog.printf("PeerRound: result with payment is %s", result.toString());
+		expLog.printf("Round: result with payment is %s", result.toString());
 
 		for (HITWorker p : group.getHITWorkers()) {
 			// TODO:  where should this happen?

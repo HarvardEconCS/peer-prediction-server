@@ -1,6 +1,5 @@
 package edu.harvard.econcs.peerprediction;
 
-import java.util.Arrays;
 import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.BlockingQueue;
@@ -157,10 +156,11 @@ public class TestPlayer implements Runnable {
 		this.nRounds = nRounds;
 		this.signalList = signalList;
 
-		System.out.printf("%s: Received for display purposes: "
-				+ "# of rounds %d, # of players %d, paymentArray %s, signalList %s",
-				cont.getHitId(), nRounds, nPlayers, 
-				Arrays.toString(paymentArray), Arrays.toString(signalList));
+		System.out.printf("%s: received general info", cont.getHitId());
+//		System.out.printf("%s: Received for display purposes: "
+//				+ "# of rounds %d, # of players %d, paymentArray %s, signalList %s",
+//				cont.getHitId(), nRounds, nPlayers, 
+//				Arrays.toString(paymentArray), Arrays.toString(signalList));
 		System.out.println();
 	}
 
@@ -168,21 +168,24 @@ public class TestPlayer implements Runnable {
 
 		lastSignal.add(selectedSignal);
 		
-		System.out.printf("%s: Received signal %s", cont.getHitId(), selectedSignal);
+		System.out.printf("%s: received signal %s", cont.getHitId(), selectedSignal);
 		System.out.println();
 	}
 	
 	public void rcvReportConfirmation(String reporter) {
+		
+		// TODO:  Should there be a wrong state exception or not?
 		if (reporter.equals(cont.getHitId())) {
 			if (state != RoundState.SENT_REPORT) {
 //				throw new WrongStateException(cont.getHitId(), state, RoundState.SENT_REPORT + "");
 				System.out.printf("Warning: Received unexpected state %s from %s", state, cont.getHitId());
+				System.out.println();
 			}
 		}
 
 		lastReporter.add(reporter);
 		
-		System.out.printf("%s: Received report confirmation by %s", cont.getHitId(), reporter);
+		System.out.printf("%s: confirmed report from %s", cont.getHitId(), reporter);
 		System.out.println();
 	}
 	
@@ -224,9 +227,9 @@ public class TestPlayer implements Runnable {
 			}
 
 			state = RoundState.SENT_REPORT;
-//			String strategy = "honest";
 			localLastReport = this.chooseReport(signal, strategy);
-			System.out.printf("%s: chosen report %s\n", cont.getHitId(), localLastReport);
+			System.out.printf("%s: chose report %s", cont.getHitId(), localLastReport);
+			System.out.println();
 
 			// Send report
 			cont.sendExperimentService(ImmutableMap.of("report", (Object) localLastReport));			
@@ -248,8 +251,8 @@ public class TestPlayer implements Runnable {
 			try {
 				Map<String, Map<String, String>> result = lastResult.take();
 				state = RoundState.GOT_RESULTS;
-				System.out.printf("%s:\t received results (%s)\n",
-						cont.getHitId(),  result);
+				System.out.printf("%s: received results", cont.getHitId());
+				System.out.println();
 			} catch (InterruptedException e) {
 				e.printStackTrace();
 			}

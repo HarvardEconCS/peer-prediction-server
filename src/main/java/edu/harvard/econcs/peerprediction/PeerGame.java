@@ -3,6 +3,7 @@ package edu.harvard.econcs.peerprediction;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
 import com.google.inject.Inject;
@@ -12,6 +13,7 @@ import edu.harvard.econcs.turkserver.api.ExperimentLog;
 import edu.harvard.econcs.turkserver.api.ExperimentServer;
 import edu.harvard.econcs.turkserver.api.HITWorker;
 import edu.harvard.econcs.turkserver.api.HITWorkerGroup;
+import edu.harvard.econcs.turkserver.api.IntervalEvent;
 import edu.harvard.econcs.turkserver.api.ServiceMessage;
 import edu.harvard.econcs.turkserver.api.StartExperiment;
 import edu.harvard.econcs.turkserver.api.StartRound;
@@ -59,6 +61,8 @@ public class PeerGame {
 	public void startGame() {
 		int numPlayers = group.groupSize();
 		
+		System.out.println("GROUP: " + group);
+		
 		playerNames = new String[numPlayers];
 		group.getHITIds().toArray(playerNames);
 
@@ -82,12 +86,9 @@ public class PeerGame {
 		currentRound.set(r);
 
 		r.startRound();
-		expLog.printf("PeerGame: starting round %d", round);
 	}		
 
 	public void roundCompleted() {
-
-		expLog.printf("PeerGame: finishing round %d", controller.getCurrentRound());
 		
 		if (!currentRound.get().isCompleted()) {
 			expLog.printf("Error: trying to start next round before current one is completed");
@@ -100,7 +101,7 @@ public class PeerGame {
 		if (controller.getCurrentRound() == nRounds) {
 			expLog.printf("PeerGame: all rounds are finished");
 			
-			// Compute bonus for players
+			// TODO: Compute bonus for players
 //			controller.setBonusAmount(hitWorker, amount)
 			
 			controller.finishExperiment();
@@ -129,6 +130,11 @@ public class PeerGame {
 	@WorkerDisconnect
 	public void workerDisconnect(HITWorker worker) {
 		// TODO check if we should end the game prematurely, update client interfaces
+	}
+	
+	@IntervalEvent(interval=500, unit=TimeUnit.MILLISECONDS)
+	public void bookkeeping() {
+		
 	}
 	
 	@TimeLimit
