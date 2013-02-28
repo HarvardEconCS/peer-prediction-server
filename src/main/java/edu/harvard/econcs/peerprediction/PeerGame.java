@@ -130,18 +130,34 @@ public class PeerGame {
 	@WorkerConnect
 	public void workerReconnect(HITWorker worker) {
 		PlayerUtils.sendGeneralInfo(worker, group.groupSize(), nRounds, playerNames,
-				worker.getHitId(), paymentRule.getPaymentArray(), prior.getSignalArray());
+				worker.getHitId(), paymentRule.getPaymentArray(), prior.getSignalArray());				
 		
 		currentRound.get().resendState(worker);
+		
+		// if worker is in disconnected hashmap, take out
+		
+		// if worker is in killed hashmap, send error
 	}
 	
 	@WorkerDisconnect
 	public void workerDisconnect(HITWorker worker) {
-		// TODO check if we should end the game prematurely, update client interfaces
+		// put worker in disconnected hashmap
+		
+		
 	}
 	
 	@IntervalEvent(interval=500, unit=TimeUnit.MILLISECONDS)
-	public void bookkeeping() {
+	public void killWorkers() {
+		// for each worker in disconnected hashmap, 
+		
+		// if they have been disconnected more than threshold, put in killed hashmap
+		
+	}
+	
+	@IntervalEvent(interval=10, unit=TimeUnit.SECONDS) // Expected time to make move: 5 seconds
+	public void makeFakeMoves() {
+		
+		// for each worker in killed hashmap, put in a move
 		
 	}
 	
