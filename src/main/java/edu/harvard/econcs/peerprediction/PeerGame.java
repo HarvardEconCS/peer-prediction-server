@@ -103,11 +103,12 @@ public class PeerGame {
 			
 			// set bonus amounts for workers
 			for (HITWorker worker : group.getHITWorkers()) {
-				double bonus = 0.0;
+				double total = 0.0;
 				for (PeerResult res : this.results) {
-					bonus += Double.parseDouble(res.getReward(worker));
+					total += Double.parseDouble(res.getReward(worker));
 				}
-				controller.setBonusAmount(worker, bonus);
+				double avg = total / nRounds;
+				controller.setBonusAmount(worker, avg);
 			}
 
 			
