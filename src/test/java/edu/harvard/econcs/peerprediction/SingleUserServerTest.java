@@ -27,7 +27,7 @@ public class SingleUserServerTest {
 			super.configure();
 								
 			bindExperimentClass(PeerGame.class);			
-			bindConfigurator(new SimpleConfigurator());	
+			bindConfigurator(new SimpleConfigurator(nRounds, groupSize));	
 			bindString(TSConfig.EXP_SETID, "test set");
 		}		
 	}

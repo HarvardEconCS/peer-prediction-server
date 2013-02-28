@@ -23,7 +23,7 @@ import edu.harvard.econcs.turkserver.server.mysql.MySQLDataTracker;
 
 public class GroupsTest {
 
-	static final String configFile = "testing-mao.properties";
+	static final String configFile = "testing.properties";
 	
 	static final int groupSize = 3;
 	static final int nRounds = 3;
@@ -52,7 +52,7 @@ public class GroupsTest {
 			bind(new TypeLiteral<List<Experiment>>() {}).toProvider(Providers.of((List<Experiment>) null));	
 						
 			bindExperimentClass(PeerGame.class);			
-			bindConfigurator(new SimpleConfigurator());	
+			bindConfigurator(new SimpleConfigurator(nRounds, groupSize));	
 			bindString(TSConfig.EXP_SETID, "test set");
 		}		
 	}

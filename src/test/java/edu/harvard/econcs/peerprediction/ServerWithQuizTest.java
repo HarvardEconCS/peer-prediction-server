@@ -45,7 +45,7 @@ public class ServerWithQuizTest {
 			super.configure();
 													
 			bindExperimentClass(PeerGame.class);			
-			bindConfigurator(new SimpleConfigurator());	
+			bindConfigurator(new SimpleConfigurator(nRounds, groupSize));	
 			bindString(TSConfig.EXP_SETID, "test set");
 			
 			bind(QuizFactory.class).toInstance(new QuizFactory.NullQuizFactory());

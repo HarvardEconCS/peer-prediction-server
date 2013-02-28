@@ -30,6 +30,8 @@ public class TestPlayer implements Runnable {
 	private Random rnd;
 	private String[] signalList;
 
+	String strategy = "honest";
+	
 	final ClientController cont;
 	
 	/**
@@ -62,6 +64,7 @@ public class TestPlayer implements Runnable {
 	@ServiceMessage(key="status", value="startRound")
 	public void rcvStatusMsg(Map<String, Object> msg) {
 		int nPlayers = 	((Number) msg.get("numPlayers")).intValue();
+		
 		int nRounds = 	((Number) msg.get("numRounds")).intValue();				
 		
 		Object[] playerNameObjs = (Object[]) msg.get("playerNames");
@@ -170,11 +173,11 @@ public class TestPlayer implements Runnable {
 	}
 	
 	public void rcvReportConfirmation(String reporter) {
-
 		if (reporter.equals(cont.getHitId())) {
-			if (state != RoundState.SENT_REPORT)
-				throw new WrongStateException(cont.getHitId(), state,
-						RoundState.SENT_REPORT + "");
+			if (state != RoundState.SENT_REPORT) {
+//				throw new WrongStateException(cont.getHitId(), state, RoundState.SENT_REPORT + "");
+				System.out.printf("Warning: Received unexpected state %s from %s", state, cont.getHitId());
+			}
 		}
 
 		lastReporter.add(reporter);
@@ -221,7 +224,7 @@ public class TestPlayer implements Runnable {
 			}
 
 			state = RoundState.SENT_REPORT;
-			String strategy = "honest";
+//			String strategy = "honest";
 			localLastReport = this.chooseReport(signal, strategy);
 			System.out.printf("%s: chosen report %s\n", cont.getHitId(), localLastReport);
 
@@ -266,12 +269,28 @@ public class TestPlayer implements Runnable {
 			return this.signalList[0];
 		else if (strategy.equals("alwayssignal1"))
 			return this.signalList[1];
-		else {
+		else if (strategy.equals("random")) {
 			Random rnd = new Random();
 			return signalList[rnd.nextInt(2)];
 		}
+		else {
+			throw new UnrecognizedStrategyException(strategy);
+		}
 	}
 
+	public class UnrecognizedStrategyException extends RuntimeException {
+
+		/**
+		 * 
+		 */
+		private static final long serialVersionUID = 1L;
+		
+		public UnrecognizedStrategyException(String strategy) {
+			super("Unrecognized strategy: " + strategy);
+		}
+		
+	}
+	
 	public class WrongStateException extends RuntimeException {
 		/**
 		 * 

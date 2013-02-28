@@ -95,10 +95,14 @@ public class PeerGame {
 		}
 
 		// store the results
-		this.results.add(currentRound.get().getResult());
+		this.results.add(currentRound.get().getResult());				
 		
 		if (controller.getCurrentRound() == nRounds) {
 			expLog.printf("PeerGame: all rounds are finished");
+			
+			// Compute bonus for players
+//			controller.setBonusAmount(hitWorker, amount)
+			
 			controller.finishExperiment();
 		} else {
 			controller.finishRound();			
@@ -107,8 +111,11 @@ public class PeerGame {
 	
 	@ServiceMessage(key="report")
 	public void reportReceived(HITWorker worker, Map<String, Object> data) {
-		if (currentRound.get().reportReceived(worker, (String) data.get("report")))			
+		String report = data.get("report").toString();
+		if (currentRound.get()
+				.reportReceived(worker, report)) {			
 			roundCompleted();
+		}
 	}
 	
 	@WorkerConnect
