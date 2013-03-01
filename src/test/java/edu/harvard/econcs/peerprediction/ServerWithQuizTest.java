@@ -70,13 +70,15 @@ public class ServerWithQuizTest {
 		DataModule dataModule = new DataModule(configFile);
 		dataModule.setHITLimit(totalHITs);
 		
-		TurkServer.testExperiment(
-				dataModule,
+		TurkServer ts = new TurkServer(dataModule);
+		
+		ts.runExperiment(
+				new TestModule(),
 				DatabaseType.TEMP_DATABASE,
 				LoggingType.SCREEN_LOGGING,
 				ExperimentType.GROUP_EXPERIMENTS,
-				HITCreation.NO_HITS,
-				new TestModule());
+				HITCreation.NO_HITS
+				);
 
 		Thread.sleep(1000);
 		

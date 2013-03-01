@@ -68,13 +68,15 @@ public class GroupsTest {
 		// Create (or empty) database
 		MySQLDataTracker.createSchema(dataModule.getConfiguration());
 		
-		TurkServer.testExperiment(
-				dataModule,
+		TurkServer ts = new TurkServer(dataModule);
+		
+		ts.runExperiment(
+				module,
 				DatabaseType.MYSQL_DATABASE,
 				LoggingType.PERSIST_LOGGING,
 				ExperimentType.GROUP_EXPERIMENTS,
-				HITCreation.NO_HITS,
-				module);
+				HITCreation.NO_HITS
+				);
 
 		Thread.sleep(1000);
 		
@@ -85,6 +87,8 @@ public class GroupsTest {
 			new Thread(client.getClientBean()).start();
 		}
 		
+		ts.awaitTermination();
+		ts.disposeGUI();
 	}
 
 }

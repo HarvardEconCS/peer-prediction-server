@@ -38,13 +38,15 @@ public class SingleUserServerTest {
 		DataModule dm = new DataModule();
 		dm.setHITLimit(totalHITs);
 		
-		TurkServer.testExperiment(
-				dm,
+		TurkServer ts = new TurkServer(dm);
+		
+		ts.runExperiment(
+				new TestModule(),
 				ExperimentType.GROUP_EXPERIMENTS,
 				DatabaseType.TEMP_DATABASE,
 				HITCreation.NO_HITS,
-				LoggingType.SCREEN_LOGGING,
-				new TestModule());
+				LoggingType.SCREEN_LOGGING
+				);
 
 		Thread.sleep(1000);
 		
