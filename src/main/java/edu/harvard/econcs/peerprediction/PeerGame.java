@@ -3,6 +3,7 @@ package edu.harvard.econcs.peerprediction;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -36,6 +37,12 @@ public class PeerGame {
 	ExperimentLog expLog;
 	ExperimentController controller;
 	
+	ConcurrentHashMap<String, HITWorker> disconnectedList;
+	ConcurrentHashMap<String, HITWorker> killedList;
+	
+	// kill threshold for disconnected time in milliseconds: 1 minute for now
+	static final long killThreshold = 60000;
+	
 	@Inject
 	public PeerGame(
 			HITWorkerGroup group,
@@ -44,7 +51,10 @@ public class PeerGame {
 		
 		this.group = group;
 		this.expLog = expLog;
-		this.controller = controller;			
+		this.controller = controller;		
+		
+		this.disconnectedList = new ConcurrentHashMap<String, HITWorker>();
+		this.killedList = new ConcurrentHashMap<String, HITWorker>();
 	}
 	
 	public void init(int nRounds2, PeerPrior prior, PaymentRule rule) {
@@ -109,9 +119,9 @@ public class PeerGame {
 				}
 				double avg = total / nRounds;
 				controller.setBonusAmount(worker, avg);
+				expLog.printf("PeerGame: bonus amount for %s is %.2f", worker, avg);
 			}
 
-			
 			controller.finishExperiment();
 		} else {
 			controller.finishRound();			
@@ -135,29 +145,51 @@ public class PeerGame {
 		currentRound.get().resendState(worker);
 		
 		// if worker is in disconnected hashmap, take out
+		if (disconnectedList.containsKey(worker.getHitId()))
+			disconnectedList.remove(worker.getHitId());
 		
 		// if worker is in killed hashmap, send error
+		if (killedList.containsKey(worker.getHitId())) {
+			// send error
+//			String errorMessage = "Sorry!  You can no longer work on this HIT " +
+//					"because you have disconnected from the server for too long.  " +
+//					"Please return the HIT.";
+			PlayerUtils.sendDisconnectedErrorMessage(worker);
+		}
 	}
 	
 	@WorkerDisconnect
 	public void workerDisconnect(HITWorker worker) {
 		// put worker in disconnected hashmap
-		
-		
+		this.disconnectedList.put(worker.getHitId(), worker);
 	}
 	
 	@IntervalEvent(interval=500, unit=TimeUnit.MILLISECONDS)
 	public void killWorkers() {
+		
 		// for each worker in disconnected hashmap, 
-		
-		// if they have been disconnected more than threshold, put in killed hashmap
-		
+		for (String hitId : disconnectedList.keySet()) {
+			HITWorker worker = disconnectedList.get(hitId);
+			
+			// if they have been disconnected more than threshold, put in killed hashmap
+			if (worker.getDisconnectedTime() > killThreshold) {
+				disconnectedList.remove(hitId);
+				killedList.put(hitId, worker);
+				expLog.printf("PeerGame: killed %s because disconnected for too long", worker);
+			}
+		}
 	}
 	
 	@IntervalEvent(interval=10, unit=TimeUnit.SECONDS) // Expected time to make move: 5 seconds
 	public void makeFakeMoves() {
-		
 		// for each worker in killed hashmap, put in a move
+		for (String hitId : killedList.keySet()) {
+			HITWorker worker = killedList.get(hitId);
+			// The fake player is always honest
+			String signal = this.currentRound.get().getResult().getSignal(worker);
+			this.currentRound.get().reportReceived(worker, signal);
+			expLog.printf("PeerGame: fake signal %s for killed worker %s", signal, worker);
+		}
 		
 	}
 	

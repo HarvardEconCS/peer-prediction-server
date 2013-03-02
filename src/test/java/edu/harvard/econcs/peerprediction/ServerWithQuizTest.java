@@ -36,7 +36,7 @@ public class ServerWithQuizTest {
 	static final int totalHITs = 2;
 	
 	static final double passRate = 0.8;
-	static final int maxTries = 2;
+	static final int maxTries = 3;
 	
 	static class TestModule extends ServerModule {
 		
@@ -74,8 +74,8 @@ public class ServerWithQuizTest {
 		
 		ts.runExperiment(
 				new TestModule(),
-				DatabaseType.TEMP_DATABASE,
-				LoggingType.SCREEN_LOGGING,
+				DatabaseType.MYSQL_DATABASE,
+				LoggingType.PERSIST_LOGGING,
 				ExperimentType.GROUP_EXPERIMENTS,
 				HITCreation.NO_HITS
 				);

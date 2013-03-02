@@ -4,11 +4,10 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Random;
 
+import net.andrewmao.math.RandomSelection;
 import edu.harvard.econcs.turkserver.api.ExperimentLog;
 import edu.harvard.econcs.turkserver.api.HITWorker;
 import edu.harvard.econcs.turkserver.api.HITWorkerGroup;
-
-import net.andrewmao.math.RandomSelection;
 
 public class PeerRound {
 

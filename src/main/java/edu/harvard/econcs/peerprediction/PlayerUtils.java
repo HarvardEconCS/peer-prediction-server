@@ -61,5 +61,16 @@ public class PlayerUtils {
 			e.printStackTrace();
 		}
 	}
+
+	public static void sendDisconnectedErrorMessage(HITWorker worker) {
+		try {
+			worker.deliverExperimentService(ImmutableMap.of(
+					"status", (Object) "killed"));
+		} catch (MessageException e) {			
+			e.printStackTrace();
+		}
+		
+		
+	}
 	
 }
