@@ -27,7 +27,6 @@ public class GroupsTest {
 	
 	static final int groupSize = 3;
 	static final int nRounds = 3;
-	
 	static final int totalHITs = 6;
 	
 	static class TestModule extends ServerModule {		
@@ -65,6 +64,7 @@ public class GroupsTest {
 		dataModule.setHITLimit(totalHITs);
 		
 		TestModule module = new TestModule();
+		
 		// Create (or empty) database
 		MySQLDataTracker.createSchema(dataModule.getConfiguration());
 		
@@ -77,7 +77,6 @@ public class GroupsTest {
 				ExperimentType.GROUP_EXPERIMENTS,
 				HITCreation.NO_HITS
 				);
-
 		Thread.sleep(1000);
 		
 		ClientGenerator cg = new ClientGenerator("http://localhost:9876/cometd/");
@@ -86,9 +85,11 @@ public class GroupsTest {
 			LobbyClient<TestPlayer> client = cg.getClient(TestPlayer.class);
 			new Thread(client.getClientBean()).start();
 		}
-		
+						
 		ts.awaitTermination();
 		ts.disposeGUI();
+		
+		cg.disposeAllClients();
 	}
 
 }

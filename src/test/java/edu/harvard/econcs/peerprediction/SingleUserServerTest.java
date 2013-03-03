@@ -57,6 +57,10 @@ public class SingleUserServerTest {
 			new Thread(client.getClientBean()).start();
 		}
 		
+		ts.awaitTermination();
+		ts.disposeGUI();
+		
+		cg.disposeAllClients();
 	}
 
 }

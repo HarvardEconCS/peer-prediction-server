@@ -41,7 +41,8 @@ public class PeerGame {
 	ConcurrentHashMap<String, HITWorker> killedList;
 	
 	// kill threshold for disconnected time in milliseconds: 1 minute for now
-	static final long killThreshold = 60000;
+	static final long killThreshold = 1000 * 60;
+//	static final long killThreshold = 1000 * 60 * 60;  // For Testing
 	
 	@Inject
 	public PeerGame(

@@ -24,13 +24,14 @@ import edu.harvard.econcs.turkserver.config.LoggingType;
 import edu.harvard.econcs.turkserver.config.ServerModule;
 import edu.harvard.econcs.turkserver.config.TSConfig;
 import edu.harvard.econcs.turkserver.server.TurkServer;
+import edu.harvard.econcs.turkserver.server.mysql.MySQLDataTracker;
 
 public class ServerWithQuizTest {
 
 	static final String configFile = "testing.properties";
 	
 	static final int groupSize = 2;
-	static final int nRounds = 6;
+	static final int nRounds = 2;
 	
 	static final int fakeWorkers = 0;
 	static final int totalHITs = 2;
@@ -72,6 +73,9 @@ public class ServerWithQuizTest {
 		
 		TurkServer ts = new TurkServer(dataModule);
 		
+		// Create (or empty) database
+		MySQLDataTracker.createSchema(dataModule.getConfiguration());
+		
 		ts.runExperiment(
 				new TestModule(),
 				DatabaseType.MYSQL_DATABASE,
@@ -89,6 +93,10 @@ public class ServerWithQuizTest {
 			new Thread(client.getClientBean()).start();
 		}
 		
+		ts.awaitTermination();
+		ts.disposeGUI();
+		
+		cg.disposeAllClients();
 	}
 
 }
