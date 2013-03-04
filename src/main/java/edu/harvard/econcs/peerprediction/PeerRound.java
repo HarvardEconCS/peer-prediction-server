@@ -1,5 +1,7 @@
 package edu.harvard.econcs.peerprediction;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Random;
@@ -117,15 +119,23 @@ public class PeerRound {
 		return this.result;
 	}
 
-	public void resendState(HITWorker worker) {
-		String signal = result.getSignal(worker);
-		if( signal != null) PlayerUtils.sendSignal(worker, signal );
-			
+	public void resendState(HITWorker worker, int groupSize, int nRounds,
+			String[] playerNames, String hitId, double[] paymentArray,
+			String[] signalArray,
+			List<Map<String, Map<String, String>>> existingResults) {
+		
+		List<String> workersConfirmed = new ArrayList<String>();
 		for (HITWorker p : group.getHITWorkers()) {
-			if (p.getHitId().equals(worker.getHitId()))
-				continue;
-			String report = result.getReport(p);
-			if (report != null) PlayerUtils.sendReportConfirmation(worker, p.getHitId());
+			if (result.getReport(p) != null)
+				workersConfirmed.add(p.getHitId());
 		}
+		String currPlayerSignal = result.getSignal(worker);
+		String currPlayerReport = result.getReport(worker);
+		
+		PlayerUtils.resentState(worker, groupSize, nRounds, playerNames, 
+				hitId, paymentArray, signalArray, 
+				existingResults, 
+				currPlayerSignal, currPlayerReport, workersConfirmed);
+
 	}
 }

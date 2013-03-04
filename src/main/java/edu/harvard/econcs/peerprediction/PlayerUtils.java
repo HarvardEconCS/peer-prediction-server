@@ -1,6 +1,7 @@
 package edu.harvard.econcs.peerprediction;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import com.google.common.collect.ImmutableMap;
@@ -15,7 +16,7 @@ public class PlayerUtils {
 			String[] playerNames, String yourName, double[] paymentArray, String[] signalList) {		
 		
 		Map<String, Object> msg = new HashMap<String, Object>();
-		msg.put("status"		, "startRound");
+		msg.put("status"		, "generalInfo");
 		msg.put("numPlayers"	, nPlayers);
 		msg.put("playerNames"	, playerNames);
 		msg.put("yourName"		, yourName);
@@ -70,6 +71,33 @@ public class PlayerUtils {
 			e.printStackTrace();
 		}
 		
+		
+	}
+
+	public static void resentState(HITWorker worker, int groupSize,
+			int nRounds, String[] playerNames, String hitId,
+			double[] paymentArray, String[] signalArray,
+			List<Map<String, Map<String, String>>> existingResults,
+			String currPlayerSignal, String currPlayerReport, 
+			List<String> workersConfirmed) {
+		Map<String, Object> msg = new HashMap<String, Object>();
+		msg.put("status"		, "resendState");
+		msg.put("numPlayers"	, groupSize);
+		msg.put("playerNames"	, playerNames);
+		msg.put("yourName"		, hitId);
+		msg.put("signalList"    , signalArray);	
+		msg.put("numRounds"		, nRounds);
+		msg.put("payments"		, paymentArray);
+		msg.put("existingResults"	, existingResults);
+		msg.put("currPlayerSignal"	, currPlayerSignal);
+		msg.put("currPlayerReport"	, currPlayerReport);
+		msg.put("workersConfirmed"	, workersConfirmed);
+
+		try {
+			worker.deliverExperimentService(msg);
+		} catch (MessageException e) {			
+			e.printStackTrace();
+		}
 		
 	}
 	

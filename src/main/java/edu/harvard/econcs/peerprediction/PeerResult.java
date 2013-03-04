@@ -99,9 +99,9 @@ public class PeerResult {
 			Map<String, String> playerResult = new HashMap<String, String>();
 			playerResult.put("report", resultObject.get(playerName).get("report"));
 			playerResult.put("refPlayer", resultObject.get(playerName).get("refPlayer"));
-			
-
 			playerResult.put("reward", resultObject.get(playerName).get("reward"));
+			if (p.getHitId().equals(playerName)) 
+				playerResult.put("signal", resultObject.get(playerName).get("signal"));
 			currResult.put(playerName, playerResult);
 		}
 		return currResult;
@@ -157,6 +157,17 @@ public class PeerResult {
 		if ( result != null)
 			return result.get("reward");
 		return null;		
+	}
+
+	public static List<Map<String, Map<String, String>>> getAllResultsForWorker(
+			List<PeerResult> results, HITWorker worker) {
+		List<Map<String, Map<String, String>>> returnedResults 
+			= new ArrayList<Map<String, Map<String, String>>>();
+		for (PeerResult res : results) {
+			returnedResults.add(res.getResultForPlayer(worker));
+		}
+		
+		return returnedResults;
 	}
 	
 	

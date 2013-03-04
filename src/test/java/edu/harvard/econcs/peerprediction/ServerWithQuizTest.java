@@ -31,10 +31,10 @@ public class ServerWithQuizTest {
 	static final String configFile = "testing.properties";
 	
 	static final int groupSize = 2;
-	static final int nRounds = 2;
+	static final int nRounds = 4;
 	
 	static final int fakeWorkers = 0;
-	static final int totalHITs = 2;
+	static final int totalHITs = 4;
 	
 	static final double passRate = 0.8;
 	static final int maxTries = 3;

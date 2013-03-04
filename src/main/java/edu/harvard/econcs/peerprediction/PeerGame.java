@@ -41,7 +41,7 @@ public class PeerGame {
 	ConcurrentHashMap<String, HITWorker> killedList;
 	
 	// kill threshold for disconnected time in milliseconds: 1 minute for now
-	static final long killThreshold = 1000 * 60;
+	static final long killThreshold = 1000 * 20;
 //	static final long killThreshold = 1000 * 60 * 60;  // For Testing
 	
 	@Inject
@@ -140,22 +140,28 @@ public class PeerGame {
 	
 	@WorkerConnect
 	public void workerReconnect(HITWorker worker) {
-		PlayerUtils.sendGeneralInfo(worker, group.groupSize(), nRounds, playerNames,
-				worker.getHitId(), paymentRule.getPaymentArray(), prior.getSignalArray());				
-		
-		currentRound.get().resendState(worker);
-		
-		// if worker is in disconnected hashmap, take out
-		if (disconnectedList.containsKey(worker.getHitId()))
-			disconnectedList.remove(worker.getHitId());
 		
 		// if worker is in killed hashmap, send error
 		if (killedList.containsKey(worker.getHitId())) {
 			// send error
-//			String errorMessage = "Sorry!  You can no longer work on this HIT " +
-//					"because you have disconnected from the server for too long.  " +
-//					"Please return the HIT.";
 			PlayerUtils.sendDisconnectedErrorMessage(worker);
+			return;
+		}
+
+		// if worker is in disconnected hashmap, take out
+		if (disconnectedList.containsKey(worker.getHitId()))
+			disconnectedList.remove(worker.getHitId());
+		
+		if (results.size() == nRounds) {
+			// TODO:  This case does not seem to be handled here.
+		} else {
+			List<Map<String, Map<String, String>>> existingResults = PeerResult
+					.getAllResultsForWorker(results, worker);
+
+			currentRound.get().resendState(worker, group.groupSize(), nRounds,
+					playerNames, worker.getHitId(),
+					paymentRule.getPaymentArray(), prior.getSignalArray(),
+					existingResults);
 		}
 	}
 	
