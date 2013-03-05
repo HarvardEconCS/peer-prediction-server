@@ -41,7 +41,7 @@ public class PeerGame {
 	ConcurrentHashMap<String, HITWorker> killedList;
 	
 	// kill threshold for disconnected time in milliseconds: 1 minute for now
-	static final long killThreshold = 1000 * 20;
+	static final long killThreshold = 1000 * 60;
 //	static final long killThreshold = 1000 * 60 * 60;  // For Testing
 	
 	@Inject
@@ -114,6 +114,12 @@ public class PeerGame {
 			
 			// set bonus amounts for workers
 			for (HITWorker worker : group.getHITWorkers()) {
+				// Do not set bonus if worker is already killed.
+				if (killedList.containsKey(worker.getHitId())) {
+					expLog.printf("Worker has been replaced by a fake " +
+							"worker do not set bonus", worker);
+					continue;
+				}
 				double total = 0.0;
 				for (PeerResult res : this.results) {
 					total += Double.parseDouble(res.getReward(worker));
@@ -189,13 +195,19 @@ public class PeerGame {
 	
 	@IntervalEvent(interval=10, unit=TimeUnit.SECONDS) // Expected time to make move: 5 seconds
 	public void makeFakeMoves() {
+		
 		// for each worker in killed hashmap, put in a move
 		for (String hitId : killedList.keySet()) {
 			HITWorker worker = killedList.get(hitId);
-			// The fake player is always honest
-			String signal = this.currentRound.get().getResult().getSignal(worker);
-			this.currentRound.get().reportReceived(worker, signal);
-			expLog.printf("PeerGame: fake signal %s for killed worker %s", signal, worker);
+			if (!this.currentRound.get().getResult().containsReport(worker)) {
+				String signal = currentRound.get().getResult().getSignal(worker);
+				boolean roundFinished = currentRound.get().reportReceived(worker, signal);
+				expLog.printf("PeerGame: for killed worker %s, put in fake report %s", 
+						worker, signal);
+				if ( roundFinished ) {
+					roundCompleted();
+				}
+			}
 		}
 		
 	}
