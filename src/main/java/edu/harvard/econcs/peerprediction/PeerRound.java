@@ -64,13 +64,13 @@ public class PeerRound {
 		
 		isStarted = true;
 		
-		for (HITWorker p : group.getHITWorkers()) {
+		for (HITWorker worker : group.getHITWorkers()) {
 
-			String selected = this.chooseSignal();			
-			result.saveSignal(p, selected);
-			expLog.printf("Round: chosen signal %s for %s", selected, p);
+			String chosenSignal = this.chooseSignal();			
+			result.saveSignal(worker, chosenSignal);
+			expLog.printf("Worker %s got signal %s", worker, chosenSignal);
 
-			PlayerUtils.sendSignal(p, selected);
+			PlayerUtils.sendSignal(worker, chosenSignal);
 		}
 	}
 
@@ -80,7 +80,7 @@ public class PeerRound {
 	 * @return true if all reports have been received for the round
 	 */
 	public boolean reportReceived(HITWorker reporter, String report) {		
-		expLog.printf("Round: received report %s from %s", report, reporter);
+		expLog.printf("Worker %s chose report %s", reporter, report);
 		
 		if (result.containsReport(reporter)) {
 			expLog.printf("Warning: %s already reported this round", reporter);
@@ -103,7 +103,7 @@ public class PeerRound {
 
 	private void computePayments() {
 		result.computePayments(this.paymentRule);
-		expLog.printf("Round: result with payment is %s", result.toString());
+		expLog.printf("Round result is %s", result.toString());
 
 		for (HITWorker p : group.getHITWorkers()) {
 			// TODO:  where should this happen?

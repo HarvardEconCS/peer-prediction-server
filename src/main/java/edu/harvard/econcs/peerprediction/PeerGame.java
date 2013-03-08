@@ -70,10 +70,7 @@ public class PeerGame {
 	
 	@StartExperiment
 	public void startGame() {
-		int numPlayers = group.groupSize();
-		
-		System.out.println("GROUP: " + group);
-		
+		int numPlayers = group.groupSize();		
 		playerNames = new String[numPlayers];
 		group.getHITIds().toArray(playerNames);
 
@@ -116,8 +113,7 @@ public class PeerGame {
 			for (HITWorker worker : group.getHITWorkers()) {
 				// Do not set bonus if worker is already killed.
 				if (killedList.containsKey(worker.getHitId())) {
-					expLog.printf("Worker has been replaced by a fake " +
-							"worker do not set bonus", worker);
+					expLog.printf("Worker %s has been replaced by a fake worker, no bonus", worker);
 					continue;
 				}
 				double total = 0.0;
@@ -126,7 +122,7 @@ public class PeerGame {
 				}
 				double avg = total / nRounds;
 				controller.setBonusAmount(worker, avg);
-				expLog.printf("PeerGame: bonus amount for %s is %.2f", worker, avg);
+				expLog.printf("Worker %s gets bonus %.2f", worker, avg);
 			}
 
 			controller.finishExperiment();
@@ -188,7 +184,7 @@ public class PeerGame {
 			if (worker.getDisconnectedTime() > killThreshold) {
 				disconnectedList.remove(hitId);
 				killedList.put(hitId, worker);
-				expLog.printf("PeerGame: killed %s because disconnected for too long", worker);
+				expLog.printf("Worker %s killed, because disconnected for %d milliseconds", worker, worker.getDisconnectedTime());
 			}
 		}
 	}
@@ -202,7 +198,7 @@ public class PeerGame {
 			if (!this.currentRound.get().getResult().containsReport(worker)) {
 				String signal = currentRound.get().getResult().getSignal(worker);
 				boolean roundFinished = currentRound.get().reportReceived(worker, signal);
-				expLog.printf("PeerGame: for killed worker %s, put in fake report %s", 
+				expLog.printf("Worker %s killed, put in fake report %s", 
 						worker, signal);
 				if ( roundFinished ) {
 					roundCompleted();

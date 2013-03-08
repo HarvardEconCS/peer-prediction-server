@@ -5,6 +5,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
 
+import org.apache.commons.configuration.Configuration;
 import org.eclipse.jetty.util.resource.Resource;
 
 import com.google.inject.TypeLiteral;
@@ -27,7 +28,7 @@ public class GroupsTest {
 	
 	static final int groupSize = 3;
 	static final int nRounds = 3;
-	static final int totalHITs = 6;
+	static final int totalHITs = 15;
 	
 	static class TestModule extends ServerModule {		
 		
@@ -60,8 +61,12 @@ public class GroupsTest {
 	 * @param args
 	 */
 	public static void main(String[] args) throws Exception {
-		DataModule dataModule = new DataModule(configFile);
-		dataModule.setHITLimit(totalHITs);
+		DataModule dataModule = new DataModule(configFile);				
+		
+		// Replace config file values for this test
+		Configuration conf = dataModule.getConfiguration();
+		conf.setProperty(TSConfig.SERVER_HITGOAL, totalHITs);						
+		conf.setProperty(TSConfig.EXP_REPEAT_LIMIT, 1);
 		
 		TestModule module = new TestModule();
 		
@@ -77,6 +82,7 @@ public class GroupsTest {
 				ExperimentType.GROUP_EXPERIMENTS,
 				HITCreation.NO_HITS
 				);
+		
 		Thread.sleep(1000);
 		
 		ClientGenerator cg = new ClientGenerator("http://localhost:9876/cometd/");

@@ -60,7 +60,7 @@ public class TestPlayer implements Runnable {
 	 * 
 	 * @param msg
 	 */
-	@ServiceMessage(key="status", value="startRound")
+	@ServiceMessage(key="status", value="generalInfo")
 	public void rcvStatusMsg(Map<String, Object> msg) {
 		int nPlayers = 	((Number) msg.get("numPlayers")).intValue();
 		
@@ -133,7 +133,7 @@ public class TestPlayer implements Runnable {
 		if (msg.containsKey("status")) {
 			String status = (String) msg.get("status");
 			
-			if (status.equals("startRound")) {	
+			if (status.equals("generalInfo")) {	
 			} else if (status.equals("signal")) {
 			} else if (status.equals("confirmReport")) {
 			} else if (status.equals("results")) { 
