@@ -4,7 +4,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 
-import org.apache.commons.configuration.Configuration;
 import org.eclipse.jetty.util.resource.Resource;
 
 import com.google.inject.TypeLiteral;
@@ -28,10 +27,9 @@ import edu.harvard.econcs.turkserver.server.TurkServer;
 public class ServerWithoutQuizTest {
 
 	static final int groupSize = 3;
-	static final int nRounds = 6;
+	static final int nRounds = 10;
 	
 	static final int fakeWorkers = 2;
-	static final int totalHITs = 3;
 	
 	static final double passRate = 0.8;
 	static final int maxTries = 3;

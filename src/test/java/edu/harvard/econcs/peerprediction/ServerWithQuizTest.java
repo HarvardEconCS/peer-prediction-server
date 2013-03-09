@@ -29,14 +29,13 @@ public class ServerWithQuizTest {
 
 	static final String configFile = "testing.properties";
 	
-	static final int groupSize = 2;
-	static final int nRounds = 2;
+	static final int groupSize = 3;
+	static final int nRounds   = 10;
 	
 	static final int fakeWorkers = 0;
-	static final int totalHITs = 4;
 	
 	static final double passRate = 0.8;
-	static final int maxTries = 3;
+	static final int maxTries 	 = 3;
 	
 	static class TestModule extends ServerModule {
 		
@@ -65,8 +64,6 @@ public class ServerWithQuizTest {
 	 */
 	public static void main(String[] args) throws Exception {
 		DataModule dataModule = new DataModule(configFile);
-//		Configuration conf = dataModule.getConfiguration();
-		
 		TurkServer ts = new TurkServer(dataModule);
 		
 		// Create (or empty) database
