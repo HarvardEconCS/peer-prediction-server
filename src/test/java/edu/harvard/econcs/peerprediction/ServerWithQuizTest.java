@@ -13,10 +13,7 @@ import com.google.inject.util.Providers;
 
 import edu.harvard.econcs.turkserver.client.LobbyClient;
 import edu.harvard.econcs.turkserver.config.DataModule;
-import edu.harvard.econcs.turkserver.config.DatabaseType;
-import edu.harvard.econcs.turkserver.config.ExperimentType;
-import edu.harvard.econcs.turkserver.config.HITCreation;
-import edu.harvard.econcs.turkserver.config.LoggingType;
+import edu.harvard.econcs.turkserver.config.ConfigModules;
 import edu.harvard.econcs.turkserver.config.ServerModule;
 import edu.harvard.econcs.turkserver.config.TSConfig;
 import edu.harvard.econcs.turkserver.mturk.QualMaker;
@@ -83,10 +80,10 @@ public class ServerWithQuizTest {
 		
 		ts.runExperiment(
 				new TestModule(),
-				DatabaseType.MYSQL_DATABASE,
-				LoggingType.PERSIST_LOGGING,
-				ExperimentType.GROUP_EXPERIMENTS,
-				HITCreation.CREATE_HITS
+				ConfigModules.MYSQL_DATABASE,
+				ConfigModules.PERSIST_LOGGING,
+				ConfigModules.GROUP_EXPERIMENTS,
+				ConfigModules.CREATE_HITS
 				);
 
 		Thread.sleep(1000);

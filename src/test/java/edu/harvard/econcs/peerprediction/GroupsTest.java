@@ -66,7 +66,7 @@ public class GroupsTest {
 		// Replace config file values for this test
 		Configuration conf = dataModule.getConfiguration();
 		conf.setProperty(TSConfig.SERVER_HITGOAL, totalHITs);						
-		conf.setProperty(TSConfig.EXP_REPEAT_LIMIT, 1);
+		conf.setProperty(TSConfig.EXP_REPEAT_LIMIT, 1);		
 		
 		TestModule module = new TestModule();
 		
@@ -77,10 +77,10 @@ public class GroupsTest {
 		
 		ts.runExperiment(
 				module,
-				DatabaseType.MYSQL_DATABASE,
-				LoggingType.PERSIST_LOGGING,
-				ExperimentType.GROUP_EXPERIMENTS,
-				HITCreation.NO_HITS
+				ConfigModules.MYSQL_DATABASE,
+				ConfigModules.PERSIST_LOGGING,
+				ConfigModules.GROUP_EXPERIMENTS,
+				TestConfigModules.NO_HITS
 				);
 		
 		Thread.sleep(1000);

@@ -12,12 +12,10 @@ import com.google.inject.util.Providers;
 
 import edu.harvard.econcs.turkserver.client.LobbyClient;
 import edu.harvard.econcs.turkserver.config.DataModule;
-import edu.harvard.econcs.turkserver.config.DatabaseType;
-import edu.harvard.econcs.turkserver.config.ExperimentType;
-import edu.harvard.econcs.turkserver.config.HITCreation;
-import edu.harvard.econcs.turkserver.config.LoggingType;
+import edu.harvard.econcs.turkserver.config.ConfigModules;
 import edu.harvard.econcs.turkserver.config.ServerModule;
 import edu.harvard.econcs.turkserver.config.TSConfig;
+import edu.harvard.econcs.turkserver.config.TestConfigModules;
 import edu.harvard.econcs.turkserver.schema.Experiment;
 import edu.harvard.econcs.turkserver.server.ClientGenerator;
 import edu.harvard.econcs.turkserver.server.QuizFactory;
@@ -69,10 +67,10 @@ public class ServerNoQuizTest {
 		
 		ts.runExperiment(
 				new TestModule(),
-				ExperimentType.GROUP_EXPERIMENTS,
-				DatabaseType.TEMP_DATABASE,
-				HITCreation.NO_HITS,
-				LoggingType.SCREEN_LOGGING
+				ConfigModules.GROUP_EXPERIMENTS,
+				TestConfigModules.TEMP_DATABASE,
+				TestConfigModules.NO_HITS,
+				TestConfigModules.SCREEN_LOGGING
 				);
 
 		Thread.sleep(1000);
