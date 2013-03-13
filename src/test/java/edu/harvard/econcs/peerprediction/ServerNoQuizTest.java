@@ -24,7 +24,7 @@ import edu.harvard.econcs.turkserver.server.QuizFactory;
 import edu.harvard.econcs.turkserver.server.QuizPolicy;
 import edu.harvard.econcs.turkserver.server.TurkServer;
 
-public class ServerWithoutQuizTest {
+public class ServerNoQuizTest {
 
 	static final int groupSize = 3;
 	static final int nRounds = 10;
@@ -71,7 +71,7 @@ public class ServerWithoutQuizTest {
 				new TestModule(),
 				ExperimentType.GROUP_EXPERIMENTS,
 				DatabaseType.TEMP_DATABASE,
-				HITCreation.CREATE_HITS,
+				HITCreation.NO_HITS,
 				LoggingType.SCREEN_LOGGING
 				);
 

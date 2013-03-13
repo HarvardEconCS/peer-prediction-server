@@ -1,6 +1,7 @@
 package edu.harvard.econcs.peerprediction;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -74,22 +75,32 @@ public class PeerGame {
 		playerNames = new String[numPlayers];
 		group.getHITIds().toArray(playerNames);
 
-		for (HITWorker p : group.getHITWorkers()) {
-			PlayerUtils.sendGeneralInfo(p, 
+		expLog.printf("Prior is %s", prior.toString());
+		expLog.printf("General information sent: numPlayers=%d, numRounds=%s, " +
+				"playerNames=%s, paymentRule=%s, signalList=%s",  
+				numPlayers, nRounds, Arrays.toString(playerNames), 
+				Arrays.toString(paymentRule.getPaymentArray()), 
+				Arrays.toString(prior.getSignalArray()));
+		
+		for (HITWorker worker : group.getHITWorkers()) {
+			PlayerUtils.sendGeneralInfo(
+					worker, 
 					numPlayers, 
 					nRounds, 
 					playerNames,
-					p.getHitId(),  
+					worker.getHitId(),  
 					paymentRule.getPaymentArray(), 
 					prior.getSignalArray());
 		}
-		
+
 		controller.startRounds();
 	}
 
 	@StartRound
 	public void startRound(int round) {
 		Map<String, Double> chosenWorld = this.prior.chooseWorld();
+		expLog.printf("Chosen world is %s", chosenWorld.toString());
+		
 		PeerRound r = new PeerRound(group, chosenWorld, paymentRule, expLog);
 		currentRound.set(r);
 
@@ -107,13 +118,13 @@ public class PeerGame {
 		this.results.add(currentRound.get().getResult());				
 		
 		if (controller.getCurrentRound() == nRounds) {
-			expLog.printf("PeerGame: finish experiment");
+//			expLog.printf("PeerGame: finish experiment");
 			
 			// set bonus amounts for workers
 			for (HITWorker worker : group.getHITWorkers()) {
 				// Do not set bonus if worker is already killed.
 				if (killedList.containsKey(worker.getHitId())) {
-					expLog.printf("Worker %s has been replaced by a fake worker, no bonus", worker);
+					expLog.printf("Worker %s killed, no bonus", worker);
 					continue;
 				}
 				double total = 0.0;
@@ -135,7 +146,7 @@ public class PeerGame {
 	public void reportReceived(HITWorker worker, Map<String, Object> data) {
 		String report = data.get("report").toString();
 		if (currentRound.get()
-				.reportReceived(worker, report)) {			
+				.reportReceived(worker, report, true)) {			
 			roundCompleted();
 		}
 	}
@@ -155,7 +166,8 @@ public class PeerGame {
 			disconnectedList.remove(worker.getHitId());
 		
 		if (results.size() == nRounds) {
-			// TODO:  This case does not seem to be handled here.
+			// In this case, the client will received a experiment completed message,
+			// and it will automatically load the exit survey
 		} else {
 			List<Map<String, Map<String, String>>> existingResults = PeerResult
 					.getAllResultsForWorker(results, worker);
@@ -197,9 +209,8 @@ public class PeerGame {
 			HITWorker worker = killedList.get(hitId);
 			if (!this.currentRound.get().getResult().containsReport(worker)) {
 				String signal = currentRound.get().getResult().getSignal(worker);
-				boolean roundFinished = currentRound.get().reportReceived(worker, signal);
-				expLog.printf("Worker %s killed, put in fake report %s", 
-						worker, signal);
+				boolean isReal = false;
+				boolean roundFinished = currentRound.get().reportReceived(worker, signal, isReal);
 				if ( roundFinished ) {
 					roundCompleted();
 				}

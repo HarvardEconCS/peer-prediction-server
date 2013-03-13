@@ -123,7 +123,7 @@ public class TestPlayer implements Runnable {
 	@ServiceMessage(key="status", value="results")
 	public void rcvResultsMsg(Map<String, Object> msg) {
 		Map<String, Map<String, String>> results 
-		= PeerResult.deserialize(msg.get("result")); 					
+		= PlayerUtils.deserialize(msg.get("result")); 					
 		this.rcvResults(results);
 	}
 	

@@ -1,6 +1,7 @@
 package edu.harvard.econcs.peerprediction;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
@@ -17,38 +18,19 @@ public class PeerPrior {
 	
 	private Random rnd = new Random();
 	
-	public static PeerPrior getTestPrior() {
-		
-		String[] signals = new String[]{"MM", "GB"};
-		double[] priorOnWorlds = new double[] {0.5, 0.5};
-		
-		Map<String, Double> probs1 = ImmutableMap.of(
-				"MM", 0.85,
-				"GB", 0.15);
-		Map<String, Double> probs2 = ImmutableMap.of(
-				"MM", 0.30,
-				"GB", 0.70);	
-		List<Map<String, Double>> probs = new ArrayList<Map<String, Double>>();
-		probs.add(probs1);
-		probs.add(probs2);
-		
-		return new PeerPrior(signals, priorOnWorlds, probs); 
-
-	}
-	
-
 	public PeerPrior(
-			String[] signals,
 			double[] priorOnWorlds, 
 			List<Map<String, Double>> ws) {
-
-		this.signals = signals;
 
 		this.priorOnWorlds = priorOnWorlds;
 		
 		this.worlds = new ArrayList<Map<String, Double>>();
 		this.worlds.addAll(ws);
-
+		
+		
+		Object[] signalObjArray = worlds.get(0).keySet().toArray();
+		this.signals = new String[signalObjArray.length];
+		System.arraycopy(signalObjArray, 0, signals, 0, signalObjArray.length);
 	}
 	
 	public Map<String, Double> chooseWorld(){
@@ -116,5 +98,28 @@ public class PeerPrior {
 		double probNum  = this.getProbForSignalPair(signal1, signal2);
 		double probDenom = this.getProbForSignal(signal2);
 		return probNum / probDenom;
+	}
+
+	public static PeerPrior getTestPrior() {
+		double[] priorOnWorlds = new double[] {0.5, 0.5};
+		
+		Map<String, Double> probs1 = ImmutableMap.of(
+				"MM", 0.85,
+				"GB", 0.15);
+		Map<String, Double> probs2 = ImmutableMap.of(
+				"MM", 0.30,
+				"GB", 0.70);	
+		List<Map<String, Double>> probs = new ArrayList<Map<String, Double>>();
+		probs.add(probs1);
+		probs.add(probs2);
+		
+		return new PeerPrior(priorOnWorlds, probs); 
+	}
+	
+	public String toString() {
+		StringBuilder sb = new StringBuilder();
+		sb.append(String.format("prob=%s, ", Arrays.toString(priorOnWorlds)));
+		sb.append(String.format("worlds=%s", worlds.toString()));
+		return sb.toString();
 	}
 }

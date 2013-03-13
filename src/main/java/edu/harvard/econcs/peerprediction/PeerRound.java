@@ -18,7 +18,7 @@ public class PeerRound {
 	private Map<String, Double> chosenWorld;
 	private PeerResult result;
 
-	private volatile boolean isStarted = false;	
+//	private volatile boolean isStarted = false;	
 	private volatile boolean isCompleted = false;
 	private ExperimentLog expLog;
 
@@ -35,52 +35,34 @@ public class PeerRound {
 		result = new PeerResult(this.chosenWorld);
 	}
 
-	private String chooseSignal() {
-		
-		String[] signalArray = new String[chosenWorld.size()];
-		double[] probArray = new double[chosenWorld.size()];
-		int i = 0;
-		for (Entry<String, Double> e : chosenWorld.entrySet()) {
-			signalArray[i] = e.getKey();
-			probArray[i] = e.getValue();
-			i++;
-		}
-		
-		Random r = new Random();
-		int chosenSignalIdx = RandomSelection.selectRandomWeighted(probArray, r);
-		String selectedSignal = signalArray[chosenSignalIdx];
-		
-		return selectedSignal;
-	}
-	
-	public boolean isCompleted() {
-		return isCompleted;
-	}
-
 	/**
 	 * Start the round
 	 */
 	public void startRound() {
 		
-		isStarted = true;
+//		isStarted = true;
 		
 		for (HITWorker worker : group.getHITWorkers()) {
 
 			String chosenSignal = this.chooseSignal();			
 			result.saveSignal(worker, chosenSignal);
-			expLog.printf("Worker %s got signal %s", worker, chosenSignal);
-
+			
 			PlayerUtils.sendSignal(worker, chosenSignal);
+			expLog.printf("Worker %s got signal %s", worker, chosenSignal);
 		}
 	}
 
 	/**
 	 * @param reporter
 	 * @param report
+	 * @param isReal 
 	 * @return true if all reports have been received for the round
 	 */
-	public boolean reportReceived(HITWorker reporter, String report) {		
-		expLog.printf("Worker %s chose report %s", reporter, report);
+	public boolean reportReceived(HITWorker reporter, String report, boolean isReal) {		
+		if (isReal)
+			expLog.printf("Worker %s chose report %s", reporter, report);
+		else
+			expLog.printf("Worker %s killed, put in fake report %s", reporter, report);
 		
 		if (result.containsReport(reporter)) {
 			expLog.printf("Warning: %s already reported this round", reporter);
@@ -101,24 +83,17 @@ public class PeerRound {
 		return isCompleted;
 	}
 
-	private void computePayments() {
-		result.computePayments(this.paymentRule);
-		expLog.printf("Round result is %s", result.toString());
-
-		for (HITWorker p : group.getHITWorkers()) {
-			// TODO:  where should this happen?
-			Map<String, Map<String, String>> resultForPlayer = result.getResultForPlayer(p);
-			PlayerUtils.sendResults(p, resultForPlayer);
-		}
-		
-		isCompleted = true;
-	}
-
-
-	public PeerResult getResult() {
-		return this.result;
-	}
-
+	/**
+	 * Resend state when worker reconnects to game
+	 * @param worker
+	 * @param groupSize
+	 * @param nRounds
+	 * @param playerNames
+	 * @param hitId
+	 * @param paymentArray
+	 * @param signalArray
+	 * @param existingResults
+	 */
 	public void resendState(HITWorker worker, int groupSize, int nRounds,
 			String[] playerNames, String hitId, double[] paymentArray,
 			String[] signalArray,
@@ -136,6 +111,53 @@ public class PeerRound {
 				hitId, paymentArray, signalArray, 
 				existingResults, 
 				currPlayerSignal, currPlayerReport, workersConfirmed);
+	
+	}
 
+	/**
+	 * Choose signal given the chosen world
+	 * @return
+	 */
+	private String chooseSignal() {
+		
+		String[] signalArray = new String[chosenWorld.size()];
+		double[] probArray = new double[chosenWorld.size()];
+		int i = 0;
+		for (Entry<String, Double> e : chosenWorld.entrySet()) {
+			signalArray[i] = e.getKey();
+			probArray[i] = e.getValue();
+			i++;
+		}
+		
+		Random r = new Random();
+		int chosenSignalIdx = RandomSelection.selectRandomWeighted(probArray, r);
+		String selectedSignal = signalArray[chosenSignalIdx];
+		
+		return selectedSignal;
+	}
+
+	/**
+	 * Compute payments
+	 */
+	private void computePayments() {
+		result.computePayments(this.paymentRule);
+		expLog.printf("Round result is %s", result.toString());
+
+		for (HITWorker p : group.getHITWorkers()) {
+			// TODO:  where should this happen?
+			Map<String, Map<String, String>> resultForPlayer = result.getResultForPlayer(p);
+			PlayerUtils.sendResults(p, resultForPlayer);
+		}
+		
+		isCompleted = true;
+	}
+
+
+	public boolean isCompleted() {
+		return isCompleted;
+	}
+
+	public PeerResult getResult() {
+		return this.result;
 	}
 }

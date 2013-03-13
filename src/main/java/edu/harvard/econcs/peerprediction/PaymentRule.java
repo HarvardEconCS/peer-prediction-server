@@ -26,17 +26,6 @@ public class PaymentRule {
 
 	}
 	
-	public static PaymentRule getTestPaymentRule() {
-		PaymentRule rule = new PaymentRule();
-		
-		rule.addRule("MM", "MM", 0.50);
-		rule.addRule("MM", "GB", 0.10);
-		rule.addRule("GB", "MM", 0.23);
-		rule.addRule("GB", "GB", 0.43);
-		
-		return rule;
-	}
-	
 	public PaymentRule(PeerPrior prior) {
 		rules = new HashMap<Pair<String, String>, Double>();
 		String[] signalList = prior.getSignalArray();
@@ -94,6 +83,17 @@ public class PaymentRule {
 		
 		return array;
 		
+	}
+
+	public static PaymentRule getTestPaymentRule() {
+		PaymentRule rule = new PaymentRule();
+		
+		rule.addRule("MM", "MM", 0.50);
+		rule.addRule("MM", "GB", 0.10);
+		rule.addRule("GB", "MM", 0.23);
+		rule.addRule("GB", "GB", 0.43);
+		
+		return rule;
 	}
 	
 }
