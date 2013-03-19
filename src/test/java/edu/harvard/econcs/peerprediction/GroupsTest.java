@@ -66,7 +66,8 @@ public class GroupsTest {
 		// Replace config file values for this test
 		Configuration conf = dataModule.getConfiguration();
 		conf.setProperty(TSConfig.SERVER_HITGOAL, totalHITs);						
-		conf.setProperty(TSConfig.EXP_REPEAT_LIMIT, 1);		
+		conf.setProperty(TSConfig.EXP_REPEAT_LIMIT, 1);
+		conf.setProperty(TSConfig.SERVER_DEBUGMODE, true);		
 		
 		TestModule module = new TestModule();
 		

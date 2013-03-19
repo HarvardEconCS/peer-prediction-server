@@ -1,6 +1,7 @@
 package edu.harvard.econcs.peerprediction;
 
 import edu.harvard.econcs.turkserver.api.Configurator;
+import edu.harvard.econcs.turkserver.api.HITWorkerGroup;
 
 class SimpleConfigurator implements Configurator {
 	
@@ -12,9 +13,11 @@ class SimpleConfigurator implements Configurator {
 	}
 	
 	@Override
-	public void configure(Object experiment, String inputData) {
+	public String configure(Object experiment, String expId, HITWorkerGroup group) {
 		PeerGame game = (PeerGame) experiment;			
 		game.init(nrounds, PeerPrior.getTestPrior(), PaymentRule.getTestPaymentRule());
+		
+		return "test-treatment";
 	}
 
 	@Override
