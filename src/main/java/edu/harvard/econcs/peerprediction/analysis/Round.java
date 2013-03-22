@@ -7,15 +7,17 @@ import java.util.Set;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 
-public class RoundInfo {
+public class Round {
 
 	int roundNum;
 	Map<String, Double> chosenWorld;
 	Map<String, Map<String, Object>> roundPlay;
 	Map<String, Map<String, Object>> roundResult;
 	Gson gson;
+	int durationInMS;
+	String endTimeString;
 
-	public RoundInfo() {
+	public Round() {
 		gson = new Gson();
 
 		chosenWorld = new HashMap<String, Double>();
@@ -23,17 +25,13 @@ public class RoundInfo {
 		roundResult = new HashMap<String, Map<String, Object>>();
 	}
 
-	public void setRoundNum(int roundNum) {
-		this.roundNum = roundNum;
-	}
-
-	public void setChosenWorld(String chosenWorldString) {
+	public void saveChosenWorld(String chosenWorldString) {
 		chosenWorld = gson.fromJson(chosenWorldString,
 				new TypeToken<Map<String, Double>>() {
 				}.getType());
 	}
 
-	public void setSignal(String workerId, String hitId, String signal, String signalTimestamp) {
+	public void saveSignal(String workerId, String hitId, String signal, String signalTimestamp) {
 		if (roundPlay.containsKey(hitId)) {
 			roundPlay.get(hitId).put("signal", signal);
 			roundPlay.get(hitId).put("signalTimestamp", signalTimestamp);
@@ -48,7 +46,7 @@ public class RoundInfo {
 		}
 	}
 
-	public void setReport(String workerId, String hitId, String report, String reportTimestamp) {
+	public void saveReport(String workerId, String hitId, String report, String reportTimestamp) {
 		if (roundPlay.containsKey(hitId)) {
 			roundPlay.get(hitId).put("report", report);
 			roundPlay.get(hitId).put("reportTimestamp", reportTimestamp);
@@ -63,7 +61,7 @@ public class RoundInfo {
 		}
 	}
 
-	public void setResult(String resultString) throws Exception {
+	public void saveResult(String resultString) throws Exception {
 		// parse result string
 		Map<String, Object> parsedMap = gson.fromJson(resultString,
 				new TypeToken<Map<String, Object>>() {
@@ -113,6 +111,14 @@ public class RoundInfo {
 
 		}
 
+	}
+
+	public String getReport(String hitId) {
+		return roundResult.get(hitId).get("report").toString();
+	}
+
+	public String getSignal(String hitId) {
+		return roundResult.get(hitId).get("signal").toString();
 	}
 
 }
