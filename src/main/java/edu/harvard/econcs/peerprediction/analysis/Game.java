@@ -21,7 +21,7 @@ public class Game {
 	int numPlayers;
 	String[] playerHitIds;
 	double[] paymentArray;
-	String[] signalList;
+//	String[] signalList;
 
 	List<HITWorker> workers;
 	
@@ -70,20 +70,16 @@ public class Game {
 		paymentArray = gson.fromJson(paymentRuleString, double[].class);
 	}
 
-	public void saveSignalList(String signalListString) {
-		signalList = gson.fromJson(signalListString, String[].class);
-	}
-
 	public Map<String, Map<String, Double>> getStrategyForRoundRange(
 			int roundNumStart, int roundNumEnd) {
 
 		Map<String, Map<String, Double>> strategy = new HashMap<String, Map<String, Double>>();
-		for (int i = 0; i < signalList.length; i++) {
+		for (int i = 0; i < AnalysisUtils.signalList.length; i++) {
 			Map<String, Double> value = new HashMap<String, Double>();
-			for (int j = 0; j < signalList.length; j++) {
-				value.put(signalList[j], 0.0);
+			for (int j = 0; j < AnalysisUtils.signalList.length; j++) {
+				value.put(AnalysisUtils.signalList[j], 0.0);
 			}
-			strategy.put(signalList[i], value);
+			strategy.put(AnalysisUtils.signalList[i], value);
 		}
 
 		for (int i = roundNumStart; i <= roundNumEnd; i++) {
@@ -98,19 +94,21 @@ public class Game {
 			}
 		}
 
-		for (int i = 0; i < signalList.length; i++) {
+		for (int i = 0; i < AnalysisUtils.signalList.length; i++) {
 
 			double totalCount = 0;
-			for (int j = 0; j < signalList.length; j++) {
+			for (int j = 0; j < AnalysisUtils.signalList.length; j++) {
 				totalCount = totalCount
-						+ strategy.get(signalList[i]).get(signalList[j]);
+						+ strategy.get(AnalysisUtils.signalList[i]).get(AnalysisUtils.signalList[j]);
 			}
-			for (int j = 0; j < signalList.length; j++) {
-				double thisCount = strategy.get(signalList[i]).get(
-						signalList[j]);
+			for (int j = 0; j < AnalysisUtils.signalList.length; j++) {
+				double thisCount = strategy
+						.get(AnalysisUtils.signalList[i])
+						.get(AnalysisUtils.signalList[j]);
 				double percent = thisCount / totalCount;
 				percent = (double) Math.round(percent * 100) / 100;
-				strategy.get(signalList[i]).put(signalList[j], percent);
+				strategy.get(AnalysisUtils.signalList[i])
+					.put(AnalysisUtils.signalList[j], percent);
 			}
 		}
 
