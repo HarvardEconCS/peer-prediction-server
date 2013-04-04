@@ -41,7 +41,7 @@ public class ServerWithTutorialQuizTest {
 			super.configure();
 			
 			// Configure Quiz
-			bind(QuizFactory.class).toInstance(new QuizFactory.StringQuizFactory("full-tutorial"));
+			bind(QuizFactory.class).toInstance(new QuizFactory.StringQuizFactory("tutorial"));
 			bind(QuizPolicy.class).toInstance(new QuizPolicy
 					.PercentageQuizPolicy(passRate, maxTries));
 					
