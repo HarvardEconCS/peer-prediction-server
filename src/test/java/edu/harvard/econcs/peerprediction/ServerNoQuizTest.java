@@ -53,7 +53,7 @@ public class ServerNoQuizTest {
 			bind(new TypeLiteral<List<Experiment>>() {}).toProvider(Providers.of((List<Experiment>) null));
 								
 			bindExperimentClass(PeerGame.class);			
-			bindConfigurator(new SimpleConfigurator(nRounds, groupSize));	
+			bindConfigurator(new ConfiguratorNoFakePlayers(nRounds, groupSize));	
 			bindString(TSConfig.EXP_SETID, "test set");
 		}		
 	}

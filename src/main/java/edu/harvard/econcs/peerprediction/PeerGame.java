@@ -10,6 +10,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import com.google.inject.Inject;
 
+import edu.harvard.econcs.turkserver.api.CombinedHITWorkerGroup;
 import edu.harvard.econcs.turkserver.api.ExperimentController;
 import edu.harvard.econcs.turkserver.api.ExperimentLog;
 import edu.harvard.econcs.turkserver.api.ExperimentServer;
@@ -22,6 +23,7 @@ import edu.harvard.econcs.turkserver.api.StartRound;
 import edu.harvard.econcs.turkserver.api.TimeLimit;
 import edu.harvard.econcs.turkserver.api.WorkerConnect;
 import edu.harvard.econcs.turkserver.api.WorkerDisconnect;
+import edu.harvard.econcs.turkserver.server.FakeHITWorkerGroup;
 
 @ExperimentServer("Peer Prediction Game")
 public class PeerGame {
@@ -34,9 +36,11 @@ public class PeerGame {
 	
 	String[] playerNames;
 	
-	HITWorkerGroup group;
+	HITWorkerGroup realWorkerGroup;
 	ExperimentLog expLog;
 	ExperimentController controller;
+	
+	HITWorkerGroup combinedGroup;
 	
 	ConcurrentHashMap<String, HITWorker> disconnectedList;
 	ConcurrentHashMap<String, HITWorker> killedList;
@@ -51,7 +55,7 @@ public class PeerGame {
 			ExperimentLog expLog,
 			ExperimentController controller) {
 		
-		this.group = group;
+		this.realWorkerGroup = group;
 		this.expLog = expLog;
 		this.controller = controller;		
 		
@@ -60,9 +64,17 @@ public class PeerGame {
 	}
 	
 	public void init(int nRounds2, PeerPrior prior, PaymentRule rule) {
+		this.init(nRounds2, prior, rule, null);
+	}
+	
+	public void init(int nRounds2, PeerPrior prior, PaymentRule rule, 
+			FakeHITWorkerGroup fakePlayers) {
 		this.nRounds = nRounds2;
 		this.prior = prior;
 		this.paymentRule = rule;		
+		
+		// For introducing fake players
+		this.combinedGroup = fakePlayers == null ? realWorkerGroup : new CombinedHITWorkerGroup(realWorkerGroup, fakePlayers);
 		
 		currentRound = new AtomicReference<PeerRound>();		
 
@@ -71,9 +83,9 @@ public class PeerGame {
 	
 	@StartExperiment
 	public void startGame() {
-		int numPlayers = group.groupSize();		
+		int numPlayers = combinedGroup.groupSize();		
 		playerNames = new String[numPlayers];
-		group.getHITIds().toArray(playerNames);
+		combinedGroup.getHITIds().toArray(playerNames);
 
 		expLog.printf("Prior is %s", prior.toString());
 		expLog.printf("General information sent: numPlayers=%d, numRounds=%s, " +
@@ -82,7 +94,7 @@ public class PeerGame {
 				Arrays.toString(paymentRule.getPaymentArray()), 
 				Arrays.toString(prior.getSignalArray()));
 		
-		for (HITWorker worker : group.getHITWorkers()) {
+		for (HITWorker worker : combinedGroup.getHITWorkers()) {
 			PlayerUtils.sendGeneralInfo(
 					worker, 
 					numPlayers, 
@@ -101,7 +113,7 @@ public class PeerGame {
 		Map<String, Double> chosenWorld = this.prior.chooseWorld();
 		expLog.printf("Chosen world is %s", chosenWorld.toString());
 		
-		PeerRound r = new PeerRound(group, chosenWorld, paymentRule, expLog);
+		PeerRound r = new PeerRound(combinedGroup, chosenWorld, paymentRule, expLog);
 		currentRound.set(r);
 
 		r.startRound();
@@ -118,10 +130,9 @@ public class PeerGame {
 		this.results.add(currentRound.get().getResult());				
 		
 		if (controller.getCurrentRound() == nRounds) {
-//			expLog.printf("PeerGame: finish experiment");
 			
 			// set bonus amounts for workers
-			for (HITWorker worker : group.getHITWorkers()) {
+			for (HITWorker worker : combinedGroup.getHITWorkers()) {
 				// Do not set bonus if worker is already killed.
 				if (killedList.containsKey(worker.getHitId())) {
 					expLog.printf("Worker %s killed, no bonus", worker);
@@ -132,8 +143,13 @@ public class PeerGame {
 					total += Double.parseDouble(res.getReward(worker));
 				}
 				double avg = total / nRounds;
-				controller.setBonusAmount(worker, avg);
-				expLog.printf("Worker %s gets bonus %.2f", worker, avg);
+				
+				// only set bonus amount if the worker is real, not fake
+				if( realWorkerGroup.contains(worker)) {
+					controller.setBonusAmount(worker, avg);
+					expLog.printf("Worker %s gets bonus %.2f", worker, avg);
+				}
+				
 			}
 
 			controller.finishExperiment();
@@ -172,7 +188,7 @@ public class PeerGame {
 			List<Map<String, Map<String, String>>> existingResults = PeerResult
 					.getAllResultsForWorker(results, worker);
 
-			currentRound.get().resendState(worker, group.groupSize(), nRounds,
+			currentRound.get().resendState(worker, combinedGroup.groupSize(), nRounds,
 					playerNames, worker.getHitId(),
 					paymentRule.getPaymentArray(), prior.getSignalArray(),
 					existingResults);

@@ -9,6 +9,7 @@ import com.google.common.collect.ImmutableMap;
 
 import edu.harvard.econcs.turkserver.api.ClientController;
 import edu.harvard.econcs.turkserver.api.ExperimentClient;
+import edu.harvard.econcs.turkserver.api.HITWorker;
 import edu.harvard.econcs.turkserver.api.ServiceMessage;
 
 @ExperimentClient("peer-prediction-test")
@@ -33,6 +34,10 @@ public class TestPlayer implements Runnable {
 	
 	final ClientController cont;
 	
+	// TODO some ugly hack thingy for adding fake players to a real game
+	HITWorker identity = null;
+	PeerGame game = null;
+	
 	/**
 	 * 
 	 * @param game
@@ -47,6 +52,11 @@ public class TestPlayer implements Runnable {
 		
 		this.state = RoundState.GOT_RESULTS;
 	}	
+
+	public void overrideConfirmationSignal(HITWorker identity, PeerGame game) {
+		this.identity = identity;
+		this.game = game;		
+	}
 
 	/**
 	 * Message format:
@@ -72,19 +82,20 @@ public class TestPlayer implements Runnable {
 		
 		String yourName = (String) msg.get("yourName");				
 		
-		Object[] paymentArrayDoubles = (Object[]) msg.get("payments");
-		double[] paymentArray = new double[paymentArrayDoubles.length];
-		for( int i = 0; i < paymentArrayDoubles.length; i++ ) {
-			paymentArray[i] = ((Double) paymentArrayDoubles[i]).doubleValue();
-		}
+//		Object[] paymentArrayDoubles = (Object[]) msg.get("payments");
+//		double[] paymentArray = new double[paymentArrayDoubles.length];
+//		for( int i = 0; i < paymentArrayDoubles.length; i++ ) {
+//			paymentArray[i] = ((Double) paymentArrayDoubles[i]).doubleValue();
+//		}
 		
 		Object[] signalObjs = (Object[]) msg.get("signalList");
 		String[] signalList = new String[signalObjs.length];
 		for (int i = 0; i < signalObjs.length; i++) {
 			signalList[i] = signalObjs[i].toString();
 		}
-		
-		this.rcvGeneralInfo(nPlayers, nRounds, playerNames, yourName, paymentArray, signalList);
+
+		this.rcvGeneralInfo(nPlayers, nRounds, playerNames, yourName, null, signalList);
+//		this.rcvGeneralInfo(nPlayers, nRounds, playerNames, yourName, paymentArray, signalList);
 	}
 	
 	/**
@@ -232,7 +243,16 @@ public class TestPlayer implements Runnable {
 			System.out.println();
 
 			// Send report
-			cont.sendExperimentService(ImmutableMap.of("report", (Object) localLastReport));			
+			Map<String, Object> report = ImmutableMap.of("report", (Object) localLastReport);
+			
+			// Hack for using this player as a fake player in the game
+			if( game != null ) {
+				// TODO hack for directly sending report to game
+				game.reportReceived(identity, report);
+			}
+			else {
+				cont.sendExperimentService(report);	
+			}						
 
 			int count = 0;
 			while (count < nPlayers) {

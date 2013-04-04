@@ -89,6 +89,18 @@ public class Strategy {
 				&& Math.abs(str.get("GB").get("MM") - 1) < AnalysisUtils.eps;
 	}
 
+	public boolean isCloseToMM(double threshold) {
+		return str.get("MM").get("MM") >= threshold && str.get("GB").get("MM") >= threshold;
+	}
+
+	public boolean isCloseToHonest(double threshold) {
+		return str.get("MM").get("MM") >= threshold && str.get("GB").get("GB") >= threshold;
+	}
+
+	public boolean isCloseToGB(double threshold) {
+		return str.get("MM").get("GB") >= threshold && str.get("GB").get("GB") >= threshold;
+	}
+
 	public String toString() {
 		return this.label;
 	}

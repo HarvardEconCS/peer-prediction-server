@@ -177,6 +177,64 @@ public class Game {
 		return list;
 	}
 
+	public int getMMStart(String hitId) {
+		for (int i = rounds.size() - 1; i >= 0; i--) {
+			if (rounds.get(i).getReport(hitId).equals("MM"))
+				continue;
+			else 
+				return i;
+		}
+		return 0;
+	}
+
+	public int getHonestStart(String hitId) {
+		for (int i = rounds.size() - 1; i >= 0; i--) {
+			String signal = rounds.get(i).getSignal(hitId);
+			String report = rounds.get(i).getReport(hitId);
+			if (signal.equals(report))
+				continue;
+			else 
+				return i;
+		}
+		return 0;
+	}
+
+	public int getGBStart(String hitId) {
+		for (int i = rounds.size() - 1; i >= 0; i--) {
+			if (rounds.get(i).getReport(hitId).equals("GB"))
+				continue;
+			else 
+				return i;
+		}
+		return 0;
+	}
+
+	public int getNumMM(String hitId) {
+		int count = 0;
+		for (Round round : rounds) {
+			if (round.getReport(hitId).equals("MM")) count++;
+		}
+		return count;
+	}
+
+	public int getNumGB(String hitId) {
+		int count = 0;
+		for (Round round : rounds) {
+			if (round.getReport(hitId).equals("GB")) count++;
+		}
+		return count;
+	}
+
+	public int getNumHonest(String hitId) {
+		int count = 0;
+		for (Round round : rounds) {
+			String signal = round.getSignal(hitId);
+			String report = round.getReport(hitId);
+			if (signal.equals(report)) count++;
+		}
+		return count;
+	}
+
 	// public List<String> getSignalsForPlayer(String hitId) {
 	// List<String> list = new ArrayList<String>();
 	// for (Round round : rounds) {

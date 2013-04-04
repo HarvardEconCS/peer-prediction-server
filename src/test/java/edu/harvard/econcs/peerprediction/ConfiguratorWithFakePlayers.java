@@ -26,7 +26,7 @@ class ConfiguratorWithFakePlayers implements Configurator {
 	public String configure(Object experiment, String expId, HITWorkerGroup group) {
 		PeerGame game = (PeerGame) experiment;			
 		
-		int numFakePlayers = 2;
+		int numFakePlayers = 6;
 		
 		try {
 			FakeHITWorkerGroup fakePlayers  = TestUtils.getFakeGroup("", numFakePlayers, TestPlayer.class);						  
@@ -46,7 +46,7 @@ class ConfiguratorWithFakePlayers implements Configurator {
 		
 //		game.init(nrounds, PeerPrior.getTestPrior(), PaymentRule.getTestPaymentRule());
 		
-		return "test-treatment";
+		return "threereal-sixfake";
 	}
 
 	@Override

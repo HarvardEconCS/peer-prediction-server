@@ -394,4 +394,16 @@ public class AnalysisUtils {
 		return dist;
 	}
 
+
+	public static double fractionMMReports(
+			List<Pair<String, String>> signalReportPairs) {
+		double total = signalReportPairs.size();
+		double numMM = 0;
+		for (Pair<String, String> pair : signalReportPairs) {
+			if (pair.t2.equals("MM"))
+				numMM++;
+		}
+		return numMM / total;
+	}
+
 }

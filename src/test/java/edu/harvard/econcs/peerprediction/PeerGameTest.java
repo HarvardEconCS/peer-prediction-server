@@ -48,7 +48,7 @@ public class PeerGameTest {
 
 		// create the game
 		ExperimentLog fakeLog = TestUtils.getFakeLog();
-		FakeHITWorkerGroup fakeGroup = TestUtils.getFakeGroup(nplayers, TestPlayer.class);
+		FakeHITWorkerGroup fakeGroup = TestUtils.getFakeGroup("", nplayers, TestPlayer.class);
 		FakeExperimentController fakeCont = TestUtils.getFakeController(fakeGroup);
 		
 		PeerGame game = new PeerGame(fakeGroup, fakeLog, fakeCont);
