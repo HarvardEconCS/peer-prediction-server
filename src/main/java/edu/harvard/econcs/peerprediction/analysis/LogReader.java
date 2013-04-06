@@ -20,6 +20,11 @@ import java.util.Scanner;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.joda.time.DateTime;
+import org.joda.time.base.AbstractDateTime;
+import org.joda.time.format.DateTimeFormat;
+import org.joda.time.format.DateTimeFormatter;
+
 import net.andrewmao.misc.Pair;
 
 public class LogReader {
@@ -85,9 +90,29 @@ public class LogReader {
 		equilibriumPerGame();
 		strategyPerWorker();
 		strategyPerRound();
+		
+		
+		timeStats();
 
 	}
 
+	private static void timeStats() {
+		int[] count = new int[24];
+		for (Game game : expSet.games) {
+			String id = game.id.substring(0, 19);
+			DateTimeFormatter format = DateTimeFormat.forPattern("yyyy-MM-dd HH.mm.ss");
+			DateTime time = format.parseDateTime(id);
+			int hour = time.getHourOfDay();
+			count[hour]++;
+		}
+		
+		System.out.println();
+		System.out.println("Number of games for every hour of day");
+		for (int i = 0; i < count.length; i++) {
+			System.out.printf("%d hour: %d games\n", i, count[i]);
+		}
+	}
+	
 	private static void equilibriumPerGame() throws IOException {
 		System.out.println("Categorize worker behavior per game");
 		

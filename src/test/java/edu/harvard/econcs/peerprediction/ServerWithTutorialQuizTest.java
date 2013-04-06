@@ -19,6 +19,7 @@ import edu.harvard.econcs.turkserver.server.ClientGenerator;
 import edu.harvard.econcs.turkserver.server.QuizFactory;
 import edu.harvard.econcs.turkserver.server.QuizPolicy;
 import edu.harvard.econcs.turkserver.server.TurkServer;
+import edu.harvard.econcs.turkserver.server.mysql.MySQLDataTracker;
 
 public class ServerWithTutorialQuizTest {
 
@@ -63,9 +64,11 @@ public class ServerWithTutorialQuizTest {
 				.toProvider(Providers.of((List<Experiment>) null));		
 			
 			bindExperimentClass(PeerGame.class);	
+	
+			bindConfigurator(new ConfiguratorNoFakePlayers(nRounds, groupSize));
 			
 			// Add fake players
-			bindConfigurator(new ConfiguratorWithFakePlayers(nRounds, groupSize));	
+//			bindConfigurator(new ConfiguratorWithFakePlayers(nRounds, groupSize));	
 
 			// Set ID
 			bindString(TSConfig.EXP_SETID, setId);
@@ -85,7 +88,7 @@ public class ServerWithTutorialQuizTest {
 		TurkServer ts = new TurkServer(dataModule);
 		
 		// REMOVE THIS FOR REAL EXPERIMENT
-//		MySQLDataTracker.createSchema(dataModule.getConfiguration());
+		MySQLDataTracker.createSchema(dataModule.getConfiguration());
 		
 		ts.runExperiment(
 				new TestModule(),
