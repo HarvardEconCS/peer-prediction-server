@@ -1,36 +1,250 @@
 package edu.harvard.econcs.peerprediction.mturk;
 
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.List;
 
+import com.amazonaws.mturk.addon.HITProperties;
+import com.amazonaws.mturk.addon.HITQuestion;
+import com.amazonaws.mturk.dataschema.QuestionFormAnswers;
+import com.amazonaws.mturk.dataschema.QuestionFormAnswersType;
 import com.amazonaws.mturk.requester.Assignment;
+import com.amazonaws.mturk.requester.AssignmentStatus;
 import com.amazonaws.mturk.requester.HIT;
+import com.amazonaws.mturk.requester.HITStatus;
 import com.amazonaws.mturk.service.axis.RequesterService;
 import com.amazonaws.mturk.util.PropertiesClientConfig;
 
 public class MTurk {
 
+	static final String rootDir = "src/test/resources/";
+	
 	/**
 	 * @param args
 	 * @throws ClassNotFoundException
 	 * @throws SQLException
 	 */
-	public static void main(String[] args) throws ClassNotFoundException, SQLException {
+	public static void main(String[] args) throws ClassNotFoundException,
+			SQLException {
 
 		RequesterService service = new RequesterService(
-				new PropertiesClientConfig("mturk.properties"));
+				new PropertiesClientConfig("src/test/resources/mturk.properties"));
 
-//		notifyWorkers(service);
+		System.out.println("url is " + service.getWebsiteURL());
 
+//		processResultsRecruitingHIT(service);
+//		deleteAllExpiredUnavailHITS(service);
 
-		bonusManually(service);
-		
-/*
-		createPrivateHIT();
-*/
+		postAndDeleteUnavailHIT(service);
+	}
+
+	private static void postAndDeleteUnavailHIT(RequesterService service) {
+		while (true) {
+
+			postUnavailHIT(service);
+
+			try {
+				System.out.println("Sleeping for 1 minute");
+				Thread.sleep(60000);
+				System.out.println("Finished sleeping for 1 minutes");
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
+
+			deleteUnavailHIT(service);
+
+		}
+	}
+
+	private static void processResultsRecruitingHIT(RequesterService service) {
+		BufferedReader reader;
+		try {
+			reader = new BufferedReader(new FileReader(rootDir + "recruit_hitid.txt"));
+			String hitId = reader.readLine();
+			// HIT recruitHIT = service.getHIT(hitId);
+
+			int[] time = new int[24];
+
+			Assignment[] assigns = service.getAllAssignmentsForHIT(hitId);
+			System.out.println(assigns.length + " assignments");
+			for (Assignment assign : assigns) {
+				if (assign.getAssignmentStatus() == AssignmentStatus.Submitted) {
+					String message = "Thank you for completing our recruiting HIT! "
+							+ "Once we have enough participants, we will notify you " +
+							"by email 1 day before"
+							+ " we post the HITs for our experiment.";
+					service.approveAssignment(assign.getAssignmentId(), message);
+
+				}
+
+				String answerXML = assign.getAnswer();
+
+				QuestionFormAnswers qfa = RequesterService
+						.parseAnswers(answerXML);
+				List<QuestionFormAnswersType.AnswerType> answers =
+						(List<QuestionFormAnswersType.AnswerType>) qfa
+						.getAnswer();
+
+				for (QuestionFormAnswersType.AnswerType answer : answers) {
+					String assignmentId = assign.getAssignmentId();
+					String answerValue = RequesterService.getAnswerValue(
+							assignmentId, answer);
+
+					// if (answer.getQuestionIdentifier().equals("consent")) {
+					// if (!answerValue.equals("true"))
+					// System.out.println("no consent from worker " +
+					// assign.getWorkerId());
+					// }
+
+					if (answer.getQuestionIdentifier().equals("firstTime")
+							|| answer.getQuestionIdentifier().equals(
+									"secondTime")) {
+						int chosenTime = Integer.parseInt(answerValue);
+						time[chosenTime]++;
+					}
+
+				}
+			}
+
+			BufferedWriter writer = new BufferedWriter(new FileWriter(
+					rootDir + "times.csv"));
+			for (int i = 0; i < time.length; i++) {
+				writer.write(time[i] + ",");
+			}
+			writer.flush();
+			writer.close();
+
+		} catch (FileNotFoundException e) {
+			e.printStackTrace();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+
+	}
+
+	private static void postRecruitingHIT(RequesterService service) {
+
+		String propertiesFile = rootDir + "recruiting.properties";
+		String questionFile = rootDir + "recruiting.question";
+		HITProperties props;
+		try {
+			props = new HITProperties(propertiesFile);
+			HITQuestion question = new HITQuestion(questionFile);
+
+			System.out.println("Posting recruiting HIT");
+			HIT hit = service.createHIT(null, props.getTitle(),
+					props.getDescription(), props.getKeywords(),
+					question.getQuestion(), props.getRewardAmount(),
+					props.getAssignmentDuration(),
+					props.getAutoApprovalDelay(), props.getLifetime(),
+					props.getMaxAssignments(), props.getAnnotation(),
+					props.getQualificationRequirements(), null);
+
+			hit = service.getHIT(hit.getHITId());
+			System.out.println("Created recruiting HIT " + hit.getHITId());
+
+			BufferedWriter writer = new BufferedWriter(new FileWriter(
+					rootDir + "recruit_hitid.txt"));
+			writer.write(hit.getHITId());
+			writer.flush();
+			writer.close();
+
+		} catch (IOException e) {
+			e.printStackTrace();
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+
+	}
+
+	private static void expireRecruitingHIT(RequesterService service) {
+
+		try {
+			BufferedReader reader = new BufferedReader(new FileReader(
+					rootDir + "recruit_hitid.txt"));
+			String hitId = reader.readLine();
+			reader.close();
+			service.forceExpireHIT(hitId);
+			// service.disposeHIT(hitId);
+		} catch (FileNotFoundException e) {
+			e.printStackTrace();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+
+	}
+
+	private static void postUnavailHIT(RequesterService service) {
+		String propertiesFile = rootDir + "unavail.properties";
+		String questionFile = rootDir + "unavail.question";
+		HITProperties props;
+		try {
+			props = new HITProperties(propertiesFile);
+			HITQuestion question = new HITQuestion(questionFile);
+
+			System.out.println("Creating unavail HIT...");
+			HIT hit = service.createHIT(null, props.getTitle(),
+					props.getDescription(), props.getKeywords(),
+					question.getQuestion(), props.getRewardAmount(),
+					props.getAssignmentDuration(),
+					props.getAutoApprovalDelay(), props.getLifetime(),
+					props.getMaxAssignments(), props.getAnnotation(),
+					props.getQualificationRequirements(), null);
+
+			String hitId = hit.getHITId();
+			hit = service.getHIT(hit.getHITId());
+			System.out.println("Created unavail hit " + hitId);
+
+			BufferedWriter writer = new BufferedWriter(new FileWriter(
+					rootDir + "unavail_hitid.txt"));
+			writer.write(hit.getHITId());
+			writer.flush();
+			writer.close();
+
+		} catch (IOException e) {
+			e.printStackTrace();
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+
+	private static void deleteAllExpiredUnavailHITS(RequesterService service) {
+		HIT[] allHits = service.searchAllHITs();
+		for (HIT hit : allHits) {
+			String hitId = hit.getHITId();
+			HIT h = service.getHIT(hitId);
+			if (h.getHITStatus() == HITStatus.Reviewable
+					&& h.getRequesterAnnotation() != null
+					&& h.getRequesterAnnotation().equals("unavail")) {
+				service.disposeHIT(hitId);
+			}
+		}
+	}
+
+	private static void deleteUnavailHIT(RequesterService service) {
+		BufferedReader reader;
+		try {
+			reader = new BufferedReader(new FileReader(rootDir + "unavail_hitid.txt"));
+			String hitId = reader.readLine();
+			reader.close();
+
+			service.forceExpireHIT(hitId);
+			System.out.println("Force expired unavail hit " + hitId);
+
+		} catch (FileNotFoundException e) {
+			e.printStackTrace();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
 
 	}
 
@@ -39,51 +253,50 @@ public class MTurk {
 		String dbUrl = "jdbc:mysql://localhost/turkserver";
 		String dbClass = "com.mysql.jdbc.Driver";
 		String setId = "mar-13-fixed";
-	
+
 		Class.forName(dbClass);
 		Connection con = DriverManager.getConnection(dbUrl, "root", "");
-	
+
 		Statement stmt = con.createStatement();
 		String query = "select hitId, assignmentId, payment, bonus from session "
-				+ "where paid = 0 and bonusPaid = 0 and payment is null and bonus is not null " 
+				+ "where paid = 0 and bonusPaid = 0 and payment is null and bonus is not null "
 				+ "and comment is not null";
 		ResultSet rs = stmt.executeQuery(query);
-	
+
 		double totalBonus = 0.0;
-	
+
 		while (rs.next()) {
 			String hitId = rs.getString("hitId");
 			String assignmentId = rs.getString("assignmentId");
 			String payment = rs.getString("payment");
 			String bonusString = rs.getString("bonus");
-	
+
 			HIT hit = service.getHIT(hitId);
 			Assignment[] assigns = service.getAllAssignmentsForHIT(hitId);
-	
+
 			if (assigns.length > 0 && bonusString != null) {
-	
-				 String update = String.format("update session " +
-				 "set payment=0.10, paid=1, bonusPaid=1, hitStatus='Disposed' "
-				 +
-				 "where hitId='%s' ", hitId);
-				 Statement updateStmt = con.createStatement();
-				 updateStmt.executeUpdate(update);
-	
-				 Assignment assign = assigns[0];
-				 String workerId = assign.getWorkerId();
-				
-				 double bonus = Double.parseDouble(bonusString);
-				 totalBonus = totalBonus + bonus;
-				
-				 System.out.printf("HIT (%s), ASS (%s), Worker (%s), bonus %.2f\n",
-				 hitId, assignmentId, workerId, bonus);
-				 String msg =
-				 "Thank you for playing the trick or treat game!";
-				 
-				 
-//				 service.grantBonus(workerId, bonus, assignmentId, msg);
+
+				String update = String
+						.format("update session "
+								+ "set payment=0.10, paid=1, bonusPaid=1, hitStatus='Disposed' "
+								+ "where hitId='%s' ", hitId);
+				Statement updateStmt = con.createStatement();
+				updateStmt.executeUpdate(update);
+
+				Assignment assign = assigns[0];
+				String workerId = assign.getWorkerId();
+
+				double bonus = Double.parseDouble(bonusString);
+				totalBonus = totalBonus + bonus;
+
+				System.out.printf(
+						"HIT (%s), ASS (%s), Worker (%s), bonus %.2f\n", hitId,
+						assignmentId, workerId, bonus);
+				String msg = "Thank you for playing the trick or treat game!";
+
+				// service.grantBonus(workerId, bonus, assignmentId, msg);
 			}
-	
+
 		}
 		System.out.printf("total bonus is %.2f", totalBonus);
 	}
@@ -106,28 +319,24 @@ public class MTurk {
 
 		String message2 = "Dear MTurk worker,\n\n"
 				+ "You may be interested in working on a HIT posted by a colleague of mine.  Details are below:\n\n\n"
-				+ "You will be playing a game (~2 minutes) with other turkers in real time and earn up to $0.50 bonus.  " 
+				+ "You will be playing a game (~2 minutes) with other turkers in real time and earn up to $0.50 bonus.  "
 				+ "For this batch, you can only complete one HIT. \n\n"
 				+ "Please come work on the HIT *tomorrow Tuesday April 2nd, at 2pm Eastern Standard Time*.\n"
 				+ "Link to HIT: https://www.mturk.com/mturk/searchbar?requesterId=A15OV4L8HXBKSM \n\n"
 				+ "We appreciate your participation! If all of you come at 2pm EST, we'll get all games done very quickly!\n\n"
-				+ "(If you don't want to receive this type of notification, please let me know.)\n" 
+				+ "(If you don't want to receive this type of notification, please let me know.)\n"
 				+ "(For *this batch only*, you need to spend another 5 minutes for a tutorial and a quiz, "
 				+ "but for future batches, you can start playing directly.)\n\n";
 
-		
 		String subjectReminder = "Reminder to come play a game at 2pm EST";
-		String messageReminder = "Just a gentle reminder to come play a game with other turkers at 2pm EST today\n" 
+		String messageReminder = "Just a gentle reminder to come play a game with other turkers at 2pm EST today\n"
 				+ "Link to HIT: https://www.mturk.com/mturk/searchbar?requesterId=A15OV4L8HXBKSM \n\n"
 				+ "We really appreciate your participation!";
-		
+
 		String aliceWorkerId = "A15OV4L8HXBKSM";
-		service.notifyWorkers(subject, message2, new String[]{aliceWorkerId});
+		service.notifyWorkers(subject, message2, new String[] { aliceWorkerId });
 		System.exit(0);
-		
-		
-		
-		
+
 		String dbUrl = "jdbc:mysql://localhost/turksorting";
 		String dbClass = "com.mysql.jdbc.Driver";
 

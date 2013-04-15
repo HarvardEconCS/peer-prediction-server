@@ -22,7 +22,7 @@ import edu.harvard.econcs.turkserver.server.QuizPolicy;
 import edu.harvard.econcs.turkserver.server.TurkServer;
 import edu.harvard.econcs.turkserver.server.mysql.MySQLDataTracker;
 
-public class GroupsTest {
+public class ServerTestGroups {
 
 	static final String configFile = "testing.properties";
 	

@@ -11,6 +11,21 @@ public class PaymentRule {
 	
 	Map<Pair<String, String>, Double> rules;
 	
+	/**
+	 * Payment rule used by the experiment
+	 * @return
+	 */
+	public static PaymentRule getTestPaymentRule() {
+		PaymentRule rule = new PaymentRule();
+		
+		rule.addRule("MM", "MM", 1.50);
+		rule.addRule("MM", "GB", 0.10);
+		rule.addRule("GB", "MM", 0.40);
+		rule.addRule("GB", "GB", 1.20);
+		
+		return rule;
+	}
+
 	public PaymentRule() {
 		rules = new HashMap<Pair<String, String>, Double>();
 		prior = PeerPrior.getTestPrior();
@@ -83,17 +98,6 @@ public class PaymentRule {
 		
 		return array;
 		
-	}
-
-	public static PaymentRule getTestPaymentRule() {
-		PaymentRule rule = new PaymentRule();
-		
-		rule.addRule("MM", "MM", 0.50);
-		rule.addRule("MM", "GB", 0.10);
-		rule.addRule("GB", "MM", 0.23);
-		rule.addRule("GB", "GB", 0.43);
-		
-		return rule;
 	}
 	
 }

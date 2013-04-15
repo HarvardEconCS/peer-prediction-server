@@ -17,7 +17,7 @@ import edu.harvard.econcs.turkserver.server.FakeHITWorker;
 import edu.harvard.econcs.turkserver.server.FakeHITWorkerGroup;
 import edu.harvard.econcs.turkserver.server.TestUtils;
 
-public class PeerGameTest {
+public class TestPeerGame {
 	
 	@Before
 	public void setup() {
@@ -26,11 +26,6 @@ public class PeerGameTest {
 	
 	@After
 	public void tearDown() {
-		
-	}
-	
-	@Test
-	public void testPrior() {
 		
 	}
 	

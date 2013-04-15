@@ -63,13 +63,19 @@ public class PeerGame {
 		this.killedList = new ConcurrentHashMap<String, HITWorker>();
 	}
 	
-	public void init(int nRounds2, PeerPrior prior, PaymentRule rule) {
-		this.init(nRounds2, prior, rule, null);
+	/**
+	 * Init with no fake players
+	 * @param nRounds
+	 * @param prior
+	 * @param rule
+	 */
+	public void init(int nRounds, PeerPrior prior, PaymentRule rule) {
+		this.init(nRounds, prior, rule, null);
 	}
 	
-	public void init(int nRounds2, PeerPrior prior, PaymentRule rule, 
+	public void init(int nRounds, PeerPrior prior, PaymentRule rule, 
 			FakeHITWorkerGroup fakePlayers) {
-		this.nRounds = nRounds2;
+		this.nRounds = nRounds;
 		this.prior = prior;
 		this.paymentRule = rule;		
 		

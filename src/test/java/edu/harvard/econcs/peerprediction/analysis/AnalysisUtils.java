@@ -62,7 +62,10 @@ public class AnalysisUtils {
 		return pi_return;
 	}
 
-	
+	/**
+	 * EM Algorithms
+	 * @param signalReportPairs
+	 */
 	public static void runEMAlgorithm(
 			List<List<Pair<String, String>>> signalReportPairs) {
 

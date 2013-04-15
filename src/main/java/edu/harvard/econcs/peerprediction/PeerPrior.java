@@ -18,6 +18,27 @@ public class PeerPrior {
 	
 	private Random rnd = new Random();
 	
+	/**
+	 * Prior used for the experiment
+	 * @return
+	 */
+	public static PeerPrior getTestPrior() {
+		double[] priorOnWorlds = new double[] {0.5, 0.5};
+		
+		Map<String, Double> probs1 = ImmutableMap.of(
+				"MM", 0.20,
+				"GB", 0.80);
+		Map<String, Double> probs2 = ImmutableMap.of(
+				"MM", 0.70,
+				"GB", 0.30);	
+		
+		List<Map<String, Double>> probs = new ArrayList<Map<String, Double>>();
+		probs.add(probs1);
+		probs.add(probs2);
+		
+		return new PeerPrior(priorOnWorlds, probs); 
+	}
+
 	public PeerPrior(
 			double[] priorOnWorlds, 
 			List<Map<String, Double>> ws) {
@@ -100,22 +121,6 @@ public class PeerPrior {
 		return probNum / probDenom;
 	}
 
-	public static PeerPrior getTestPrior() {
-		double[] priorOnWorlds = new double[] {0.5, 0.5};
-		
-		Map<String, Double> probs1 = ImmutableMap.of(
-				"MM", 0.85,
-				"GB", 0.15);
-		Map<String, Double> probs2 = ImmutableMap.of(
-				"MM", 0.30,
-				"GB", 0.70);	
-		List<Map<String, Double>> probs = new ArrayList<Map<String, Double>>();
-		probs.add(probs1);
-		probs.add(probs2);
-		
-		return new PeerPrior(priorOnWorlds, probs); 
-	}
-	
 	public String toString() {
 		StringBuilder sb = new StringBuilder();
 		sb.append(String.format("prob=%s, ", Arrays.toString(priorOnWorlds)));

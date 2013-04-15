@@ -20,12 +20,11 @@ import java.util.Scanner;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import net.andrewmao.misc.Pair;
+
 import org.joda.time.DateTime;
-import org.joda.time.base.AbstractDateTime;
 import org.joda.time.format.DateTimeFormat;
 import org.joda.time.format.DateTimeFormatter;
-
-import net.andrewmao.misc.Pair;
 
 public class LogReader {
 
@@ -88,7 +87,7 @@ public class LogReader {
 		System.out.printf("%d non-killed games\n\n", expSet.games.size());
 		
 		equilibriumPerGame();
-		strategyPerWorker();
+//		strategyPerWorker();
 		strategyPerRound();
 		
 		
@@ -114,13 +113,166 @@ public class LogReader {
 	}
 	
 	private static void equilibriumPerGame() throws IOException {
-		System.out.println("Categorize worker behavior per game");
 		
+		// categorize games according to convergence
+		List<List<Game>> metaList = characterizeConvergence();
+		
+		// categorize games according to percentage of claims consistent with a strategy
+		characterizePercentageConsistency(metaList);
+
+		
+		
+		
+		BufferedWriter writerMM = new BufferedWriter(
+				new FileWriter(rootDir + "games-mm.csv"));
+		writerMM.write("gameId, hitId, actions, firstRound, numConsistent\n");
+		System.out.println("mm games: ");
+		for (Game game : metaList.get(0)) {
+
+			int mmStart = 0;
+			for (int i = 0; i < game.playerHitIds.length; i++) {
+				String hitId = game.playerHitIds[i];
+				
+				int playerMMStart = game.getMMStart(hitId);
+				mmStart = Math.max(mmStart, playerMMStart);
+				
+				int numConsistentMM = game.getNumMM(hitId);
+				
+				// signal report pairs
+				List<Pair<String, String>> signalReportPairs = 
+						game.getSignalReportPairsForPlayer(hitId);
+
+				writerMM.write(String.format("%s,%s,\"\"\"%s\"\"\",%d,%d\n", 
+						game.id, hitId, signalReportPairs, playerMMStart, numConsistentMM));
+				
+			}
+			System.out.printf("game %s (%d)", game.id, mmStart);
+			System.out.println();
+		}
+		System.out.println();
+		writerMM.flush();
+		writerMM.close();
+
+		
+		
+		BufferedWriter writerGB = new BufferedWriter(
+				new FileWriter(rootDir + "games-gb.csv"));
+		writerGB.write("gameId, hitId, actions, firstGBRound\n");
+		System.out.println("gb games: ");
+		for (Game game : metaList.get(1)) {
+			int gbStart = 0;
+			for (int i = 0; i < game.playerHitIds.length; i++) {
+				String hitId = game.playerHitIds[i];
+				
+				int playerGBStart = game.getGBStart(hitId);
+				gbStart = Math.max(gbStart, playerGBStart);
+			
+				// signal report pairs
+				List<Pair<String, String>> signalReportPairs = 
+						game.getSignalReportPairsForPlayer(hitId);
+				
+				writerGB.write(String.format("%s,%s,\"\"\"%s\"\"\",%d\n", 
+						game.id, hitId, signalReportPairs, playerGBStart));
+
+			}
+			System.out.printf("game %s (%d)", game.id, gbStart);
+			System.out.println();
+		}
+		System.out.println();
+		writerGB.flush();
+		writerGB.close();
+		
+		
+		
+		BufferedWriter writerHonest = new BufferedWriter(
+				new FileWriter(rootDir + "games-honest.csv"));
+		writerHonest.write("gameId, hitId, actions, firstHonestRound\n");
+		System.out.println("honest games: ");
+		for (Game game : metaList.get(2)) {
+			int honestStart = 0;
+			for (int i = 0; i < game.playerHitIds.length; i++) {
+				String hitId = game.playerHitIds[i];
+				
+				int playerHonestStart = game.getHonestStart(hitId);
+				honestStart = Math.max(honestStart, playerHonestStart);
+
+				// signal report pairs
+				List<Pair<String, String>> signalReportPairs = 
+						game.getSignalReportPairsForPlayer(hitId);
+				
+				writerHonest.write(String.format("%s,%s,\"\"\"%s\"\"\",%d\n", 
+						game.id, hitId, signalReportPairs, playerHonestStart));
+				
+			}
+			System.out.printf("game %s (%d)", game.id, honestStart);
+			System.out.println();
+		}
+		System.out.println();
+		writerHonest.flush();
+		writerHonest.close();
+		
+
+		
+	}
+
+	private static void characterizePercentageConsistency(
+			List<List<Game>> metaList) {
+
+		List<Game> otherGamesToBeRemoved = new ArrayList<Game>(); 
+		
+		for (Game game : metaList.get(3)) {
+			int numMM = Integer.MAX_VALUE;
+			int numGB = Integer.MAX_VALUE;
+			int numHonest = Integer.MAX_VALUE;
+			
+			for (int i = 0; i < game.playerHitIds.length; i++) {
+				String hitId = game.playerHitIds[i];
+				
+				int playerNumMM = game.getNumMM(hitId); 
+				numMM = Math.min(numMM, playerNumMM);
+				
+				int playerNumGB = game.getNumGB(hitId);
+				numGB = Math.min(numGB, playerNumGB);
+				
+				int playerNumHonest = game.getNumHonest(hitId);
+				numHonest = Math.min(numHonest, playerNumHonest);
+			}
+		
+			int max1 = Math.max(numMM, numGB);
+			int max = Math.max(max1, numHonest);
+			
+			if (numMM == max) {
+				otherGamesToBeRemoved.add(game);
+				metaList.get(0).add(game);
+			} else if (numGB == max) {
+				otherGamesToBeRemoved.add(game);
+				metaList.get(1).add(game);
+			} else if (numHonest == max) {
+				otherGamesToBeRemoved.add(game);
+				metaList.get(2).add(game);
+			} else {
+				
+			}
+		}
+		metaList.get(3).removeAll(otherGamesToBeRemoved);
+		
+		System.out.printf("mm %d, gb %d, honest %d, other %d\n", 
+				metaList.get(0).size(), metaList.get(1).size(), metaList.get(2).size(), metaList.get(3).size());
+		System.out.println();
+		System.out.println();
+	}
+
+	private static List<List<Game>> characterizeConvergence() throws IOException {
+		System.out.println("Categorize equilibrium convergence per game");
+
 		int mmCount = 0;
 		int gbCount = 0;
 		int honestCount = 0;
 		int otherCount = 0;
 		
+		List<Game> mmGames = new ArrayList<Game>();
+		List<Game> honestGames = new ArrayList<Game>();
+		List<Game> gbGames = new ArrayList<Game>();
 		List<Game> otherGames = new ArrayList<Game>();
 		
 		for (Game game : expSet.games) {
@@ -141,9 +293,8 @@ public class LogReader {
 				gbStart = Math.max(gbStart, playerGBStart);
 			}
 			
-			System.out.printf("game %s, (%d, %d, %d) ", game.id, mmStart, honestStart, gbStart);
 			if (mmStart > 5 && honestStart > 5 && gbStart > 5) {
-				System.out.printf("other");
+//				System.out.printf("other");
 				otherGames.add(game);
 				otherCount++;
 			} else {
@@ -153,77 +304,33 @@ public class LogReader {
 				// if there are ties, both category will show
 
 				if (min == mmStart) {
-					System.out.printf("mm ");
+//					System.out.printf("mm ");
+					mmGames.add(game);
 					mmCount++;
 				}
 				if (honestStart == min) {
-					System.out.printf("honest ");
+//					System.out.printf("honest ");
+					honestGames.add(game);
 					honestCount++;
 				}
 				if (gbStart == min) {
-					System.out.printf("gb ");
+//					System.out.printf("gb ");
+					gbGames.add(game);
 					gbCount++;
 				}
+//				System.out.println();
 			}
-			System.out.println();
+
 		}
 		System.out.printf("mm %d, honest %d, gb %d, other %d\n\n", mmCount, honestCount, gbCount, otherCount);
 		
-		// categorize other games
-		int otherMMHonest = 0;
-		int otherMM = 0;
-		int otherHonest = 0;
-		int otherGB = 0;
-		int otherOther = 0;
-		for (Game game : otherGames) {
-			int numMM = Integer.MAX_VALUE;
-			int numGB = Integer.MAX_VALUE;
-			int numHonest = Integer.MAX_VALUE;
-			
-			for (int i = 0; i < game.playerHitIds.length; i++) {
-				String hitId = game.playerHitIds[i];
-				
-				int playerNumMM = game.getNumMM(hitId); 
-				numMM = Math.min(numMM, playerNumMM);
-				
-				int playerNumGB = game.getNumGB(hitId);
-				numGB = Math.min(numGB, playerNumGB);
-				
-				int playerNumHonest = game.getNumHonest(hitId);
-				numHonest = Math.min(numHonest, playerNumHonest);
-			}
-			
-			System.out.printf("game %s, (%d, %d, %d) ", game.id, numMM, numGB, numHonest);
-			
-			int max1 = Math.max(numMM, numGB);
-			int max = Math.max(max1, numHonest);
-			
-			if (max < 5) {
-				System.out.printf("other ");
-				otherOther++;
-			} else {
-				if (numMM == max && numHonest == max) {
-					System.out.printf("mm or honest ");
-					otherMMHonest++;
-				} else if (numMM == max) {
-					System.out.printf("mm ");
-					otherMM++;
-				} else if (numHonest == max) {
-					System.out.printf("honest ");
-					otherHonest++;
-				} else if (numGB == max) {
-					System.out.printf("gb ");
-					otherGB++;
-				}
-			}
-			System.out.println();
-		}
+		List<List<Game>> metaList = new ArrayList<List<Game>>();
+		metaList.add(mmGames);
+		metaList.add(gbGames);
+		metaList.add(honestGames);
+		metaList.add(otherGames);
 		
-		System.out.printf("mm or honest %d, mm %d, honest %d, gb, %d, other %d\n", 
-				otherMMHonest, otherMM, otherHonest, otherGB, otherOther);
-		System.out.println();
-		System.out.println();
-		
+		return metaList;
 	}
 	
 	private static void strategyPerWorker() throws IOException {

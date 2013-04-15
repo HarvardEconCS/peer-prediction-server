@@ -14,7 +14,7 @@ import edu.harvard.econcs.turkserver.server.FakeHITWorker;
 import edu.harvard.econcs.turkserver.server.FakeHITWorkerGroup;
 import edu.harvard.econcs.turkserver.server.TestUtils;
 
-public class PeerGameWithFakeTest {
+public class TestPeerGameWithFakePlayers {
 
 	@Before
 	public void setUp() throws Exception {

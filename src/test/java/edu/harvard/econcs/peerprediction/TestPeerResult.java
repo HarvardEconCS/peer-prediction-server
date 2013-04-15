@@ -22,7 +22,7 @@ import edu.harvard.econcs.turkserver.server.FakeExperimentController;
 import edu.harvard.econcs.turkserver.server.FakeHITWorkerGroup;
 import edu.harvard.econcs.turkserver.server.TestUtils;
 
-public class PeerResultTest {
+public class TestPeerResult {
 
 	double eps = 0.00000000000001;
 	
@@ -56,8 +56,6 @@ public class PeerResultTest {
 		Map<String, Double> chosenWorld = prior.chooseWorld();
 		result = new PeerResult(chosenWorld);
 
-//		fakeCont.setBean(game);
-//		fakeCont.startExperiment();
 	}
 
 	@After

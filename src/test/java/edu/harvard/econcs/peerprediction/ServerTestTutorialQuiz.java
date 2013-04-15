@@ -19,21 +19,20 @@ import edu.harvard.econcs.turkserver.server.ClientGenerator;
 import edu.harvard.econcs.turkserver.server.QuizFactory;
 import edu.harvard.econcs.turkserver.server.QuizPolicy;
 import edu.harvard.econcs.turkserver.server.TurkServer;
-import edu.harvard.econcs.turkserver.server.mysql.MySQLDataTracker;
 
-public class ServerWithTutorialQuizTest {
+public class ServerTestTutorialQuiz {
 
 	static final String configFile = "testing.properties";
 	
-	static final int groupSize = 2;
-	static final int nRounds   = 4;
+	static final int groupSize = 3;
+	static final int nRounds   = 20;
 	
 	static final int fakeWorkers = 0;
 	
 	static final double passRate = 0.8;
 	static final int maxTries 	 = 3;
 	
-	static final String setId = "mar-13-fixed";
+	static final String setId = "vary-payment";
 	
 	static class TestModule extends ServerModule {
 		
@@ -80,6 +79,7 @@ public class ServerWithTutorialQuizTest {
 			});
 		}		
 	}
+	
 	/**
 	 * @param args
 	 */
@@ -88,7 +88,7 @@ public class ServerWithTutorialQuizTest {
 		TurkServer ts = new TurkServer(dataModule);
 		
 		// REMOVE THIS FOR REAL EXPERIMENT
-		MySQLDataTracker.createSchema(dataModule.getConfiguration());
+//		MySQLDataTracker.createSchema(dataModule.getConfiguration());
 		
 		ts.runExperiment(
 				new TestModule(),

@@ -20,7 +20,7 @@ import edu.harvard.econcs.turkserver.server.QuizFactory;
 import edu.harvard.econcs.turkserver.server.QuizPolicy;
 import edu.harvard.econcs.turkserver.server.TurkServer;
 
-public class ServerWithRecapQuizTest {
+public class ServerTestRecap {
 
 	static final String configFile = "testing.properties";
 	

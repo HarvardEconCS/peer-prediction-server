@@ -22,7 +22,7 @@ import edu.harvard.econcs.turkserver.server.QuizFactory;
 import edu.harvard.econcs.turkserver.server.QuizPolicy;
 import edu.harvard.econcs.turkserver.server.TurkServer;
 
-public class ServerNoQuizTest {
+public class ServerTestNoQuiz {
 
 	static final int groupSize = 3;
 	static final int nRounds = 10;
