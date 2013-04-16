@@ -213,12 +213,14 @@ public class PeerGame {
 		// for each worker in disconnected hashmap, 
 		for (String hitId : disconnectedList.keySet()) {
 			HITWorker worker = disconnectedList.get(hitId);
-			
+
 			// if they have been disconnected more than threshold, put in killed hashmap
-			if (worker.getDisconnectedTime() > killThreshold) {
+			if (worker.getLastDisconnectedTime() > killThreshold) {
 				disconnectedList.remove(hitId);
 				killedList.put(hitId, worker);
-				expLog.printf("Worker %s killed, because disconnected for %d milliseconds", worker, worker.getDisconnectedTime());
+				expLog.printf("Worker %s killed, because disconnected " +
+						"for %d milliseconds", 
+						worker, worker.getLastDisconnectedTime());
 			}
 		}
 	}
