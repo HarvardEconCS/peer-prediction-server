@@ -29,13 +29,23 @@ public class Game {
 
 	Map<String, String> exitSurvey;
 
+	String convergenceType;
+
+	int roundConverged;
+
 	Gson gson;
+
+	String numberType;
+
+	int number;
 
 	public Game() {
 		worlds = new ArrayList<Map<String, Double>>();
 		rounds = new ArrayList<Round>();
 		exitSurvey = new HashMap<String, String>();
 		gson = new Gson();
+		convergenceType = "";
+		numberType = "";
 	}
 
 	public void addRoundInfo(Round roundInfo) {
@@ -234,6 +244,40 @@ public class Game {
 		}
 		return count;
 	}
+
+	public double getPercentReportGivenSignal(String hitId, String signalAndReport) {
+		int countSignal = 0;
+		int countReport = 0;
+		for (Round round : rounds) {
+			String signal = round.getSignal(hitId);
+			String report = round.getReport(hitId);
+			if (signal.equals(signalAndReport)) {
+				countSignal++;
+				if (report.equals(signalAndReport))
+					countReport++;
+			}
+
+		}
+		return 1.0 * countReport / countSignal;
+	}
+
+	public double getPercentReportGivenSignal(String hitId, String signalAndReport,
+			int i, int j) {
+		int countSignal = 0;
+		int countReport = 0;
+		for (int k = i; k <= j; k++) {
+			String signal = rounds.get(k).getSignal(hitId);
+			String report = rounds.get(k).getReport(hitId);
+			if (signal.equals(signalAndReport)) {
+				countSignal++;
+				if (report.equals(signalAndReport))
+					countReport++;
+			}
+
+		}
+		return 1.0 * countReport / countSignal;
+	}
+
 
 	// public List<String> getSignalsForPlayer(String hitId) {
 	// List<String> list = new ArrayList<String>();

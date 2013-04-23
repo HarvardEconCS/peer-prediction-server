@@ -18,7 +18,7 @@ class ConfiguratorNoFakePlayers implements Configurator {
 		
 		game.init(nrounds, PeerPrior.getTestPrior(), PaymentRule.getTestPaymentRule());
 		
-		return "prior2-basic";
+		return "prior2-outputagreement";
 	}
 
 	@Override

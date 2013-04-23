@@ -11,6 +11,8 @@ import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import com.amazonaws.mturk.addon.HITProperties;
@@ -18,15 +20,17 @@ import com.amazonaws.mturk.addon.HITQuestion;
 import com.amazonaws.mturk.dataschema.QuestionFormAnswers;
 import com.amazonaws.mturk.dataschema.QuestionFormAnswersType;
 import com.amazonaws.mturk.requester.Assignment;
-import com.amazonaws.mturk.requester.AssignmentStatus;
 import com.amazonaws.mturk.requester.HIT;
 import com.amazonaws.mturk.requester.HITStatus;
+import com.amazonaws.mturk.requester.Qualification;
 import com.amazonaws.mturk.service.axis.RequesterService;
+import com.amazonaws.mturk.service.exception.ServiceException;
 import com.amazonaws.mturk.util.PropertiesClientConfig;
 
 public class MTurk {
 
 	static final String rootDir = "src/test/resources/";
+	static final String qualificationTypeId = "2QYBMJTUHYW25N7F11YSAWM16CQNIL";
 	
 	/**
 	 * @param args
@@ -35,18 +39,254 @@ public class MTurk {
 	 */
 	public static void main(String[] args) throws ClassNotFoundException,
 			SQLException {
-
 		RequesterService service = new RequesterService(
 				new PropertiesClientConfig("src/test/resources/mturk.properties"));
-
 		System.out.println("url is " + service.getWebsiteURL());
 
-//		processResultsRecruitingHIT(service);
-//		deleteAllExpiredUnavailHITS(service);
+//		assignQualTo1ForRecruited(service);
+//		updateQualTo2ForPlayed(service);
+//		updateQualTo100ForFailed(service);
 
-		postAndDeleteUnavailHIT(service);
+//		updateTimes(service);
+		
+//		sendEmails(service);
+//		sendEmailReminders(service);
+
+//		payBonusManually(service);
+		
+//		sendSpecialEmails(service);
+		
+//		excludeLongWorkerIds(service);
+		
+//		deleteAllExpiredUnavailHITS(service);
+//		postAndDeleteUnavailHIT(service);
+
 	}
 
+	private static void sendSpecialEmails(RequesterService service) {
+		String subject = "submit button problem for Xi Gao behavior experiment HIT";
+		String messageText = "Dear worker,\n\n"
+				+ "You may have a problem submitting the behavior experiment HIT by Xi Gao because the server" +
+				"shut down unexpectedly.  Could you email me your answers to the exit survey, and I'll work" +
+				"on paying your base payment and bonus manually.  Sorry for the trouble!";
+		String[] workers = new String[]{"A2RFU4MXCSPLF8","ASXIEBMMWW1NE"};
+		service.notifyWorkers(subject, messageText, workers);
+	}
+	
+	private static void sendEmailReminders(RequesterService service) {
+		
+		String subjectReminder = "Reminder: behavior experiment HITs in 7 minutes (2PM EST today)";
+		String messageTextReminder = "Hi everyone,\n\n"
+				+ "Just a gentle reminder about our behavior experiment HITs posted in 7 minutes at 2PM EST (11AM PST)\n\n"
+				+ "There will be a total of about 40 HITs available.  You may complete only 1 HIT.  "
+				+ "The HITs will be available for 30 minutes only. (At 2:30PM EST, the server will switch to a mode such "
+				+ "that no player can join a new game but games in progress are allowed to finish.)\n\n"
+				+ "The HIT title is *play a game with other turkers in real time and earn $0.10 to $1.50 bonus*\n"
+				+ "Link to HIT: https://www.mturk.com/mturk/searchbar?requesterId=A15OV4L8HXBKSM\n\n"
+				+ "Thank you for your participation!";
+		
+		try {
+			int count = 0;
+			BufferedReader reader = new BufferedReader(new FileReader(rootDir + "emailsSent-4-20.txt"));
+			String workerId = "";
+			while ((workerId = reader.readLine()) != null) {
+				try {
+					int value = service.getQualificationScore(qualificationTypeId, workerId).getIntegerValue();
+					if (value == 1) {
+						service.notifyWorkers(subjectReminder, messageTextReminder, new String[]{workerId});
+						System.out.println("sent reminder email to " + workerId);
+						count++;
+					}
+	
+				} catch (Exception ex) {
+					ex.printStackTrace();
+				}
+			}
+			reader.close();
+			System.out.println("sent emails to " + count + " workers");
+		} catch (FileNotFoundException e) {
+			e.printStackTrace();
+		} catch (ServiceException e) {
+			e.printStackTrace();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		
+	}
+
+
+	private static void sendEmails(RequesterService service) {
+	
+		String subject = "Posting behavior experiment HITs tomorrow at NOON EST";
+		String messageText = "Hi everyone,\n\n "
+				+ "We are posting behavior experiment HITs tomorrow (Monday Apr 22) at *NOON EST* (9AM PST). "
+				+ "A total of 30 HITs will be available for at most 30 minutes.  "
+				+ "(When all HITs are completed or at 12:30PM, the server will switch to a mode "
+				+ "such that no player can join new games but games in progress are allowed to finish.)\n\n"
+				+ "You may complete only *1 HIT*. Each HIT pays a base payment of $1.00 and a bonus payment of up to $1.50.\n\n"
+				+ "The HIT title is *play a game with other turkers in real time and earn $0.10 to $1.50 bonus*\n"
+				+ "Link to HIT: https://www.mturk.com/mturk/searchbar?requesterId=A15OV4L8HXBKSM\n\n"
+				+ "We appreciate your participation! I will be posting HITs over the next few days, so look out for my email if you "
+				+ "can't participate this time.";
+	
+		String qualTypeId = "2QYBMJTUHYW25N7F11YSAWM16CQNIL";
+		List<String> allWorkers = new ArrayList<String>();
+	
+		try {
+			Qualification[] quals = service
+						.getAllQualificationsForQualificationType(qualTypeId);
+			for (Qualification qual : quals) {
+				if (qual.getIntegerValue() == 1) {
+					allWorkers.add(qual.getSubjectId());
+				}
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		System.out.println("num workers with qual = 1 " + allWorkers.size());
+		
+		// Randomize worker order
+		Collections.shuffle(allWorkers);
+		Collections.shuffle(allWorkers);
+	
+		try {
+			int requiredNum = 300;
+			int count = 0;
+			BufferedWriter writer = new BufferedWriter(new FileWriter(rootDir
+					+ "emailsSent-4-21.txt"));
+			for (String workerId : allWorkers) {
+				if (workerId.length() > 14)
+					continue;
+				try {
+					service.notifyWorkers(subject, messageText,	new String[] { workerId });
+					System.out.println(workerId);
+					writer.write(workerId);
+					writer.write("\n");
+				} catch (Exception ex) {
+					ex.printStackTrace();
+				}
+				count++;
+				if (count == requiredNum)
+					break;
+			}
+			writer.flush();
+			writer.close();
+	
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	
+		
+	}
+
+
+	private static void assignQualTo1ForRecruited(RequesterService service) {
+		String qualificationTypeId = "2QYBMJTUHYW25N7F11YSAWM16CQNIL";
+	
+		BufferedReader reader;
+		int count = 0;
+		
+		// Get list of qualified workers
+		System.out.println("qualified workers");
+		count = 0;
+		List<String> qualifiedWorkers = new ArrayList<String>();
+		Qualification[] quals;
+		try {
+			quals = service
+					.getAllQualificationsForQualificationType(qualificationTypeId);
+			for (Qualification qual : quals) {
+				String workerId = qual.getSubjectId();
+				qualifiedWorkers.add(workerId);
+				count++;
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		System.out.println(count + " qualified workers");
+		
+		// Grant more qualifications
+		count = 0;
+		try {
+			reader = new BufferedReader(new FileReader(rootDir + "recruit_hitid.txt"));
+			String hitId = reader.readLine();
+			Assignment[] assigns = service.getAllAssignmentsForHIT(hitId);
+			for (Assignment assign : assigns) {
+				String workerId = assign.getWorkerId();
+				if (qualifiedWorkers.contains(workerId))
+					continue;
+				service.assignQualification(qualificationTypeId, workerId, 1, false);
+				count++;
+			}
+		} catch (FileNotFoundException e) {
+			e.printStackTrace();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		System.out.println("granted " + count + " more qual = 1");
+	
+	}
+
+
+	private static void updateQualTo2ForPlayed(RequesterService service) {
+	
+		BufferedReader reader;
+		int count = 0;
+		
+		// Change the value of qual to 2 for workers who have participated.
+		System.out.println("Changing qual to 2 for workers who have participated");
+		try {
+			reader = new BufferedReader(new FileReader(rootDir + "par-4-21-2pm.txt"));
+			String workerId = "";
+			while ((workerId = reader.readLine()) != null) {
+				service.updateQualificationScore(qualificationTypeId, workerId, 2);
+				System.out.println("changed qual to 2 for worker " + workerId);
+				count++;
+			}
+			reader.close();
+		} catch (FileNotFoundException e1) {
+			e1.printStackTrace();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		System.out.println("Updated qual=2 for " + count + " workers");
+	}
+
+
+	private static void updateQualTo100ForFailed(RequesterService service) {
+		List<String> passed = new ArrayList<String>();
+
+		try {
+			BufferedReader reader = new BufferedReader(
+					new FileReader(rootDir + "passed-4-21-2pm.txt"));
+			String workerId = "";
+			while ((workerId = reader.readLine()) != null) {
+				passed.add(workerId);
+			}
+			reader.close();
+			
+			int count = 0;
+			reader = new BufferedReader(
+					new FileReader(rootDir + "threerecords-4-21-2pm.txt"));
+			while ((workerId = reader.readLine()) != null) {
+				if (!passed.contains(workerId)) {
+					service.updateQualificationScore(qualificationTypeId, workerId, 100);
+					System.out.println("worker " + workerId + " failed 3 times");
+					count++;
+				}
+			}
+			reader.close();
+			
+			System.out.println(count + " workers failed too many times");
+
+			
+		} catch (FileNotFoundException e) {
+			e.printStackTrace();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		
+	}
+	
 	private static void postAndDeleteUnavailHIT(RequesterService service) {
 		while (true) {
 
@@ -65,61 +305,81 @@ public class MTurk {
 		}
 	}
 
-	private static void processResultsRecruitingHIT(RequesterService service) {
+	private static void updateTimes(RequesterService service) {
+		int[] firstTime = new int[24];
+		int[] secondTime = new int[24];
+		int[] time = new int[24];
 		BufferedReader reader;
 		try {
 			reader = new BufferedReader(new FileReader(rootDir + "recruit_hitid.txt"));
 			String hitId = reader.readLine();
-			// HIT recruitHIT = service.getHIT(hitId);
-
-			int[] time = new int[24];
-
 			Assignment[] assigns = service.getAllAssignmentsForHIT(hitId);
 			System.out.println(assigns.length + " assignments");
 			for (Assignment assign : assigns) {
-				if (assign.getAssignmentStatus() == AssignmentStatus.Submitted) {
-					String message = "Thank you for completing our recruiting HIT! "
-							+ "Once we have enough participants, we will notify you " +
-							"by email 1 day before"
-							+ " we post the HITs for our experiment.";
-					service.approveAssignment(assign.getAssignmentId(), message);
+				String workerId = assign.getWorkerId();
 
-				}
-
+//				if (assign.getAssignmentStatus() == AssignmentStatus.Submitted) {
+//					String message = "Thank you for completing our recruiting HIT! "
+//							+ "Once we have enough participants, we will notify you " +
+//							"by email 1 day before"
+//							+ " we post the HITs for our experiment.";
+//					service.approveAssignment(assign.getAssignmentId(), message);
+//					service.assignQualification(qualificationTypeId, workerId, 1, false);
+//				}
+				
+				int qualScore = service.getQualificationScore(qualificationTypeId, workerId)
+						.getIntegerValue();
+				if (qualScore != 1)
+					continue;
+				
+				// Parse answer
 				String answerXML = assign.getAnswer();
-
-				QuestionFormAnswers qfa = RequesterService
-						.parseAnswers(answerXML);
+				QuestionFormAnswers qfa = RequesterService.parseAnswers(answerXML);
 				List<QuestionFormAnswersType.AnswerType> answers =
-						(List<QuestionFormAnswersType.AnswerType>) qfa
-						.getAnswer();
-
+						(List<QuestionFormAnswersType.AnswerType>) qfa.getAnswer();
 				for (QuestionFormAnswersType.AnswerType answer : answers) {
 					String assignmentId = assign.getAssignmentId();
 					String answerValue = RequesterService.getAnswerValue(
 							assignmentId, answer);
 
-					// if (answer.getQuestionIdentifier().equals("consent")) {
-					// if (!answerValue.equals("true"))
-					// System.out.println("no consent from worker " +
-					// assign.getWorkerId());
-					// }
-
-					if (answer.getQuestionIdentifier().equals("firstTime")
-							|| answer.getQuestionIdentifier().equals(
-									"secondTime")) {
+					if (answer.getQuestionIdentifier().equals("firstTime")) {
 						int chosenTime = Integer.parseInt(answerValue);
+						firstTime[chosenTime]++;
+						time[chosenTime]++;
+					} else if (answer.getQuestionIdentifier().equals("secondTime")) {
+						int chosenTime = Integer.parseInt(answerValue);
+						secondTime[chosenTime]++;
 						time[chosenTime]++;
 					}
-
 				}
 			}
 
 			BufferedWriter writer = new BufferedWriter(new FileWriter(
 					rootDir + "times.csv"));
+			writer.write(",");
+			for (int i = 0; i < time.length; i++) {
+				writer.write(i + ",");
+			}
+			writer.write("\n");
+			
+			writer.write("first,");
+			for (int i = 0; i < time.length; i++) {
+				writer.write(firstTime[i] + ",");
+			}
+			writer.write("\n");
+			
+			writer.write("second,");
+			for (int i = 0; i < time.length; i++) {
+				writer.write(secondTime[i] + ",");
+			}
+			writer.write("\n");
+			
+			writer.write("combined,");
 			for (int i = 0; i < time.length; i++) {
 				writer.write(time[i] + ",");
 			}
+			writer.write("\n");
+			
 			writer.flush();
 			writer.close();
 
@@ -131,6 +391,7 @@ public class MTurk {
 
 	}
 
+	
 	private static void postRecruitingHIT(RequesterService service) {
 
 		String propertiesFile = rootDir + "recruiting.properties";
@@ -153,7 +414,7 @@ public class MTurk {
 			System.out.println("Created recruiting HIT " + hit.getHITId());
 
 			BufferedWriter writer = new BufferedWriter(new FileWriter(
-					rootDir + "recruit_hitid.txt"));
+					rootDir + "recruit_private_hitid.txt"));
 			writer.write(hit.getHITId());
 			writer.flush();
 			writer.close();
@@ -246,6 +507,96 @@ public class MTurk {
 			e.printStackTrace();
 		}
 
+	}
+
+	private static void excludeLongWorkerIds(RequesterService service) {
+		Qualification[] quals;
+		try {
+			quals = service
+					.getAllQualificationsForQualificationType(qualificationTypeId);
+			for (Qualification qual : quals) {
+				String workerId = qual.getSubjectId(); 
+				if (workerId.length() > 14) {
+					service.updateQualificationScore(qualificationTypeId, workerId, 99);
+					System.out.println(workerId);
+				}
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	
+	}
+
+
+	private static void payBonusManually(RequesterService service) {
+		BufferedReader reader;
+
+//		List<String> workerIds = new ArrayList<String>();
+//		List<Double> bonuses = new ArrayList<Double>();
+//		try {
+//			reader = new BufferedReader(new FileReader(rootDir
+//					+ "manualbonus.txt"));
+//			String line = "";
+//
+//			while ((line = reader.readLine()) != null) {
+//				String[] strings = line.split(",");
+//				String workerId = strings[0];
+//				workerIds.add(workerId);
+//				bonuses.add(Double.parseDouble(strings[1]));
+//			}
+//			reader.close();
+//
+//			BufferedWriter writer = new BufferedWriter(new FileWriter(rootDir
+//					+ "manualbonuswithassign.txt"));
+//			reader = new BufferedReader(new FileReader(rootDir
+//					+ "recruit_hitid.txt"));
+//			String hitId = reader.readLine();
+//			Assignment[] assigns = service.getAllAssignmentsForHIT(hitId);
+//			System.out.println(assigns.length + " assignments");
+//			for (Assignment assign : assigns) {
+//				String workerId = assign.getWorkerId();
+//				if (workerIds.contains(workerId)) {
+//					int index = workerIds.indexOf(workerId);
+//					writer.write(String.format("%s,%s,%.2f\n", workerId,
+//							assign.getAssignmentId(), bonuses.get(index)));
+//				}
+//			}
+//			writer.flush();
+//			writer.close();
+//			reader.close();
+//		} catch (FileNotFoundException e1) {
+//			e1.printStackTrace();
+//		} catch (IOException e) {
+//			e.printStackTrace();
+//		}
+//		System.exit(0);
+
+		
+		String reason = "Thank you for completing our behavior experiment HITs!  "
+				+ "Sorry about the problem with the submit button!"
+				+ "We appreciate your participation and we hope you enjoyed the game!";
+		try {
+			reader = new BufferedReader(new FileReader(rootDir + "manualbonuswithassign.txt"));
+			String line = "";
+			while ((line = reader.readLine()) != null) {
+				String[] strings = line.split(",");
+				String workerId = strings[0];
+				String assignId = strings[1];
+				double bonus = Double.parseDouble(strings[2]);
+				double total = 1.0 + bonus;
+				total = 1.0 * Math.round(total * 100) / 100;
+
+				System.out.println("Paying worker " + workerId + " assignId "
+						+ assignId + " total: " + total);
+				service.grantBonus(workerId, total, assignId, reason);
+
+			}
+			reader.close();
+		} catch (FileNotFoundException e) {
+			e.printStackTrace();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
 	}
 
 	private static void bonusManually(RequesterService service)

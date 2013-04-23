@@ -409,4 +409,16 @@ public class AnalysisUtils {
 		return numMM / total;
 	}
 
+	public static boolean isMMStrategy(double mmGivenMM, double gbGivenGB) {
+		return Math.abs(mmGivenMM - 1) < eps && gbGivenGB < eps;
+	}
+
+	public static boolean isGBStrategy(double mmGivenMM, double gbGivenGB) {
+		return Math.abs(gbGivenGB - 1) < eps && mmGivenMM < eps;
+	}
+
+	public static boolean isHonestStrategy(double mmGivenMM, double gbGivenGB) {
+		return Math.abs(gbGivenGB - 1) < eps && Math.abs(mmGivenMM - 1) < eps;
+	}
+
 }

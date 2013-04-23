@@ -4,6 +4,7 @@ import java.util.List;
 
 import org.eclipse.jetty.util.resource.Resource;
 
+import com.amazonaws.mturk.requester.Comparator;
 import com.amazonaws.mturk.requester.QualificationRequirement;
 import com.google.inject.TypeLiteral;
 import com.google.inject.util.Providers;
@@ -74,8 +75,10 @@ public class ServerTestTutorialQuiz {
 			
 			// Qualification
 			bind(QualificationRequirement[].class).toInstance(new QualificationRequirement[] {
-					QualMaker.getLocaleQual("US"),
-					QualMaker.getMinApprovalRateQual(95)
+//					QualMaker.getLocaleQual("US"),
+//					QualMaker.getMinApprovalRateQual(95)
+					QualMaker.getCustomQual("2QYBMJTUHYW25N7F11YSAWM16CQNIL", Comparator.EqualTo, 1)
+//					QualMaker.getCustomQual("2MS9RNDWIOV1H1ATD4KGX13YD1QVG4", Comparator.EqualTo, 1)
 			});
 		}		
 	}

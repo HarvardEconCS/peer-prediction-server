@@ -66,8 +66,8 @@ public class LogReader {
 	static final Pattern timeStamp = Pattern
 			.compile("([0-9]{2}):([0-9]{2}).([0-9]{3})");
 
-	static String setId = "mar-13-fixed";
-	static String treatment = "ten-cent-base";
+	static String setId = "vary-payment";
+	static String treatment = "prior2-basic";
 	static final String rootDir = "/Users/alicexigao/Dropbox/peer_prediction/data/" + treatment + "/";
 
 	static Experiment expSet;
@@ -85,6 +85,10 @@ public class LogReader {
 		parseExitSurvey();
 		
 		System.out.printf("%d non-killed games\n\n", expSet.games.size());
+		
+		analysisPerGame();
+		
+		strategyPerPlayer();
 		
 		equilibriumPerGame();
 //		strategyPerWorker();
@@ -112,115 +116,314 @@ public class LogReader {
 		}
 	}
 	
+	private static void strategyPerPlayer() throws IOException {
+		
+		BufferedWriter writer = new BufferedWriter(new FileWriter(rootDir + "playerStrategies.csv"));
+		writer.write("gameId, hitId, actions, gameType, type, numMM, numGB, numHonest, MM | MM, GB | GB \n");
+		
+		int mmGames = 0;
+		int gbGames = 0;
+		int honestGames = 0;
+		
+		for (Game game : expSet.games) {
+			
+			List<String> types = new ArrayList<String>();
+			int mmCount = 0;
+			int gbCount = 0;
+			int honestCount = 0;
+			
+			int count = 0;
+			for (String hitId : game.playerHitIds) {
+			
+				List<Pair<String, String>> signalReportPairs = 
+						game.getSignalReportPairsForPlayer(hitId);
+
+				int numMM = game.getNumMM(hitId);
+				int numGB = game.getNumGB(hitId);
+				int numHonest = game.getNumHonest(hitId);
+
+				double percentMMGivenMM = game.getPercentReportGivenSignal(hitId, "MM");
+				double percentGBGivenGB = game.getPercentReportGivenSignal(hitId, "GB");
+				
+				String playerType = "";
+				if (numMM > 10) {
+					if (numMM < numHonest) {
+						playerType = "honest";
+						honestCount++;
+					} else if (numMM == numHonest){
+						playerType = "MM or honest";
+					} else {
+						playerType = "MM";
+						mmCount++;
+					}
+				} else if (numGB > 10) {
+					if (numGB < numHonest) {
+						playerType = "honest";
+						honestCount++;
+					} else if (numGB == numHonest) {
+						playerType = "GB or honest";						
+					} else {
+						playerType = "GB";
+						gbCount++;
+					}
+				} else if (numHonest > 10) {
+					playerType = "honest";
+					honestCount++;
+				} else {
+					playerType = "other";
+				}
+				
+				types.add(playerType);
+				count++;
+				
+				if (count == 3) {
+					if (types.get(0).equals("MM") 
+							&& types.get(1).equals("MM") 
+							&& types.get(2).equals("MM")) {
+						writer.write(String.format("%s,%s,\"\"\"%s\"\"\",MM,%s,%d,%d,%d,%.2f,%.2f\n", 
+								game.id, hitId, signalReportPairs, playerType, 
+								numMM, numGB, numHonest, 
+								percentMMGivenMM, percentGBGivenGB));		
+						mmGames++;
+					} else if (mmCount == 2) {
+						writer.write(String.format("%s,%s,\"\"\"%s\"\"\",MM,%s,%d,%d,%d,%.2f,%.2f\n", 
+								game.id, hitId, signalReportPairs, playerType, 
+								numMM, numGB, numHonest, 
+								percentMMGivenMM, percentGBGivenGB));		
+						mmGames++;
+					} else if (types.get(0).equals("GB") 
+							&& types.get(1).equals("GB") 
+							&& types.get(2).equals("GB")) {
+						writer.write(String.format("%s,%s,\"\"\"%s\"\"\",GB,%s,%d,%d,%d,%.2f,%.2f\n", 
+								game.id, hitId, signalReportPairs, playerType, 
+								numMM, numGB, numHonest, 
+								percentMMGivenMM, percentGBGivenGB));	
+						gbGames++;
+					} else if (gbCount ==2) {
+						writer.write(String.format("%s,%s,\"\"\"%s\"\"\",GB,%s,%d,%d,%d,%.2f,%.2f\n", 
+								game.id, hitId, signalReportPairs, playerType, 
+								numMM, numGB, numHonest, 
+								percentMMGivenMM, percentGBGivenGB));							
+						gbGames++;
+					} else if (types.get(0).equals("honest") 
+							&& types.get(1).equals("honest") 
+							&& types.get(2).equals("honest")) {
+						writer.write(String.format("%s,%s,\"\"\"%s\"\"\",honest,%s,%d,%d,%d,%.2f,%.2f\n", 
+								game.id, hitId, signalReportPairs, playerType, 
+								numMM, numGB, numHonest, 
+								percentMMGivenMM, percentGBGivenGB));
+						honestGames++;
+					} else if (honestCount == 2) {
+						writer.write(String.format("%s,%s,\"\"\"%s\"\"\",honest,%s,%d,%d,%d,%.2f,%.2f\n", 
+								game.id, hitId, signalReportPairs, playerType, 
+								numMM, numGB, numHonest, 
+								percentMMGivenMM, percentGBGivenGB));		
+						honestGames++;
+					} else {
+						writer.write(String.format("%s,%s,\"\"\"%s\"\"\",other,%s,%d,%d,%d,%.2f,%.2f\n", 
+								game.id, hitId, signalReportPairs, playerType, 
+								numMM, numGB, numHonest, 
+								percentMMGivenMM, percentGBGivenGB));
+
+					}
+						
+				} else {					
+					writer.write(String.format("%s,%s,\"\"\"%s\"\"\",---,%s,%d,%d,%d,%.2f,%.2f\n", 
+							game.id, hitId, signalReportPairs, 
+							playerType, 
+							numMM, numGB, numHonest, 
+							percentMMGivenMM, percentGBGivenGB));
+				}
+				
+			}
+			
+		}
+		
+		writer.flush();
+		writer.close();
+		System.out.println("mm: " + mmGames + " gb: " + gbGames + " honest: " + honestGames);
+		
+	}
+	
+	private static void analysisPerGame() throws IOException {
+		
+		BufferedWriter writer = new BufferedWriter(new FileWriter(rootDir + "convergence-decided.csv"));
+		writer.write("gameId,hitId,actions,MMStart,GBStart,HOStart\n");
+		
+		
+		
+		for (Game game : expSet.games) {
+			
+			int gameMMStart = 0;
+			int gameGBStart = 0;
+			int gameHOStart = 0; 
+			String gameType = "";
+			
+			int count = 0;
+			for (String hitId : game.playerHitIds) {
+				
+				List<Pair<String, String>> signalReportPairs = 
+						game.getSignalReportPairsForPlayer(hitId);
+				
+				int playerMMScore = game.getMMStart(hitId);
+				gameMMStart = Math.max(gameMMStart, playerMMScore);
+				
+				int playerGBScore = game.getGBStart(hitId);
+				gameGBStart = Math.max(gameGBStart, playerGBScore);
+				
+				int playerHOScore = game.getHonestStart(hitId);
+				gameHOStart = Math.max(gameHOStart, playerHOScore);
+				
+				count++;
+				if (count == 3) {
+					
+					int min1 = Math.min(gameMMStart, gameGBStart);
+					int min = Math.min(min1, gameHOStart);
+					
+					if (min > 15) 
+						gameType = "undecided";
+						
+					else {
+						if (gameMMStart == min) {
+							gameType = gameType + "MM ";
+						} 
+						if (gameGBStart == min) {
+							gameType = gameType + "GB ";
+						}
+						if (gameHOStart == min) {
+							gameType = gameType + "HO ";
+						}
+					}
+					
+					
+					
+					writer.write(String.format("%s,%s,\"\"\"%s\"\"\",%s,%s,%s,%s\n", 
+							game.id, hitId, signalReportPairs, gameMMStart, gameGBStart, gameHOStart, gameType));
+				} else {
+					writer.write(String.format("%s,%s,\"\"\"%s\"\"\",---,---,---,---\n", 
+							game.id, hitId, signalReportPairs));	
+				}
+			}
+			
+		}
+		writer.flush();
+		writer.close();
+	}
+	
 	private static void equilibriumPerGame() throws IOException {
 		
 		// categorize games according to convergence
-		List<List<Game>> metaList = characterizeConvergence();
+		characterizeConvergence();
 		
 		// categorize games according to percentage of claims consistent with a strategy
-		characterizePercentageConsistency(metaList);
+//		characterizeNumber();
 
+		BufferedWriter writerMM = new BufferedWriter(new FileWriter(rootDir
+				+ "categorize-games.csv"));
+		writerMM.write("gameId, type \n");
 		
-		
-		
-		BufferedWriter writerMM = new BufferedWriter(
-				new FileWriter(rootDir + "games-mm.csv"));
-		writerMM.write("gameId, hitId, actions, firstRound, numConsistent\n");
-		System.out.println("mm games: ");
-		for (Game game : metaList.get(0)) {
-
-			int mmStart = 0;
-			for (int i = 0; i < game.playerHitIds.length; i++) {
-				String hitId = game.playerHitIds[i];
-				
-				int playerMMStart = game.getMMStart(hitId);
-				mmStart = Math.max(mmStart, playerMMStart);
-				
-				int numConsistentMM = game.getNumMM(hitId);
-				
-				// signal report pairs
-				List<Pair<String, String>> signalReportPairs = 
-						game.getSignalReportPairsForPlayer(hitId);
-
-				writerMM.write(String.format("%s,%s,\"\"\"%s\"\"\",%d,%d\n", 
-						game.id, hitId, signalReportPairs, playerMMStart, numConsistentMM));
-				
-			}
-			System.out.printf("game %s (%d)", game.id, mmStart);
-			System.out.println();
+		for (Game game : expSet.games) {
+			if (game.convergenceType.equals("undecided"))
+				continue;
+			writerMM.write(String.format("%s,%s,%d\n", game.id,
+					game.convergenceType, game.roundConverged));
 		}
-		System.out.println();
+		writerMM.write(",\n");
+		
+		writerMM.write("gameId,hitId,actions,strategy\n");
+		for (Game game : expSet.games) {
+			if (!game.convergenceType.equals("undecided"))
+				continue;
+			
+			for (String hitId : game.playerHitIds) {
+				
+				List<Pair<String, String>> signalReportPairs = game.getSignalReportPairsForPlayer(hitId);
+				
+				String strategy = "";
+				
+				double mmGivenMM = game.getPercentReportGivenSignal(hitId, "MM");
+				double gbGivenGB = game.getPercentReportGivenSignal(hitId, "GB");
+				if (AnalysisUtils.isMMStrategy(mmGivenMM, gbGivenGB))
+					strategy = "MM";
+				else if (AnalysisUtils.isGBStrategy(mmGivenMM, gbGivenGB))
+					strategy = "GB";
+				else if (AnalysisUtils.isHonestStrategy(mmGivenMM, gbGivenGB))
+					strategy = "Honest";
+				else {		
+					if (mmGivenMM > 0.5 && gbGivenGB < 0.5) {
+						strategy = "closer to MM";
+					} else if (mmGivenMM > 0.5 && gbGivenGB > 0.5) {
+						strategy = "closer to Honest";
+					} else if (mmGivenMM < 0.5 && gbGivenGB < 0.5) {
+						strategy = "closer to opposite";
+					} else if (mmGivenMM < 0.5 && gbGivenGB > 0.5) {
+						strategy = "closer to GB";
+					} else {
+						strategy = "other";
+					}
+					
+				}
+				
+				
+				// first 10 rounds
+				double firstMMGivenMM = game.getPercentReportGivenSignal(hitId, "MM", 0, 9);
+				double firstGBGivenGB = game.getPercentReportGivenSignal(hitId, "GB", 0, 9);
+				
+				// first 10 rounds
+				double secondMMGivenMM = game.getPercentReportGivenSignal(hitId, "MM", 10, 19);
+				double secondGBGivenGB = game.getPercentReportGivenSignal(hitId, "GB", 10, 19);
+				
+//				if (strategy.equals("not pure")) {
+//					writerMM.write(String.format("%s,%s,\"\"\"%s\"\"\",\"\"\"(%.2f,%.2f)\"\"\",\"\"\"(%.2f,%.2f)\"\"\"\n", 
+//						game.id, hitId, signalReportPairs, firstMMGivenMM, firstGBGivenGB, secondMMGivenMM, secondGBGivenGB));
+//				} else {
+					writerMM.write(String.format("%s,%s,\"\"\"%s\"\"\",%s\n", 
+							game.id, hitId, signalReportPairs, strategy));
+//				}
+			}
+
+		}
+		
 		writerMM.flush();
 		writerMM.close();
 
-		
-		
-		BufferedWriter writerGB = new BufferedWriter(
-				new FileWriter(rootDir + "games-gb.csv"));
-		writerGB.write("gameId, hitId, actions, firstGBRound\n");
-		System.out.println("gb games: ");
-		for (Game game : metaList.get(1)) {
-			int gbStart = 0;
-			for (int i = 0; i < game.playerHitIds.length; i++) {
-				String hitId = game.playerHitIds[i];
-				
-				int playerGBStart = game.getGBStart(hitId);
-				gbStart = Math.max(gbStart, playerGBStart);
-			
-				// signal report pairs
-				List<Pair<String, String>> signalReportPairs = 
-						game.getSignalReportPairsForPlayer(hitId);
-				
-				writerGB.write(String.format("%s,%s,\"\"\"%s\"\"\",%d\n", 
-						game.id, hitId, signalReportPairs, playerGBStart));
-
-			}
-			System.out.printf("game %s (%d)", game.id, gbStart);
-			System.out.println();
-		}
-		System.out.println();
-		writerGB.flush();
-		writerGB.close();
-		
-		
-		
-		BufferedWriter writerHonest = new BufferedWriter(
-				new FileWriter(rootDir + "games-honest.csv"));
-		writerHonest.write("gameId, hitId, actions, firstHonestRound\n");
-		System.out.println("honest games: ");
-		for (Game game : metaList.get(2)) {
-			int honestStart = 0;
-			for (int i = 0; i < game.playerHitIds.length; i++) {
-				String hitId = game.playerHitIds[i];
-				
-				int playerHonestStart = game.getHonestStart(hitId);
-				honestStart = Math.max(honestStart, playerHonestStart);
-
-				// signal report pairs
-				List<Pair<String, String>> signalReportPairs = 
-						game.getSignalReportPairsForPlayer(hitId);
-				
-				writerHonest.write(String.format("%s,%s,\"\"\"%s\"\"\",%d\n", 
-						game.id, hitId, signalReportPairs, playerHonestStart));
-				
-			}
-			System.out.printf("game %s (%d)", game.id, honestStart);
-			System.out.println();
-		}
-		System.out.println();
-		writerHonest.flush();
-		writerHonest.close();
-		
-
-		
 	}
 
-	private static void characterizePercentageConsistency(
-			List<List<Game>> metaList) {
-
-		List<Game> otherGamesToBeRemoved = new ArrayList<Game>(); 
+	private static void characterizeStrategyChange() {
 		
-		for (Game game : metaList.get(3)) {
+		for (Game game : expSet.games) {
+			
+			if (!game.convergenceType.equals("undecided"))
+				continue;
+
+			for (int i = 0; i < game.playerHitIds.length; i++) {
+				String hitId = game.playerHitIds[i];
+				
+				List<Pair<String, String>> signalReportPairs = game.getSignalReportPairsForPlayer(hitId);
+				
+				// first 10 rounds
+				double firstMMGivenMM = game.getPercentReportGivenSignal(hitId, "MM", 0, 9);
+				double firstGBGivenGB = game.getPercentReportGivenSignal(hitId, "GB", 0, 9);
+				
+				// first 10 rounds
+				double secondMMGivenMM = game.getPercentReportGivenSignal(hitId, "MM", 10, 19);
+				double secondGBGivenGB = game.getPercentReportGivenSignal(hitId, "GB", 10, 19);
+				
+				
+			}
+
+	
+		}
+	}
+	
+	
+	private static void characterizeNumber() {
+		
+		for (Game game : expSet.games) {
+			
+			if (!game.convergenceType.equals("undecided"))
+				continue;
+			
 			int numMM = Integer.MAX_VALUE;
 			int numGB = Integer.MAX_VALUE;
 			int numHonest = Integer.MAX_VALUE;
@@ -241,98 +444,82 @@ public class LogReader {
 			int max1 = Math.max(numMM, numGB);
 			int max = Math.max(max1, numHonest);
 			
-			if (numMM == max) {
-				otherGamesToBeRemoved.add(game);
-				metaList.get(0).add(game);
-			} else if (numGB == max) {
-				otherGamesToBeRemoved.add(game);
-				metaList.get(1).add(game);
-			} else if (numHonest == max) {
-				otherGamesToBeRemoved.add(game);
-				metaList.get(2).add(game);
+			if (max <= 5) {
+				game.numberType = "undecided";
+				game.number = -1;
 			} else {
+				game.number = max;
 				
+				if (numMM == max) {
+					game.numberType += "MM ";
+				} 
+				if (numGB == max) {
+					game.numberType += "GB ";
+				} 
+				if (numHonest == max) {
+					game.numberType += "HO ";
+				}
 			}
 		}
-		metaList.get(3).removeAll(otherGamesToBeRemoved);
-		
-		System.out.printf("mm %d, gb %d, honest %d, other %d\n", 
-				metaList.get(0).size(), metaList.get(1).size(), metaList.get(2).size(), metaList.get(3).size());
-		System.out.println();
-		System.out.println();
+	
 	}
 
-	private static List<List<Game>> characterizeConvergence() throws IOException {
-		System.out.println("Categorize equilibrium convergence per game");
+	private static void characterizeConvergence() throws IOException {
+			System.out.println("Categorize equilibrium convergence per game");
+	
+			int mmCount = 0;
+			int gbCount = 0;
+			int honestCount = 0;
+			int otherCount = 0;
 
-		int mmCount = 0;
-		int gbCount = 0;
-		int honestCount = 0;
-		int otherCount = 0;
-		
-		List<Game> mmGames = new ArrayList<Game>();
-		List<Game> honestGames = new ArrayList<Game>();
-		List<Game> gbGames = new ArrayList<Game>();
-		List<Game> otherGames = new ArrayList<Game>();
-		
-		for (Game game : expSet.games) {
-			
-			int mmStart = 0;
-			int gbStart = 0;
-			int honestStart = 0;
-			for (int i = 0; i < game.playerHitIds.length; i++) {
-				String hitId = game.playerHitIds[i];
+			for (Game game : expSet.games) {
 				
-				int playerMMStart = game.getMMStart(hitId);
-				mmStart = Math.max(mmStart, playerMMStart);
+				int mmStart = 0;
+				int gbStart = 0;
+				int honestStart = 0;
 				
-				int playerHonestStart = game.getHonestStart(hitId);
-				honestStart = Math.max(honestStart, playerHonestStart);
+				for (int i = 0; i < game.playerHitIds.length; i++) {
+					String hitId = game.playerHitIds[i];
+					
+					int playerMMStart = game.getMMStart(hitId);
+					mmStart = Math.max(mmStart, playerMMStart);
+					
+					int playerHonestStart = game.getHonestStart(hitId);
+					honestStart = Math.max(honestStart, playerHonestStart);
+					
+					int playerGBStart = game.getGBStart(hitId);
+					gbStart = Math.max(gbStart, playerGBStart);
+				}
 				
-				int playerGBStart = game.getGBStart(hitId);
-				gbStart = Math.max(gbStart, playerGBStart);
-			}
-			
-			if (mmStart > 5 && honestStart > 5 && gbStart > 5) {
-//				System.out.printf("other");
-				otherGames.add(game);
-				otherCount++;
-			} else {
-
 				int min1 = Math.min(mmStart, honestStart);
 				int min = Math.min(min1, gbStart);
-				// if there are ties, both category will show
-
-				if (min == mmStart) {
-//					System.out.printf("mm ");
-					mmGames.add(game);
-					mmCount++;
+				
+				if (min > 15) {
+					game.convergenceType = "undecided";
+					game.roundConverged = -1;
+					otherCount++;
+				} else {
+	
+					game.roundConverged = min;
+					if (min == mmStart) {
+						game.convergenceType += "MM ";
+						mmCount++;
+					}
+					if (honestStart == min) {
+						game.convergenceType += "HO ";
+						honestCount++;
+					}
+					if (gbStart == min) {
+						game.convergenceType += "GB ";
+						gbCount++;
+					}
 				}
-				if (honestStart == min) {
-//					System.out.printf("honest ");
-					honestGames.add(game);
-					honestCount++;
-				}
-				if (gbStart == min) {
-//					System.out.printf("gb ");
-					gbGames.add(game);
-					gbCount++;
-				}
-//				System.out.println();
+	
 			}
+			System.out.printf("mm %d, honest %d, gb %d, other %d\n\n", mmCount, honestCount, gbCount, otherCount);
 
 		}
-		System.out.printf("mm %d, honest %d, gb %d, other %d\n\n", mmCount, honestCount, gbCount, otherCount);
-		
-		List<List<Game>> metaList = new ArrayList<List<Game>>();
-		metaList.add(mmGames);
-		metaList.add(gbGames);
-		metaList.add(honestGames);
-		metaList.add(otherGames);
-		
-		return metaList;
-	}
-	
+
 	private static void strategyPerWorker() throws IOException {
 		System.out.println("Categorize worker strategies");
 		
@@ -434,16 +621,16 @@ public class LogReader {
 					writer.write("\"null\",");
 				}
 	
-				if (comments != null && comments.strategyComment != null) {
+				if (comments != null && comments.strategyReason != null) {
 					writer.write(String.format("\"\"\"%s\"\"\",",
-							comments.strategyComment));
+							comments.strategyReason));
 				} else {
 					writer.write("\"null\",");
 				}
 				
-				if (comments != null && comments.learnComment != null) {
+				if (comments != null && comments.strategyChange != null) {
 					writer.write(String.format("\"\"\"%s\"\"\",",
-							comments.learnComment));
+							comments.strategyChange));
 				} else {
 					writer.write("\"null\",");
 				}

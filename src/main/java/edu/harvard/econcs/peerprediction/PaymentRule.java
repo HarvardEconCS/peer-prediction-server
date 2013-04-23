@@ -20,8 +20,8 @@ public class PaymentRule {
 		
 		rule.addRule("MM", "MM", 1.50);
 		rule.addRule("MM", "GB", 0.10);
-		rule.addRule("GB", "MM", 0.30);
-		rule.addRule("GB", "GB", 1.20);
+		rule.addRule("GB", "MM", 0.10);
+		rule.addRule("GB", "GB", 1.50);
 		
 		return rule;
 	}

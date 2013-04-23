@@ -14,8 +14,9 @@ public class ExitSurvey {
 	
 	List<String> checkedStrategies;
 	
-	String strategyComment;
-	String learnComment;
+	String comments;
+	String strategyReason;
+	String strategyChange;
 	
 	public ExitSurvey(String comment) {
 		Map<String, Map<String, String>> simpleQuestions = new HashMap<String, Map<String, String>>();
@@ -25,23 +26,11 @@ public class ExitSurvey {
 				new TypeToken<Map<String, Object>>() {
 				}.getType());
 
-		Object bugString = exitSurveyMap.get("bug");
-		Map<String, String> bugMap = (Map<String, String>) bugString;
-		simpleQuestions.put("bug", bugMap);
-
-		Object interfaceString = exitSurveyMap.get("interface");
-		Map<String, String> interfaceMap = (Map<String, String>) interfaceString;
-		simpleQuestions.put("interface", interfaceMap);
-
-		Object learnString = exitSurveyMap.get("learn");
-		Map<String, String> learnMap = (Map<String, String>) learnString;
-		simpleQuestions.put("learn", learnMap);
-		learnComment = learnMap.get("comments");
+		comments = exitSurveyMap.get("comments").toString();
+		strategyChange = exitSurveyMap.get("strategyChange").toString();
+		strategyReason = exitSurveyMap.get("strategyReason").toString();
 		
-		Object strategyString = exitSurveyMap.get("strategy");
-		Map<String, Object> strategyMap = (Map<String, Object>) strategyString;
-		strategyComment = strategyMap.get("comments").toString();
-		
+		Map<String, Object> strategyMap = (Map<String, Object>) exitSurveyMap.get("strategy");
 		checkedStrategies = new ArrayList<String>();
 		for (int i = 1; i <= 5; i++) {
 			Map<String, Object> strategyMapChild = (Map<String, Object>) strategyMap
@@ -51,7 +40,7 @@ public class ExitSurvey {
 			}
 		}
 		
-		// 		"strategy":{"strategy1":{"value":"honest","checked":true},"strategy2":{"value":"opposite","checked":false},"strategy3":{"value":"alwaysmm","checked":false},"strategy4":{"value":"alwaysgb","checked":false},"strategy5":{"value":"other","checked":false},"comments":"I was just honest and reported the type of candy I got."}}
+//		{"strategy":{"strategy1":{"value":"honest","checked":false},"strategy2":{"value":"opposite","checked":false},"strategy3":{"value":"alwaysmm","checked":true},"strategy4":{"value":"alwaysgb","checked":false},"strategy5":{"value":"other","checked":false}},"otherStrategy":"","strategyReason":"I felt it the best way to maximize my bonus.","strategyChange":"Early on I didn't do this but quickly realized it was the best way to go as long as the other 2 people caught on as well.","comments":"A little buggy at first it wouldn't advance off the 1st screen and am not sure if I was waiting on someone to choose a candy or if the game was froze but it finally started to go again."}
 	}
 
 	/**

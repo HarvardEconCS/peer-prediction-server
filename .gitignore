@@ -3,3 +3,5 @@
 .settings/
 target/
 velocity.log
+src/test/resources/*.txt
+src/test/resources/*.csv
