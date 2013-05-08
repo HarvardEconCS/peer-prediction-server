@@ -20,12 +20,13 @@ import edu.harvard.econcs.turkserver.server.ClientGenerator;
 import edu.harvard.econcs.turkserver.server.QuizFactory;
 import edu.harvard.econcs.turkserver.server.QuizPolicy;
 import edu.harvard.econcs.turkserver.server.TurkServer;
+import edu.harvard.econcs.turkserver.server.mysql.MySQLDataTracker;
 
 public class ServerTestTutorialQuiz {
 
 	static final String configFile = "testing.properties";
 	
-	static final int groupSize = 3;
+	static final int groupSize = 4;
 	static final int nRounds   = 20;
 	
 	static final int fakeWorkers = 0;

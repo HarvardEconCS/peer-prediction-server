@@ -14,9 +14,10 @@ public class ExitSurvey {
 	
 	List<String> checkedStrategies;
 	
-	String comments;
+	String otherStrategy;
 	String strategyReason;
 	String strategyChange;
+	String comments;
 	
 	public ExitSurvey(String comment) {
 		Map<String, Map<String, String>> simpleQuestions = new HashMap<String, Map<String, String>>();
@@ -29,6 +30,7 @@ public class ExitSurvey {
 		comments = exitSurveyMap.get("comments").toString();
 		strategyChange = exitSurveyMap.get("strategyChange").toString();
 		strategyReason = exitSurveyMap.get("strategyReason").toString();
+		otherStrategy = exitSurveyMap.get("otherStrategy").toString();
 		
 		Map<String, Object> strategyMap = (Map<String, Object>) exitSurveyMap.get("strategy");
 		checkedStrategies = new ArrayList<String>();

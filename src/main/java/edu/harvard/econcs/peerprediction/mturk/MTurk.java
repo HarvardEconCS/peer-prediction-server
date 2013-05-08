@@ -19,6 +19,7 @@ import com.amazonaws.mturk.addon.HITProperties;
 import com.amazonaws.mturk.addon.HITQuestion;
 import com.amazonaws.mturk.dataschema.QuestionFormAnswers;
 import com.amazonaws.mturk.dataschema.QuestionFormAnswersType;
+import com.amazonaws.mturk.dataschema.QuestionFormAnswersType.AnswerType;
 import com.amazonaws.mturk.requester.Assignment;
 import com.amazonaws.mturk.requester.HIT;
 import com.amazonaws.mturk.requester.HITStatus;
@@ -32,68 +33,84 @@ public class MTurk {
 	static final String rootDir = "src/test/resources/";
 	static final String qualificationTypeId = "2QYBMJTUHYW25N7F11YSAWM16CQNIL";
 	
+	// Qual values
+	// 1, hasn't participated
+	// 2, participated once
+	// 100, failed quiz 3 times
+	// 99, worker ID longer than 14 characters
+	// 98, couldn't resolve connection issue
+	// 97, does not want to participate
+
 	/**
 	 * @param args
 	 * @throws ClassNotFoundException
 	 * @throws SQLException
+	 * @throws IOException
 	 */
 	public static void main(String[] args) throws ClassNotFoundException,
-			SQLException {
+			SQLException, IOException {
 		RequesterService service = new RequesterService(
-				new PropertiesClientConfig("src/test/resources/mturk.properties"));
+				new PropertiesClientConfig(
+						"src/test/resources/mturk.properties"));
 		System.out.println("url is " + service.getWebsiteURL());
 
 //		assignQualTo1ForRecruited(service);
-//		updateQualTo2ForPlayed(service);
-//		updateQualTo100ForFailed(service);
+		updateTimes(service);
 
-//		updateTimes(service);
-		
-//		sendEmails(service);
-//		sendEmailReminders(service);
+//		 updateQualTo2ForPlayed(service);
+//		 updateQualTo100ForFailed(service);
 
-//		payBonusManually(service);
-		
-//		sendSpecialEmails(service);
-		
-//		excludeLongWorkerIds(service);
-		
-//		deleteAllExpiredUnavailHITS(service);
-//		postAndDeleteUnavailHIT(service);
+//		 sendEmails(service);
+//		 sendEmailReminders(service);
+
+		// sendSpecialEmails(service);
+		// payBonusManually(service);
+
+		// excludeLongWorkerIds(service);
+		// deleteAllExpiredUnavailHITS(service);
+		// postAndDeleteUnavailHIT(service);
 
 	}
 
 	private static void sendSpecialEmails(RequesterService service) {
-		String subject = "submit button problem for Xi Gao behavior experiment HIT";
-		String messageText = "Dear worker,\n\n"
-				+ "You may have a problem submitting the behavior experiment HIT by Xi Gao because the server" +
-				"shut down unexpectedly.  Could you email me your answers to the exit survey, and I'll work" +
-				"on paying your base payment and bonus manually.  Sorry for the trouble!";
-		String[] workers = new String[]{"A2RFU4MXCSPLF8","ASXIEBMMWW1NE"};
+		String subject = "Behavior experiment HITs posted today at 1PM, 3PM and 8PM EST";
+		String messageText = "Hi everyone,\n\n "
+				+ "We are posting behavior experiment HITs today (Thursday Apr 25) at *1PM, 3PM and 8PM EST* (10AM, 12PM and 5PM PST). "
+				+ "The HITs will be available for 20 minutes only.  "
+				+ "(At 20 minutes past each specified time, the server will switch to a mode "
+				+ "such that no player can join new games but games in progress are allowed to finish.)\n\n"
+				+ "You may complete only *1 HIT*. Each HIT pays a base payment of $1.00 and a bonus payment of up to $1.50.\n\n"
+				+ "The HIT title is *play a game with other turkers in real time and earn $0.10 to $1.50 bonus*\n"
+				+ "Link to HIT: https://www.mturk.com/mturk/searchbar?requesterId=A15OV4L8HXBKSM\n\n"
+				+ "We appreciate your participation! I will be posting HITs over the next few days, so look out for my email if you "
+				+ "can't participate this time.";
+		String[] workers = new String[]{"A1YJ6UZRX1LW5R"};
 		service.notifyWorkers(subject, messageText, workers);
 	}
 	
 	private static void sendEmailReminders(RequesterService service) {
 		
-		String subjectReminder = "Reminder: behavior experiment HITs in 7 minutes (2PM EST today)";
+		String subjectReminder = "Reminder: behavior experiment HITs in 5 minutes (4PM EST)";
 		String messageTextReminder = "Hi everyone,\n\n"
-				+ "Just a gentle reminder about our behavior experiment HITs posted in 7 minutes at 2PM EST (11AM PST)\n\n"
-				+ "There will be a total of about 40 HITs available.  You may complete only 1 HIT.  "
-				+ "The HITs will be available for 30 minutes only. (At 2:30PM EST, the server will switch to a mode such "
-				+ "that no player can join a new game but games in progress are allowed to finish.)\n\n"
-				+ "The HIT title is *play a game with other turkers in real time and earn $0.10 to $1.50 bonus*\n"
+				+ "Just a gentle reminder about our behavior experiment HITs posted in 5 minutes from 4PM EST to 4:20PM EST (1PM PST to 1:20PM EST).\n\n"
+				+ "There are only 30 HITs available, and you may complete only 1 HIT. "
+				+ "(At 4:20PM EST, the server will switch to a mode such that no player can join a "
+				+ "new game but games in progress are allowed to finish.)\n\n"
+				+ "The HIT title is *play a game with other turkers in real time and "
+				+ "earn $0.10 to $1.50 bonus*\n"
 				+ "Link to HIT: https://www.mturk.com/mturk/searchbar?requesterId=A15OV4L8HXBKSM\n\n"
 				+ "Thank you for your participation!";
 		
 		try {
 			int count = 0;
-			BufferedReader reader = new BufferedReader(new FileReader(rootDir + "emailsSent-4-20.txt"));
+			BufferedReader reader = new BufferedReader(new FileReader(rootDir + "emailsSent-4-27.txt"));
 			String workerId = "";
 			while ((workerId = reader.readLine()) != null) {
 				try {
 					int value = service.getQualificationScore(qualificationTypeId, workerId).getIntegerValue();
-					if (value == 1) {
+					if (value == 1) {						
 						service.notifyWorkers(subjectReminder, messageTextReminder, new String[]{workerId});
+						
 						System.out.println("sent reminder email to " + workerId);
 						count++;
 					}
@@ -117,17 +134,15 @@ public class MTurk {
 
 	private static void sendEmails(RequesterService service) {
 	
-		String subject = "Posting behavior experiment HITs tomorrow at NOON EST";
+		String subject = "Behavior experiment HITs posted tomorrow at 4PM EST";
 		String messageText = "Hi everyone,\n\n "
-				+ "We are posting behavior experiment HITs tomorrow (Monday Apr 22) at *NOON EST* (9AM PST). "
-				+ "A total of 30 HITs will be available for at most 30 minutes.  "
-				+ "(When all HITs are completed or at 12:30PM, the server will switch to a mode "
-				+ "such that no player can join new games but games in progress are allowed to finish.)\n\n"
+				+ "We are posting behavior experiment HITs tomorrow (Sunday Apr 28) at *4PM EST* (1PM PST). "
+				+ "A total of 30 HITs will be available for 20 minutes.  (At 20 minutes past each specified time, the server will switch "
+				+ "to a mode such that no player can join new games but games in progress are allowed to finish.)\n\n"
 				+ "You may complete only *1 HIT*. Each HIT pays a base payment of $1.00 and a bonus payment of up to $1.50.\n\n"
 				+ "The HIT title is *play a game with other turkers in real time and earn $0.10 to $1.50 bonus*\n"
 				+ "Link to HIT: https://www.mturk.com/mturk/searchbar?requesterId=A15OV4L8HXBKSM\n\n"
-				+ "We appreciate your participation! I will be posting HITs over the next few days, so look out for my email if you "
-				+ "can't participate this time.";
+				+ "We appreciate your participation!";
 	
 		String qualTypeId = "2QYBMJTUHYW25N7F11YSAWM16CQNIL";
 		List<String> allWorkers = new ArrayList<String>();
@@ -150,13 +165,11 @@ public class MTurk {
 		Collections.shuffle(allWorkers);
 	
 		try {
-			int requiredNum = 300;
+			int requiredNum = 400;
 			int count = 0;
 			BufferedWriter writer = new BufferedWriter(new FileWriter(rootDir
-					+ "emailsSent-4-21.txt"));
+					+ "emailsSent-4-27.txt"));
 			for (String workerId : allWorkers) {
-				if (workerId.length() > 14)
-					continue;
 				try {
 					service.notifyWorkers(subject, messageText,	new String[] { workerId });
 					System.out.println(workerId);
@@ -235,7 +248,7 @@ public class MTurk {
 		// Change the value of qual to 2 for workers who have participated.
 		System.out.println("Changing qual to 2 for workers who have participated");
 		try {
-			reader = new BufferedReader(new FileReader(rootDir + "par-4-21-2pm.txt"));
+			reader = new BufferedReader(new FileReader(rootDir + "par-4-27-16pm.txt"));
 			String workerId = "";
 			while ((workerId = reader.readLine()) != null) {
 				service.updateQualificationScore(qualificationTypeId, workerId, 2);
@@ -257,7 +270,7 @@ public class MTurk {
 
 		try {
 			BufferedReader reader = new BufferedReader(
-					new FileReader(rootDir + "passed-4-21-2pm.txt"));
+					new FileReader(rootDir + "passed-4-27-16pm.txt"));
 			String workerId = "";
 			while ((workerId = reader.readLine()) != null) {
 				passed.add(workerId);
@@ -266,7 +279,7 @@ public class MTurk {
 			
 			int count = 0;
 			reader = new BufferedReader(
-					new FileReader(rootDir + "threerecords-4-21-2pm.txt"));
+					new FileReader(rootDir + "threerecords-4-27-16pm.txt"));
 			while ((workerId = reader.readLine()) != null) {
 				if (!passed.contains(workerId)) {
 					service.updateQualificationScore(qualificationTypeId, workerId, 100);
@@ -287,25 +300,10 @@ public class MTurk {
 		
 	}
 	
-	private static void postAndDeleteUnavailHIT(RequesterService service) {
-		while (true) {
-
-			postUnavailHIT(service);
-
-			try {
-				System.out.println("Sleeping for 1 minute");
-				Thread.sleep(60000);
-				System.out.println("Finished sleeping for 1 minutes");
-			} catch (InterruptedException e) {
-				e.printStackTrace();
-			}
-
-			deleteUnavailHIT(service);
-
-		}
-	}
-
-	private static void updateTimes(RequesterService service) {
+	private static void updateTimes(RequesterService service) throws IOException {
+		
+		BufferedWriter writer1 = new BufferedWriter(new FileWriter(rootDir + "workers.txt"));
+		
 		int[] firstTime = new int[24];
 		int[] secondTime = new int[24];
 		int[] time = new int[24];
@@ -317,16 +315,7 @@ public class MTurk {
 			System.out.println(assigns.length + " assignments");
 			for (Assignment assign : assigns) {
 				String workerId = assign.getWorkerId();
-
-//				if (assign.getAssignmentStatus() == AssignmentStatus.Submitted) {
-//					String message = "Thank you for completing our recruiting HIT! "
-//							+ "Once we have enough participants, we will notify you " +
-//							"by email 1 day before"
-//							+ " we post the HITs for our experiment.";
-//					service.approveAssignment(assign.getAssignmentId(), message);
-//					service.assignQualification(qualificationTypeId, workerId, 1, false);
-//				}
-				
+	
 				int qualScore = service.getQualificationScore(qualificationTypeId, workerId)
 						.getIntegerValue();
 				if (qualScore != 1)
@@ -337,23 +326,35 @@ public class MTurk {
 				QuestionFormAnswers qfa = RequesterService.parseAnswers(answerXML);
 				List<QuestionFormAnswersType.AnswerType> answers =
 						(List<QuestionFormAnswersType.AnswerType>) qfa.getAnswer();
+				
+				int time1 = -1;
+				int time2 = -1;
+				
 				for (QuestionFormAnswersType.AnswerType answer : answers) {
 					String assignmentId = assign.getAssignmentId();
 					String answerValue = RequesterService.getAnswerValue(
 							assignmentId, answer);
-
+					
 					if (answer.getQuestionIdentifier().equals("firstTime")) {
-						int chosenTime = Integer.parseInt(answerValue);
-						firstTime[chosenTime]++;
-						time[chosenTime]++;
+						time1 = Integer.parseInt(answerValue);
+						firstTime[time1]++;
+						time[time1]++;
 					} else if (answer.getQuestionIdentifier().equals("secondTime")) {
-						int chosenTime = Integer.parseInt(answerValue);
-						secondTime[chosenTime]++;
-						time[chosenTime]++;
+						time2 = Integer.parseInt(answerValue);
+						secondTime[time2]++;
+						time[time2]++;
 					}
 				}
+				if (time1 == 10 || time1 == 15 || time1 == 22 
+						|| time2 == 10 || time2 == 15 || time2 == 22) {
+					writer1.write(workerId);
+					writer1.write("\n");
+				}
 			}
-
+	
+			writer1.flush();
+			writer1.close();
+			
 			BufferedWriter writer = new BufferedWriter(new FileWriter(
 					rootDir + "times.csv"));
 			writer.write(",");
@@ -382,15 +383,67 @@ public class MTurk {
 			
 			writer.flush();
 			writer.close();
-
+	
 		} catch (FileNotFoundException e) {
 			e.printStackTrace();
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-
+	
 	}
 
+	private static void postAndDeleteUnavailHIT(RequesterService service) {
+		while (true) {
+
+			postUnavailHIT(service);
+
+			try {
+				System.out.println("Sleeping for 1 minute");
+				Thread.sleep(60000);
+				System.out.println("Finished sleeping for 1 minutes");
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
+
+			deleteUnavailHIT(service);
+
+		}
+	}
+
+	private static void postRecruitingHITPrivate(RequesterService service) {
+
+		String propertiesFile = rootDir + "recruitingprivate.properties";
+		String questionFile = rootDir + "recruiting.question";
+		HITProperties props;
+		try {
+			props = new HITProperties(propertiesFile);
+			HITQuestion question = new HITQuestion(questionFile);
+
+			System.out.println("Posting recruiting HIT");
+			HIT hit = service.createHIT(null, props.getTitle(),
+					props.getDescription(), props.getKeywords(),
+					question.getQuestion(), props.getRewardAmount(),
+					props.getAssignmentDuration(),
+					props.getAutoApprovalDelay(), props.getLifetime(),
+					props.getMaxAssignments(), props.getAnnotation(),
+					props.getQualificationRequirements(), null);
+
+			hit = service.getHIT(hit.getHITId());
+			System.out.println("Created recruiting HIT " + hit.getHITId());
+
+			BufferedWriter writer = new BufferedWriter(new FileWriter(
+					rootDir + "recruit_hitid_private.txt"));
+			writer.write(hit.getHITId());
+			writer.flush();
+			writer.close();
+
+		} catch (IOException e) {
+			e.printStackTrace();
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+
+	}
 	
 	private static void postRecruitingHIT(RequesterService service) {
 

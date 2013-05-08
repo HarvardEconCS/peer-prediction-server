@@ -28,8 +28,8 @@ public class TestPeerGameWithFakePlayers {
 	public void test() throws Exception {
 		
 		int nRounds = 3; // number of rounds
-		int nplayers = 3;  // number of players
-		int nFakePlayers = 3;
+		int nplayers = 4;  // number of players
+		int nFakePlayers = 0;
 
 		// create prior
 		PeerPrior prior = PeerPrior.getTestPrior();

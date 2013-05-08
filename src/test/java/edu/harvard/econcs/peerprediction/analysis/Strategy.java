@@ -111,7 +111,7 @@ public class Strategy {
 	}
 
 	private void updateLabel() {
-		this.label = String.format("(%.4f-%.4f)", str.get("MM").get("MM"), str
+		this.label = String.format("(%.2f,%.2f)", str.get("MM").get("MM"), str
 				.get("GB").get("MM"));
 		
 	}

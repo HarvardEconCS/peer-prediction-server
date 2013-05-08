@@ -18,10 +18,14 @@ public class PaymentRule {
 	public static PaymentRule getTestPaymentRule() {
 		PaymentRule rule = new PaymentRule();
 		
-		rule.addRule("MM", "MM", 1.50);
-		rule.addRule("MM", "GB", 0.10);
-		rule.addRule("GB", "MM", 0.10);
-		rule.addRule("GB", "GB", 1.50);
+		rule.addRule("MM", "0", 0.90);
+		rule.addRule("MM", "1", 0.10);
+		rule.addRule("MM", "2", 1.50);
+		rule.addRule("MM", "3", 0.80);
+		rule.addRule("GB", "0", 0.80);
+		rule.addRule("GB", "1", 1.50);
+		rule.addRule("GB", "2", 0.10);
+		rule.addRule("GB", "3", 0.90);
 		
 		return rule;
 	}
@@ -85,19 +89,40 @@ public class PaymentRule {
 		return rules.get(key);
 	}
 
-	public double[] getPaymentArray() {
+	public double getPayment(String myReport, int numMM) {
+		Pair<String, String> key = new Pair<String, String>(myReport, String.format("%d", numMM));
+		return rules.get(key);
+	}
+
+	/**
+	 * Get the payment rule as an array
+	 * @return
+	 */
+//	public double[] getPaymentArray() {
+//		String[] signals = prior.getSignalArray();
+//		double[] array = new double[signals.length * signals.length];
+//		
+//		for (int i = 0; i < signals.length; i++) {
+//			for (int j = 0; j < signals.length; j++) {
+//				int index = i * 2 + j;
+//				array[index] = rules.get(new Pair<String, String>(signals[i], signals[j]));
+//			}
+//		}
+//		
+//		return array;
+//		
+//	}
+	
+	public double[][] getPayment2DArray() {
 		String[] signals = prior.getSignalArray();
-		double[] array = new double[signals.length * signals.length];
+		double[][] array = new double[signals.length][signals.length * signals.length];
 		
 		for (int i = 0; i < signals.length; i++) {
-			for (int j = 0; j < signals.length; j++) {
-				int index = i * 2 + j;
-				array[index] = rules.get(new Pair<String, String>(signals[i], signals[j]));
+			for (int j = 0; j < signals.length * signals.length; j++) {
+				array[i][j] = rules.get(new Pair<String, String>(signals[i], String.format("%d", j)));
 			}
 		}
-		
 		return array;
-		
 	}
 	
 }

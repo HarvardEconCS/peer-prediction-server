@@ -55,22 +55,32 @@ public class PeerResult {
 		playerNames.addAll(this.resultObject.keySet());
 		
 		// choose reference player
-		for (int i = 0; i < playerNames.size(); i++) {
-			int refPlayerIdx = r.nextInt(playerNames.size() - 1);
-			if (refPlayerIdx >= i)
-				refPlayerIdx++;
-	
-			Map<String, String> playerResult = resultObject.get(playerNames.get(i));
-			playerResult.put("refPlayer", playerNames.get(refPlayerIdx));
-		}
+//		for (int i = 0; i < playerNames.size(); i++) {
+//			int refPlayerIdx = r.nextInt(playerNames.size() - 1);
+//			if (refPlayerIdx >= i)
+//				refPlayerIdx++;
+//	
+//			Map<String, String> playerResult = resultObject.get(playerNames.get(i));
+//			playerResult.put("refPlayer", playerNames.get(refPlayerIdx));
+//		}
 		
 		// find payment
 		for (String playerName : playerNames) {
 			
-			String refPlayerName = resultObject.get(playerName).get("refPlayer");
+//			String refPlayerName = resultObject.get(playerName).get("refPlayer");
 			String myReport = resultObject.get(playerName).get("report");
-			String otherReport = resultObject.get(refPlayerName).get("report");
-			double reward = paymentRule.getPayment(myReport, otherReport);
+			
+			int numMM = 0;
+			for (String pName : playerNames) {
+				if (!pName.equals(playerName)) {
+					String otherReport = resultObject.get(pName).get("report");
+					if (otherReport.equals("MM"))
+						numMM++;
+				}
+			}
+			
+//			String otherReport = resultObject.get(refPlayerName).get("report");
+			double reward = paymentRule.getPayment(myReport, numMM);
 	
 			Map<String, String> playerResult = resultObject.get(playerName);
 			DecimalFormat df = new DecimalFormat("#.##");
@@ -120,11 +130,12 @@ public class PeerResult {
 		
 		for (String playerName: resultObject.keySet()) {
 			Map<String, String> playerResult = new HashMap<String, String>();
-			playerResult.put("report", resultObject.get(playerName).get("report"));
-			playerResult.put("refPlayer", resultObject.get(playerName).get("refPlayer"));
-			playerResult.put("reward", resultObject.get(playerName).get("reward"));
+
 			if (p.getHitId().equals(playerName)) 
 				playerResult.put("signal", resultObject.get(playerName).get("signal"));
+			playerResult.put("report", resultObject.get(playerName).get("report"));
+//			playerResult.put("refPlayer", resultObject.get(playerName).get("refPlayer"));
+			playerResult.put("reward", resultObject.get(playerName).get("reward"));
 			currResult.put(playerName, playerResult);
 		}
 		return currResult;

@@ -97,7 +97,8 @@ public class PeerGame {
 		expLog.printf("General information sent: numPlayers=%d, numRounds=%s, " +
 				"playerNames=%s, paymentRule=%s, signalList=%s",  
 				numPlayers, nRounds, Arrays.toString(playerNames), 
-				Arrays.toString(paymentRule.getPaymentArray()), 
+				Arrays.toString(paymentRule.getPayment2DArray()), 
+//				Arrays.toString(paymentRule.getPaymentArray()), 
 				Arrays.toString(prior.getSignalArray()));
 		
 		for (HITWorker worker : combinedGroup.getHITWorkers()) {
@@ -107,7 +108,8 @@ public class PeerGame {
 					nRounds, 
 					playerNames,
 					worker.getHitId(),  
-					paymentRule.getPaymentArray(), 
+					paymentRule.getPayment2DArray(), 
+//					paymentRule.getPaymentArray(), 
 					prior.getSignalArray());
 		}
 
@@ -194,9 +196,14 @@ public class PeerGame {
 			List<Map<String, Map<String, String>>> existingResults = PeerResult
 					.getAllResultsForWorker(results, worker);
 
-			currentRound.get().resendState(worker, combinedGroup.groupSize(), nRounds,
-					playerNames, worker.getHitId(),
-					paymentRule.getPaymentArray(), prior.getSignalArray(),
+			currentRound.get().resendState(worker, 
+					combinedGroup.groupSize(), 
+					nRounds,
+					playerNames, 
+					worker.getHitId(),
+//					paymentRule.getPaymentArray(), 
+					paymentRule.getPayment2DArray(),
+					prior.getSignalArray(),
 					existingResults);
 		}
 	}

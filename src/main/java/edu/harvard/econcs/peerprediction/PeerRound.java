@@ -114,6 +114,39 @@ public class PeerRound {
 	
 	}
 
+
+	/**
+	 * Resend state when worker reconnects to game
+	 * @param worker
+	 * @param groupSize
+	 * @param nRounds
+	 * @param playerNames
+	 * @param hitId
+	 * @param paymentArray
+	 * @param signalArray
+	 * @param existingResults
+	 */
+	public void resendState(HITWorker worker, int groupSize, int nRounds,
+			String[] playerNames, String hitId, double[][] paymentArray,
+			String[] signalArray,
+			List<Map<String, Map<String, String>>> existingResults) {
+		
+		List<String> workersConfirmed = new ArrayList<String>();
+		for (HITWorker p : group.getHITWorkers()) {
+			if (result.getReport(p) != null)
+				workersConfirmed.add(p.getHitId());
+		}
+		String currPlayerSignal = result.getSignal(worker);
+		String currPlayerReport = result.getReport(worker);
+		
+		PlayerUtils.resentState(worker, groupSize, nRounds, playerNames, 
+				hitId, paymentArray, 
+				signalArray, 
+				existingResults, 
+				currPlayerSignal, currPlayerReport, workersConfirmed);
+	
+	}
+	
 	/**
 	 * Choose signal given the chosen world
 	 * @return

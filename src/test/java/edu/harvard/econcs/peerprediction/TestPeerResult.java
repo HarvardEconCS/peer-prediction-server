@@ -89,17 +89,28 @@ public class TestPeerResult {
 			playerIds.add(p.getHitId());
 		
 		for (HITWorker p : players.getHITWorkers()) {
-			String refPlayerId = result.resultObject.get(p.getHitId()).get("refPlayer");
-			if (refPlayerId.equals(p.getHitId()))
-				fail("Reference player is the same as the current player");
-			if (!playerIds.contains(refPlayerId))
-				fail("Reference player is not a valid player");
+//			String refPlayerId = result.resultObject.get(p.getHitId()).get("refPlayer");
+//			if (refPlayerId.equals(p.getHitId()))
+//				fail("Reference player is the same as the current player");
+//			if (!playerIds.contains(refPlayerId))
+//				fail("Reference player is not a valid player");
 			
 			String myReport = result.resultObject.get(p.getHitId()).get("report");
-			String otherReport = result.resultObject.get(refPlayerId).get("report");
-			double reward = rule.getPayment(myReport, otherReport);
+			
+			int numMM = 0;
+			for (HITWorker worker : players.getHITWorkers()) {
+				if (!worker.getHitId().equals(p.getHitId())) {
+					String otherReport = result.resultObject.get(worker.getHitId()).get("report");
+					if (otherReport.equals("MM"))
+						numMM++;
+				}
+			}
+
+//			String otherReport = result.resultObject.get(refPlayerId).get("report");
+			double reward = rule.getPayment(myReport, numMM);
 		
-			assertEquals(reward, Double.parseDouble(result.resultObject.get(p.getHitId()).get("reward")), eps);
+			assertEquals(reward, Double.parseDouble(
+					result.resultObject.get(p.getHitId()).get("reward")), eps);
 		}
 		
 		System.out.println(result.toString());

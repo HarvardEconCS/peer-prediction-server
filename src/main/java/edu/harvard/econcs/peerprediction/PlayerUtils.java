@@ -13,8 +13,27 @@ import edu.harvard.econcs.turkserver.server.MessageException;
 
 public class PlayerUtils {
 
+//	public static void sendGeneralInfo(HITWorker worker, int nPlayers, int nRounds, 
+//			String[] playerNames, String yourName, double[] paymentArray, String[] signalList) {		
+//		
+//		Map<String, Object> msg = new HashMap<String, Object>();
+//		msg.put("status"		, "generalInfo");
+//		msg.put("numPlayers"	, nPlayers);
+//		msg.put("playerNames"	, playerNames);
+//		msg.put("yourName"		, yourName);
+//		msg.put("signalList"    , signalList);	
+//		msg.put("numRounds"		, nRounds);
+//		msg.put("payments"		, paymentArray);
+//		
+//		try {
+//			worker.deliverExperimentService(msg);
+//		} catch (MessageException e) {			
+//			e.printStackTrace(); 
+//		}
+//	}
+
 	public static void sendGeneralInfo(HITWorker worker, int nPlayers, int nRounds, 
-			String[] playerNames, String yourName, double[] paymentArray, String[] signalList) {		
+			String[] playerNames, String yourName, double[][] paymentArray, String[] signalList) {		
 		
 		Map<String, Object> msg = new HashMap<String, Object>();
 		msg.put("status"		, "generalInfo");
@@ -31,7 +50,7 @@ public class PlayerUtils {
 			e.printStackTrace(); 
 		}
 	}
-
+	
 	public static void sendSignal(HITWorker worker, String selected) throws WrongStateException {				
 		try {
 			worker.deliverExperimentService(ImmutableMap.of(
@@ -102,6 +121,33 @@ public class PlayerUtils {
 		
 	}
 
+	public static void resentState(HITWorker worker, int groupSize,
+			int nRounds, String[] playerNames, String hitId,
+			double[][] paymentArray, String[] signalArray,
+			List<Map<String, Map<String, String>>> existingResults,
+			String currPlayerSignal, String currPlayerReport, 
+			List<String> workersConfirmed) {
+		Map<String, Object> msg = new HashMap<String, Object>();
+		msg.put("status"		, "resendState");
+		msg.put("numPlayers"	, groupSize);
+		msg.put("playerNames"	, playerNames);
+		msg.put("yourName"		, hitId);
+		msg.put("signalList"    , signalArray);	
+		msg.put("numRounds"		, nRounds);
+		msg.put("payments"		, paymentArray);
+		msg.put("existingResults"	, existingResults);
+		msg.put("currPlayerSignal"	, currPlayerSignal);
+		msg.put("currPlayerReport"	, currPlayerReport);
+		msg.put("workersConfirmed"	, workersConfirmed);
+
+		try {
+			worker.deliverExperimentService(msg);
+		} catch (MessageException e) {			
+			e.printStackTrace();
+		}
+		
+	}
+	
 	public static Map<String, Map<String, String>> deserialize(Object object) {		
 		Map<String, Map<String, String>> returnMap = Maps.newHashMap();
 		

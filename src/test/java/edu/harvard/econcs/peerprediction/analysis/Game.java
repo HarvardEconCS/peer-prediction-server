@@ -31,13 +31,19 @@ public class Game {
 
 	String convergenceType;
 
+	String convergenceTypeRelaxed;
+
 	int roundConverged;
+
+	int roundConvergedRelaxed;
 
 	Gson gson;
 
 	String numberType;
 
 	int number;
+
+	int relaxNum;
 
 	public Game() {
 		worlds = new ArrayList<Map<String, Double>>();
@@ -80,9 +86,10 @@ public class Game {
 		paymentArray = gson.fromJson(paymentRuleString, double[].class);
 	}
 
-	public Map<String, Map<String, Double>> getStrategyForRoundRange(
+	public Map<String, Map<String, Double>> getPlayerStrategyForRoundRange(String hitId,
 			int roundNumStart, int roundNumEnd) {
-
+		
+		// create and initialize map
 		Map<String, Map<String, Double>> strategy = new HashMap<String, Map<String, Double>>();
 		for (int i = 0; i < AnalysisUtils.signalList.length; i++) {
 			Map<String, Double> value = new HashMap<String, Double>();
@@ -92,6 +99,54 @@ public class Game {
 			strategy.put(AnalysisUtils.signalList[i], value);
 		}
 
+		// fill in map
+		for (int i = roundNumStart; i <= roundNumEnd; i++) {
+			Round round = rounds.get(i - 1);
+			
+			String signal = round.getSignal(hitId);
+			String report = round.getReport(hitId);
+			
+			double count = strategy.get(signal).get(report);
+			count = count + 1;
+			strategy.get(signal).put(report, count);
+		}
+
+		// round numbers in map to contain 2 decimal places
+		for (int i = 0; i < AnalysisUtils.signalList.length; i++) {
+
+			double totalCount = 0;
+			for (int j = 0; j < AnalysisUtils.signalList.length; j++) {
+				totalCount = totalCount
+						+ strategy.get(AnalysisUtils.signalList[i]).get(AnalysisUtils.signalList[j]);
+			}
+			for (int j = 0; j < AnalysisUtils.signalList.length; j++) {
+				double thisCount = strategy
+						.get(AnalysisUtils.signalList[i])
+						.get(AnalysisUtils.signalList[j]);
+				double percent = thisCount / totalCount;
+				percent = (double) Math.round(percent * 100) / 100;
+				strategy.get(AnalysisUtils.signalList[i])
+					.put(AnalysisUtils.signalList[j], percent);
+			}
+		}
+
+		return strategy;
+	}
+
+	public Map<String, Map<String, Double>> getGameStrategyForRoundRange(
+			int roundNumStart, int roundNumEnd) {
+
+		// create and initialize map
+		Map<String, Map<String, Double>> strategy = new HashMap<String, Map<String, Double>>();
+		for (int i = 0; i < AnalysisUtils.signalList.length; i++) {
+			Map<String, Double> value = new HashMap<String, Double>();
+			for (int j = 0; j < AnalysisUtils.signalList.length; j++) {
+				value.put(AnalysisUtils.signalList[j], 0.0);
+			}
+			strategy.put(AnalysisUtils.signalList[i], value);
+		}
+
+		// fill in map
 		for (int i = roundNumStart; i <= roundNumEnd; i++) {
 			Round round = rounds.get(i - 1);
 			for (int j = 0; j < playerHitIds.length; j++) {
@@ -104,6 +159,7 @@ public class Game {
 			}
 		}
 
+		// round numbers in map to contain 2 decimal places
 		for (int i = 0; i < AnalysisUtils.signalList.length; i++) {
 
 			double totalCount = 0;
@@ -187,12 +243,28 @@ public class Game {
 		return list;
 	}
 
-	public int getMMStart(String hitId) {
+	public int getCandyStart(String hitId, String candy) {
 		for (int i = rounds.size() - 1; i >= 0; i--) {
-			if (rounds.get(i).getReport(hitId).equals("MM"))
+			if (rounds.get(i).getReport(hitId).equals(candy))
 				continue;
 			else 
-				return i;
+				return i + 1;
+		}
+		return 0;
+	}
+
+	private int getCandyStartRelaxed(String hitId, String candy, int num) {
+		int countRelaxed = 0;
+		for (int i = rounds.size() - 1; i >= 0; i--) {
+			if (rounds.get(i).getReport(hitId).equals(candy))
+				continue;
+			else {
+				if (countRelaxed < num) {
+					countRelaxed++;
+				} else {
+					return i + 1;
+				}
+			}
 		}
 		return 0;
 	}
@@ -204,17 +276,52 @@ public class Game {
 			if (signal.equals(report))
 				continue;
 			else 
-				return i;
+				return i + 1;
+		}
+		return 0;
+	}
+
+	private int getHonestStartRelaxed(String hitId, int num) {
+		int countRelaxed = 0;
+		for (int i = rounds.size() - 1; i >= 0; i--) {
+			String signal = rounds.get(i).getSignal(hitId);
+			String report = rounds.get(i).getReport(hitId);
+			if (signal.equals(report))
+				continue;
+			else {
+				if (countRelaxed < num) {
+					countRelaxed++;
+				} else {
+					return i + 1;
+				}
+			}
 		}
 		return 0;
 	}
 
 	public int getGBStart(String hitId) {
+		
 		for (int i = rounds.size() - 1; i >= 0; i--) {
 			if (rounds.get(i).getReport(hitId).equals("GB"))
 				continue;
 			else 
 				return i;
+		}
+		return 0;
+	}
+
+	private int getGBStartRelaxed(String hitId, int num) {
+		int countRelaxed = 0;
+		for (int i = rounds.size() - 1; i >= 0; i--) {
+			if (rounds.get(i).getReport(hitId).equals("GB"))
+				continue;
+			else {
+				if (countRelaxed < num) {
+					countRelaxed++;
+				} else {
+					return i;
+				}
+			}
 		}
 		return 0;
 	}
@@ -276,6 +383,118 @@ public class Game {
 
 		}
 		return 1.0 * countReport / countSignal;
+	}
+
+	public void fillConvergenceType() {
+
+		String gameType = "";
+		
+		int gameMMStart = 0;
+		int gameGBStart = 0;
+		int gameHOStart = 0; 
+		
+		for (String hitId : playerHitIds) {
+			
+			int playerMMScore = this.getCandyStart(hitId, "MM");
+			gameMMStart = Math.max(gameMMStart, playerMMScore);
+			
+			int playerGBScore = this.getCandyStart(hitId, "GB");
+			gameGBStart = Math.max(gameGBStart, playerGBScore);
+			
+			int playerHOScore = this.getHonestStart(hitId);
+			gameHOStart = Math.max(gameHOStart, playerHOScore);
+			System.out.printf("%s,%d,%d,%d\n", hitId, playerMMScore, playerGBScore, playerHOScore);
+		}
+		System.out.printf("%s,%d,%d,%d\n", this.id, gameMMStart, gameGBStart, gameHOStart);
+		
+		int min1 = Math.min(gameMMStart, gameGBStart);
+		int min = Math.min(min1, gameHOStart);
+				
+		this.roundConverged = min;
+		this.roundConvergedRelaxed = min;
+		if (min == 20) {
+			gameType = "undecided";
+		} else if (min > 15) {
+			gameType = "undecided";
+		} else {
+			if (gameMMStart == min) {
+				gameType = "MM";
+			}
+			if (gameGBStart == min) {
+				gameType = "GB";
+			}
+			if (gameHOStart == min) {
+				gameType = "HO";
+			}
+		}
+		
+		this.convergenceType = gameType;
+	}
+
+	public void fillConvergenceTypeRelaxed(int i) {
+		String gameType = "";
+		
+		int gameMMStart = 0;
+		int gameGBStart = 0;
+		int gameHOStart = 0; 
+		
+		for (String hitId : playerHitIds) {
+			
+			int playerMMScore = this.getCandyStartRelaxed(hitId, "MM", i);
+			gameMMStart = Math.max(gameMMStart, playerMMScore);
+			
+			int playerGBScore = this.getGBStartRelaxed(hitId, i);
+			gameGBStart = Math.max(gameGBStart, playerGBScore);
+			
+			int playerHOScore = this.getHonestStartRelaxed(hitId, i);
+			gameHOStart = Math.max(gameHOStart, playerHOScore);
+		}
+		
+		int min1 = Math.min(gameMMStart, gameGBStart);
+		int min = Math.min(min1, gameHOStart);
+
+		// Relaxing did not have more than minimum help.  Do not set relaxed type and round converged relaxed
+		if (min == (this.roundConverged - i)) {
+			this.convergenceTypeRelaxed = "undecided";
+			return;
+		}
+		
+		if (min > (15 - i)) {
+			this.convergenceTypeRelaxed = "undecided";
+			return;
+		}
+		
+		if (this.roundConvergedRelaxed != this.roundConverged) {
+			if ((this.roundConvergedRelaxed - min) > (i - this.relaxNum)) {
+				// this new relaxation is better, use this
+				this.roundConvergedRelaxed = min;
+				if (gameMMStart == min) {
+					gameType = "MM relaxed " + i;
+				}
+				if (gameGBStart == min) {
+					gameType = "GB relaxed " + i;
+				}
+				if (gameHOStart == min) {
+					gameType = "HO relaxed " + i;
+				}
+				
+				this.convergenceTypeRelaxed = gameType;
+			}
+		} else {
+			this.roundConvergedRelaxed = min;
+			if (gameMMStart == min) {
+				gameType = "MM relaxed " + i;
+			}
+			if (gameGBStart == min) {
+				gameType = "GB relaxed " + i;
+			}
+			if (gameHOStart == min) {
+				gameType = "HO relaxed " + i;
+			}
+			
+			this.convergenceTypeRelaxed = gameType;
+
+		}
 	}
 
 

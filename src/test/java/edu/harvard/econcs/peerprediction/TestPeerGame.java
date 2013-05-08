@@ -32,8 +32,8 @@ public class TestPeerGame {
 	@Test
 	public void testRunningTheGame() throws Exception {
 		
-		int nRounds = 3; // number of rounds
-		int nplayers = 3;  // number of players
+		int nRounds = 6; // number of rounds
+		int nplayers = 4;  // number of players
 
 		// create prior
 		PeerPrior prior = PeerPrior.getTestPrior();

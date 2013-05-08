@@ -421,4 +421,25 @@ public class AnalysisUtils {
 		return Math.abs(gbGivenGB - 1) < eps && Math.abs(mmGivenMM - 1) < eps;
 	}
 
+	public static String getChangeType(Strategy firstStrategy,
+			Strategy secondStrategy) {
+		
+		double mmGivenMM1 = firstStrategy.getPercent("MM", "MM");
+		double mmGivenMM2 = secondStrategy.getPercent("MM", "MM");
+		
+		double gbGivenGB1 = firstStrategy.getPercent("GB", "GB");
+		double gbGivenGB2 = secondStrategy.getPercent("GB", "GB");
+		
+		if (mmGivenMM2 >= mmGivenMM1 && gbGivenGB2 <= gbGivenGB1)
+			return "to MM";
+		else if (mmGivenMM2 >= mmGivenMM1 && gbGivenGB2 >= gbGivenGB1)
+			return "to HO";
+		else if (mmGivenMM2 <= mmGivenMM1 && gbGivenGB2 >= gbGivenGB1)
+			return "to GB";
+		else if (mmGivenMM2 <= mmGivenMM1 && gbGivenGB2 <= gbGivenGB1)
+			return "to OP";
+		else
+			return "undecided";
+	}
+
 }
