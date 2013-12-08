@@ -49,39 +49,28 @@ public class PeerResult {
 
 	public void computePayments(PaymentRule paymentRule) {
 		
-		Random r = new Random();
+//		Random r = new Random();
 		
 		List<String> playerNames = new ArrayList<String>();
 		playerNames.addAll(this.resultObject.keySet());
-		
-		// choose reference player
-//		for (int i = 0; i < playerNames.size(); i++) {
-//			int refPlayerIdx = r.nextInt(playerNames.size() - 1);
-//			if (refPlayerIdx >= i)
-//				refPlayerIdx++;
-//	
-//			Map<String, String> playerResult = resultObject.get(playerNames.get(i));
-//			playerResult.put("refPlayer", playerNames.get(refPlayerIdx));
-//		}
-		
+				
 		// find payment
 		for (String playerName : playerNames) {
 			
-//			String refPlayerName = resultObject.get(playerName).get("refPlayer");
-			String myReport = resultObject.get(playerName).get("report");
+//			String myReport = resultObject.get(playerName).get("report");
+//			
+//			int numMM = 0;
+//			for (String pName : playerNames) {
+//				if (!pName.equals(playerName)) {
+//					String otherReport = resultObject.get(pName).get("report");
+//					if (otherReport.equals("MM"))
+//						numMM++;
+//				}
+//			}
+//			
+//			double reward = paymentRule.getPayment(myReport, numMM);
+			double reward = 0.9;
 			
-			int numMM = 0;
-			for (String pName : playerNames) {
-				if (!pName.equals(playerName)) {
-					String otherReport = resultObject.get(pName).get("report");
-					if (otherReport.equals("MM"))
-						numMM++;
-				}
-			}
-			
-//			String otherReport = resultObject.get(refPlayerName).get("report");
-			double reward = paymentRule.getPayment(myReport, numMM);
-	
 			Map<String, String> playerResult = resultObject.get(playerName);
 			DecimalFormat df = new DecimalFormat("#.##");
 			playerResult.put("reward", df.format(reward));
