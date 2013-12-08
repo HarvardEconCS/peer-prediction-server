@@ -55,12 +55,13 @@ public class PeerRound {
 	/**
 	 * @param reporter
 	 * @param report
+	 * @param randomRadio 
 	 * @param isReal 
 	 * @return true if all reports have been received for the round
 	 */
-	public boolean reportReceived(HITWorker reporter, String report, boolean isReal) {		
+	public boolean reportReceived(HITWorker reporter, String report, String randomRadio, boolean isReal) {		
 		if (isReal)
-			expLog.printf("Worker %s chose report %s", reporter, report);
+			expLog.printf("Worker %s chose report %s (radio: %s)", reporter, report, randomRadio);
 		else
 			expLog.printf("Worker %s killed, put in fake report %s", reporter, report);
 		

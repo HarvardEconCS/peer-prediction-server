@@ -169,8 +169,9 @@ public class PeerGame {
 	@ServiceMessage(key="report")
 	public void reportReceived(HITWorker worker, Map<String, Object> data) {
 		String report = data.get("report").toString();
+		String randomRadio = data.get("randomRadio").toString();
 		if (currentRound.get()
-				.reportReceived(worker, report, true)) {			
+				.reportReceived(worker, report, randomRadio, true)) {			
 			roundCompleted();
 		}
 	}
@@ -241,7 +242,7 @@ public class PeerGame {
 			if (!this.currentRound.get().getResult().containsReport(worker)) {
 				String signal = currentRound.get().getResult().getSignal(worker);
 				boolean isReal = false;
-				boolean roundFinished = currentRound.get().reportReceived(worker, signal, isReal);
+				boolean roundFinished = currentRound.get().reportReceived(worker, signal, "", isReal);
 				if ( roundFinished ) {
 					roundCompleted();
 				}
