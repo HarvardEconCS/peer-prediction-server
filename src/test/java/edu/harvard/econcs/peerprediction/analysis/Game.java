@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Map;
 
 import net.andrewmao.misc.Pair;
+import net.andrewmao.models.games.SigActObservation;
 
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
@@ -20,13 +21,21 @@ public class Game {
 	int numRounds;
 	int numPlayers;
 	String[] playerHitIds;
-	double[] paymentArray;
+	double[][] paymentArray;
 //	String[] signalList;
 
 	List<HITWorker> workers;
 	
 	List<Round> rounds;
 
+	Map<String, List<Pair<String, String>>> signalReportPairList;
+	
+	Map<String, List<SigActObservation<CandySignal, CandyReport>>> signalReportObjList;
+	
+	Map<String, int[]> stateSeq;
+	
+	Map<String, Double> bonus;
+	
 	Map<String, String> exitSurvey;
 
 	String convergenceType;
@@ -45,9 +54,16 @@ public class Game {
 
 	int relaxNum;
 
+	int hmmEndType;
+
+	int hmmStartType;
+
+	int[] hmmTypeArray;
+
 	public Game() {
 		worlds = new ArrayList<Map<String, Double>>();
 		rounds = new ArrayList<Round>();
+		bonus = new HashMap<String, Double>();
 		exitSurvey = new HashMap<String, String>();
 		gson = new Gson();
 		convergenceType = "";
@@ -83,7 +99,7 @@ public class Game {
 	}
 
 	public void savePaymentRule(String paymentRuleString) {
-		paymentArray = gson.fromJson(paymentRuleString, double[].class);
+		paymentArray = gson.fromJson(paymentRuleString, double[][].class);
 	}
 
 	public Map<String, Map<String, Double>> getPlayerStrategyForRoundRange(String hitId,
@@ -223,13 +239,32 @@ public class Game {
 	}
 
 	public List<Pair<String, String>> getSignalReportPairsForPlayer(String hitId) {
-		List<Pair<String, String>> list = new ArrayList<Pair<String, String>>();
-		for (Round round : rounds) {
-			String signal = round.getSignal(hitId);
-			String report = round.getReport(hitId);
-			list.add(new Pair<String, String>(signal, report));
-		}
-		return list;
+		return signalReportPairList.get(hitId);
+//		List<Pair<String, String>> list = new ArrayList<Pair<String, String>>();
+//		for (Round round : rounds) {
+//			String signal = round.getSignal(hitId);
+//			String report = round.getReport(hitId);
+//			list.add(new Pair<String, String>(signal, report));
+//		}
+//		return list;
+	}
+
+	/**
+	 * For learning HMM
+	 * @param hitId
+	 * @return
+	 */
+	public List<SigActObservation<CandySignal, CandyReport>> getSignalReportObjForPlayer(String hitId) {
+		return signalReportObjList.get(hitId);
+//		List<SigActObservation<CandySignal, CandyReport>> list = 
+//				new ArrayList<SigActObservation<CandySignal, CandyReport>>();
+//		for (Round round : rounds) {
+//			String signal = round.getSignal(hitId);
+//			String report = round.getReport(hitId);
+//			list.add(new SigActObservation<CandySignal, CandyReport>(
+//					CandySignal.valueOf(signal), CandyReport.valueOf(report)));
+//		}
+//		return list;
 	}
 
 	public List<Pair<String, String>> getSignalReportPairsForGameRound(
@@ -243,6 +278,9 @@ public class Game {
 		return list;
 	}
 
+	
+	
+	
 	public int getCandyStart(String hitId, String candy) {
 		for (int i = rounds.size() - 1; i >= 0; i--) {
 			if (rounds.get(i).getReport(hitId).equals(candy))
@@ -250,7 +288,7 @@ public class Game {
 			else 
 				return i + 1;
 		}
-		return 0;
+		return 1;
 	}
 
 	private int getCandyStartRelaxed(String hitId, String candy, int num) {
@@ -266,7 +304,7 @@ public class Game {
 				}
 			}
 		}
-		return 0;
+		return 1;
 	}
 
 	public int getHonestStart(String hitId) {
@@ -278,7 +316,7 @@ public class Game {
 			else 
 				return i + 1;
 		}
-		return 0;
+		return 1;
 	}
 
 	private int getHonestStartRelaxed(String hitId, int num) {
@@ -296,35 +334,35 @@ public class Game {
 				}
 			}
 		}
-		return 0;
+		return 1;
 	}
 
-	public int getGBStart(String hitId) {
-		
-		for (int i = rounds.size() - 1; i >= 0; i--) {
-			if (rounds.get(i).getReport(hitId).equals("GB"))
-				continue;
-			else 
-				return i;
-		}
-		return 0;
-	}
+//	public int getGBStart(String hitId) {
+//		
+//		for (int i = rounds.size() - 1; i >= 0; i--) {
+//			if (rounds.get(i).getReport(hitId).equals("GB"))
+//				continue;
+//			else 
+//				return i;
+//		}
+//		return 0;
+//	}
 
-	private int getGBStartRelaxed(String hitId, int num) {
-		int countRelaxed = 0;
-		for (int i = rounds.size() - 1; i >= 0; i--) {
-			if (rounds.get(i).getReport(hitId).equals("GB"))
-				continue;
-			else {
-				if (countRelaxed < num) {
-					countRelaxed++;
-				} else {
-					return i;
-				}
-			}
-		}
-		return 0;
-	}
+//	private int getGBStartRelaxed(String hitId, int num) {
+//		int countRelaxed = 0;
+//		for (int i = rounds.size() - 1; i >= 0; i--) {
+//			if (rounds.get(i).getReport(hitId).equals("GB"))
+//				continue;
+//			else {
+//				if (countRelaxed < num) {
+//					countRelaxed++;
+//				} else {
+//					return i;
+//				}
+//			}
+//		}
+//		return 0;
+//	}
 
 	public int getNumMM(String hitId) {
 		int count = 0;
@@ -385,36 +423,30 @@ public class Game {
 		return 1.0 * countReport / countSignal;
 	}
 
+	
 	public void fillConvergenceType() {
-
-		String gameType = "";
 		
 		int gameMMStart = 0;
 		int gameGBStart = 0;
 		int gameHOStart = 0; 
 		
-		for (String hitId : playerHitIds) {
+		for (String hitId : this.playerHitIds) {
 			
-			int playerMMScore = this.getCandyStart(hitId, "MM");
-			gameMMStart = Math.max(gameMMStart, playerMMScore);
+			int playerMMStart = this.getCandyStart(hitId, "MM");
+			gameMMStart = Math.max(gameMMStart, playerMMStart);
 			
-			int playerGBScore = this.getCandyStart(hitId, "GB");
-			gameGBStart = Math.max(gameGBStart, playerGBScore);
+			int playerGBStart = this.getCandyStart(hitId, "GB");
+			gameGBStart = Math.max(gameGBStart, playerGBStart);
 			
-			int playerHOScore = this.getHonestStart(hitId);
-			gameHOStart = Math.max(gameHOStart, playerHOScore);
-			System.out.printf("%s,%d,%d,%d\n", hitId, playerMMScore, playerGBScore, playerHOScore);
+			int playerHOStart = this.getHonestStart(hitId);
+			gameHOStart = Math.max(gameHOStart, playerHOStart);
 		}
-		System.out.printf("%s,%d,%d,%d\n", this.id, gameMMStart, gameGBStart, gameHOStart);
 		
-		int min1 = Math.min(gameMMStart, gameGBStart);
-		int min = Math.min(min1, gameHOStart);
-				
+		int min = Math.min(Math.min(gameMMStart, gameGBStart), gameHOStart);
 		this.roundConverged = min;
-		this.roundConvergedRelaxed = min;
-		if (min == 20) {
-			gameType = "undecided";
-		} else if (min > 15) {
+		
+		String gameType = "";
+		if (min > 15) {
 			gameType = "undecided";
 		} else {
 			if (gameMMStart == min) {
@@ -427,7 +459,74 @@ public class Game {
 				gameType = "HO";
 			}
 		}
+		this.convergenceType = gameType;
+	}
+	
+	public void fillAsymmetricConvergenceType() {
+		// 3 MM, 1 GB
+		int best3MMStart = Integer.MAX_VALUE;
+		for (int j = 0; j < this.playerHitIds.length; j++) {
+			
+			int threeMMStart = 0;
+			
+			for (int k = 0; k < this.playerHitIds.length; k++) {
+				if (k == j) {
+					int playerGBScore = this.getCandyStart(this.playerHitIds[k], "GB");
+					threeMMStart = Math.max(threeMMStart, playerGBScore);
+				} else {
+					int playerMMScore = this.getCandyStart(this.playerHitIds[k], "MM");
+					threeMMStart = Math.max(threeMMStart, playerMMScore);
+				}
+			}
+			
+			if (threeMMStart < best3MMStart)
+				best3MMStart = threeMMStart;
+			
+		}
 		
+		// 3 GB, 1 MM
+		int best3GBStart = Integer.MAX_VALUE;
+		for (int j = 0; j < this.playerHitIds.length; j++) {
+			
+			int threeGBStart = 0;
+			
+			for (int k = 0; k < this.playerHitIds.length; k++) {
+				if (k == j) {
+					int playerMMScore = this.getCandyStart(this.playerHitIds[k], "MM");
+					threeGBStart = Math.max(threeGBStart, playerMMScore);
+				} else {
+					int playerGBScore = this.getCandyStart(this.playerHitIds[k], "GB");
+					threeGBStart = Math.max(threeGBStart, playerGBScore);
+				}
+			}
+			
+			if (threeGBStart < best3GBStart)
+				best3GBStart = threeGBStart;
+			
+		}
+	
+		int gameHOStart = 0; 
+		for (String hitId : this.playerHitIds) {
+			
+			int playerHOStart = this.getHonestStart(hitId);
+			gameHOStart = Math.max(gameHOStart, playerHOStart);
+		}
+		
+		int min = Math.min(Math.min(best3MMStart, best3GBStart), gameHOStart);
+		this.roundConverged = min;
+		
+		String gameType = "";
+		if (min > 15) {
+			gameType = "undecided";
+		} else {
+			if (min == best3MMStart) {
+				gameType = "3MM";					
+			} else if (min == best3GBStart) {
+				gameType = "3GB"; 
+			} else if (min == gameHOStart) {
+				gameType = "HO";
+			}
+		}
 		this.convergenceType = gameType;
 	}
 
@@ -443,58 +542,128 @@ public class Game {
 			int playerMMScore = this.getCandyStartRelaxed(hitId, "MM", i);
 			gameMMStart = Math.max(gameMMStart, playerMMScore);
 			
-			int playerGBScore = this.getGBStartRelaxed(hitId, i);
+			int playerGBScore = this.getCandyStartRelaxed(hitId, "GB", i);
 			gameGBStart = Math.max(gameGBStart, playerGBScore);
 			
 			int playerHOScore = this.getHonestStartRelaxed(hitId, i);
 			gameHOStart = Math.max(gameHOStart, playerHOScore);
 		}
 		
-		int min1 = Math.min(gameMMStart, gameGBStart);
-		int min = Math.min(min1, gameHOStart);
-
-		// Relaxing did not have more than minimum help.  Do not set relaxed type and round converged relaxed
-		if (min == (this.roundConverged - i)) {
-			this.convergenceTypeRelaxed = "undecided";
-			return;
-		}
+		int min = Math.min(Math.min(gameMMStart, gameGBStart), gameHOStart);
+		this.roundConvergedRelaxed = min;
 		
 		if (min > (15 - i)) {
-			this.convergenceTypeRelaxed = "undecided";
-			return;
-		}
-		
-		if (this.roundConvergedRelaxed != this.roundConverged) {
-			if ((this.roundConvergedRelaxed - min) > (i - this.relaxNum)) {
-				// this new relaxation is better, use this
-				this.roundConvergedRelaxed = min;
-				if (gameMMStart == min) {
-					gameType = "MM relaxed " + i;
-				}
-				if (gameGBStart == min) {
-					gameType = "GB relaxed " + i;
-				}
-				if (gameHOStart == min) {
-					gameType = "HO relaxed " + i;
-				}
-				
-				this.convergenceTypeRelaxed = gameType;
-			}
+			gameType = "undecided";
 		} else {
-			this.roundConvergedRelaxed = min;
 			if (gameMMStart == min) {
-				gameType = "MM relaxed " + i;
+				gameType = "MM";
 			}
 			if (gameGBStart == min) {
-				gameType = "GB relaxed " + i;
+				gameType = "GB";
 			}
 			if (gameHOStart == min) {
-				gameType = "HO relaxed " + i;
+				gameType = "HO";
+			}
+		}
+		this.convergenceTypeRelaxed = gameType;
+	}
+	
+	public void fillAsymmetricConvergenceTypeRelaxed(int i) {
+
+		// 3 MM, 1 GB
+		int bestThreeMMOneGBStart = Integer.MAX_VALUE;
+		for (int j = 0; j < playerHitIds.length; j++) {
+			
+			int threeMMOneGBStart = 0;
+			
+			for (int k = 0; k < playerHitIds.length; k++) {
+				if (k == j) {
+					int playerGBScore = this.getCandyStartRelaxed(playerHitIds[k], "GB", i);
+					threeMMOneGBStart = Math.max(threeMMOneGBStart, playerGBScore);
+				} else {
+					int playerMMScore = this.getCandyStartRelaxed(playerHitIds[k], "MM", i);
+					threeMMOneGBStart = Math.max(threeMMOneGBStart, playerMMScore);
+				}
 			}
 			
-			this.convergenceTypeRelaxed = gameType;
-
+			if (threeMMOneGBStart < bestThreeMMOneGBStart)
+				bestThreeMMOneGBStart = threeMMOneGBStart;
+			
 		}
+		
+		// 3 GB, 1 MM
+		int bestThreeGBOneMMStart = Integer.MAX_VALUE;
+		for (int j = 0; j < playerHitIds.length; j++) {
+			
+			int threeGBOneMMStart = 0;
+			
+			for (int k = 0; k < playerHitIds.length; k++) {
+				if (k == j) {
+					int playerMMScore = this.getCandyStartRelaxed(playerHitIds[k], "MM", i);
+					threeGBOneMMStart = Math.max(threeGBOneMMStart, playerMMScore);
+				} else {
+					int playerGBScore = this.getCandyStartRelaxed(playerHitIds[k], "GB", i);
+					threeGBOneMMStart = Math.max(threeGBOneMMStart, playerGBScore);
+				}
+			}
+			
+			if (threeGBOneMMStart < bestThreeGBOneMMStart)
+				bestThreeGBOneMMStart = threeGBOneMMStart;
+			
+		}
+		
+		int gameHOStart = 0; 
+		for (String hitId : this.playerHitIds) {
+			
+			int playerHOStart = this.getHonestStartRelaxed(hitId, i);
+			gameHOStart = Math.max(gameHOStart, playerHOStart);
+		}
+
+		int min = Math.min(Math.min(bestThreeMMOneGBStart, bestThreeGBOneMMStart), gameHOStart);
+		this.roundConvergedRelaxed = min;
+
+		String gameType = "";
+		if (min > (15 - i)) {
+			gameType = "undecided";
+		} else {
+			if (min == bestThreeMMOneGBStart) {
+				gameType = "3MM";
+			} else if (min == bestThreeGBOneMMStart) {
+				gameType = "3GB";
+			} else if (min == gameHOStart) {
+				gameType = "HO";
+			}
+		}
+		this.convergenceTypeRelaxed = gameType;
+	}
+
+	
+	public void populateInfo() {
+		
+		signalReportPairList = new HashMap<String, List<Pair<String, String>>>();
+		for (String hitId : playerHitIds) {
+			List<Pair<String, String>> list = new ArrayList<Pair<String, String>>();
+			for (Round round : rounds) {
+				String signal = round.getSignal(hitId);
+				String report = round.getReport(hitId);
+				list.add(new Pair<String, String>(signal, report));
+			}
+			signalReportPairList.put(hitId, list);
+		}
+		
+		signalReportObjList = new HashMap<String, List<SigActObservation<CandySignal, CandyReport>>>();
+		for (String hitId: playerHitIds) {
+			List<SigActObservation<CandySignal, CandyReport>> list = 
+					new ArrayList<SigActObservation<CandySignal, CandyReport>>();
+			for (Round round : rounds) {
+				String signal = round.getSignal(hitId);
+				String report = round.getReport(hitId);
+				list.add(new SigActObservation<CandySignal, CandyReport>(
+					CandySignal.valueOf(signal), CandyReport.valueOf(report)));
+			}
+			signalReportObjList.put(hitId, list);
+		}
+
 	}
 
 

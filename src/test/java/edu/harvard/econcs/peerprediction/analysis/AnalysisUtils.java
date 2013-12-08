@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 
 import net.andrewmao.misc.Pair;
 
@@ -18,6 +19,8 @@ public class AnalysisUtils {
 	static double[] em_pi;
 	static Strategy[] em_strategies;
 	static double em_likelihood;
+	
+	static Random rand = new Random();
 
 	public static double[] calcPosteriorProb(double[] pi,
 			Strategy[] strategies,
@@ -440,6 +443,78 @@ public class AnalysisUtils {
 			return "to OP";
 		else
 			return "undecided";
+	}
+
+	public static Map<String, Map<String, Double>> getStrategyForRange(Experiment expSet, int i,
+			int j) {
+		
+		int totalNumMM = 0;
+		int MMGivenMM = 0;
+		int totalNumGB = 0;
+		int MMGivenGB = 0;
+		
+		for (Game game : expSet.games) {
+			for (String hitId : game.playerHitIds) {
+				for (int r = i; r <= j; r++) {
+					String signal = game.rounds.get(r).getSignal(hitId);
+					String report = game.rounds.get(r).getReport(hitId);
+
+					if (signal.equals("MM")) {
+						totalNumMM++;
+						if (report.equals("MM")) {
+							MMGivenMM++;
+						}
+					} else {
+						totalNumGB++;
+						if (report.equals("MM")) {
+							MMGivenGB++;
+						}
+					}
+				}
+			}
+		}
+		
+		Map<String, Double> mmMap = new HashMap<String, Double>();
+		mmMap.put("MM", 1.0 * MMGivenMM / totalNumMM);
+		mmMap.put("GB", 1.0 * (totalNumMM - MMGivenMM) / totalNumMM);
+		
+		Map<String, Double> gbMap = new HashMap<String, Double>();
+		gbMap.put("MM", 1.0 * MMGivenGB / totalNumGB);
+		gbMap.put("GB", 1.0 * (totalNumGB - MMGivenGB) / totalNumGB);
+	
+		Map<String, Map<String, Double>> returnMap = new HashMap<String, Map<String, Double>>();
+		returnMap.put("MM", mmMap);
+		returnMap.put("GB", gbMap);
+		
+		return returnMap;
+	}
+
+	public static double[] getRandomTwoVec() {
+		double first = rand.nextDouble();
+		return new double[]{first, 1 - first};
+	}
+	
+	public static double[] getRandomVec(int length) {
+		List<Double> list = getRandomList(length, 1.0);
+		double[] vec = new double[length];
+		for (int i = 0; i < length; i++) {
+			vec[i] = list.get(i).doubleValue();
+		}
+		return vec;
+	}
+	
+	public static List<Double> getRandomList(int length, double remaining) {
+		List<Double> list = new ArrayList<Double>();
+		if (length > 1) {
+			double num = remaining * rand.nextDouble();
+			list = getRandomList(length - 1, remaining - num);
+			list.add(num);
+			return list;
+		} else {
+			list.add(remaining);
+			return list;
+		}
+			
 	}
 
 }
