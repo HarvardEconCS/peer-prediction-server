@@ -21,51 +21,48 @@ public class Game {
 	int numRounds;
 	int numPlayers;
 	String[] playerHitIds;
-	double[][] paymentArray;
-//	String[] signalList;
-
-	List<HITWorker> workers;
 	
+	double[] paymentArray;
+	double[][] paymentArrayComplex;
+
+	Map<String, String> exitSurvey;
+	
+	List<HITWorker> workers;
 	List<Round> rounds;
 
-	Map<String, List<Pair<String, String>>> signalReportPairList;
-	
-	Map<String, List<SigActObservation<CandySignal, CandyReport>>> signalReportObjList;
-	
-	Map<String, int[]> stateSeq;
-	
 	Map<String, Double> bonus;
+	Map<String, Double> ficPlayPayoff;
 	
-	Map<String, String> exitSurvey;
-
+	Map<String, List<String>> reportList;
+	Map<String, List<Pair<String, String>>> signalReportPairList;
+	Map<String, List<SigActObservation<CandySignal, CandyReport>>> signalReportObjList;
+	Map<String, int[]> stateSeq;
+		
+	Gson gson;
+	
 	String convergenceType;
-
-	String convergenceTypeRelaxed;
-
 	int roundConverged;
-
+	String convergenceTypeRelaxed;
 	int roundConvergedRelaxed;
 
-	Gson gson;
-
+	
 	String numberType;
-
 	int number;
-
 	int relaxNum;
-
-	int hmmEndType;
-
-	int hmmStartType;
 
 	int[] hmmTypeArray;
 
 	public Game() {
+
 		worlds = new ArrayList<Map<String, Double>>();
 		rounds = new ArrayList<Round>();
-		bonus = new HashMap<String, Double>();
 		exitSurvey = new HashMap<String, String>();
+		
+		bonus = new HashMap<String, Double>();
+		ficPlayPayoff = new HashMap<String, Double>();
+
 		gson = new Gson();
+		
 		convergenceType = "";
 		numberType = "";
 	}
@@ -99,7 +96,8 @@ public class Game {
 	}
 
 	public void savePaymentRule(String paymentRuleString) {
-		paymentArray = gson.fromJson(paymentRuleString, double[][].class);
+		if (numPlayers == 3)
+			paymentArray = gson.fromJson(paymentRuleString, double[].class);	
 	}
 
 	public Map<String, Map<String, Double>> getPlayerStrategyForRoundRange(String hitId,
@@ -637,8 +635,17 @@ public class Game {
 		this.convergenceTypeRelaxed = gameType;
 	}
 
-	
 	public void populateInfo() {
+
+		reportList = new HashMap<String, List<String>>();
+		for (String hitId: playerHitIds) {
+			List<String> list = new ArrayList<String>();
+			for (Round round : rounds) {
+				String report = round.getReport(hitId);
+				list.add(report);
+			}
+			reportList.put(hitId, list);
+		}
 		
 		signalReportPairList = new HashMap<String, List<Pair<String, String>>>();
 		for (String hitId : playerHitIds) {
@@ -666,6 +673,82 @@ public class Game {
 
 	}
 
+	public Map<String, Double> getOppHistory(int round, String hitId) {
+		Map<String, Integer> temp = new HashMap<String, Integer>();
+		temp.put("MM", 0);
+		temp.put("GB", 0);
+		for (String playerHitId : playerHitIds) {
+			if (playerHitId.equals(hitId))
+				continue;
+			for (int i = 0; i < rounds.size(); i++) {
+				String report = rounds.get(i).getReport(playerHitId);
+				int num = temp.get(report);
+				num++;
+				temp.put(report, num);
+			}
+		}
+		
+		Map<String, Double> oppHistory = new HashMap<String, Double>();
+		int total = temp.get("MM") + temp.get("GB");
+		oppHistory.put("MM", temp.get("MM") * 1.0 / total);
+		oppHistory.put("GB", temp.get("GB") * 1.0 / total);
+		return oppHistory;
+	}
+
+	public Map<String, Double> getPlayerHistory(int round, String hitId) {
+		Map<String, Integer> temp = new HashMap<String, Integer>();
+		temp.put("MM", 0);
+		temp.put("GB", 0);		
+		for (int i = 0; i < rounds.size(); i++) {
+			String report = rounds.get(i).getReport(hitId);
+			int num = temp.get(report);
+			num++;
+			temp.put(report, num);
+		}
+		Map<String, Double> playerHistory = new HashMap<String, Double>();
+		int total = temp.get("MM") + temp.get("GB");
+		playerHistory.put("MM", temp.get("MM") * 1.0 / total);
+		playerHistory.put("GB", temp.get("GB") * 1.0 / total);
+		return playerHistory;
+	}
+
+	public double getPayment(String myReport, String refReport) {
+		if (myReport.equals("MM") && refReport.equals("MM"))
+			return paymentArray[0];
+		else if (myReport.equals("MM") && refReport.equals("GB"))
+			return paymentArray[1];
+		else if (myReport.equals("GB") && refReport.equals("MM"))
+			return paymentArray[2];
+		return paymentArray[3];
+	}
+
+	public double getPaymentComplex(String myReport, int numMMOtherReports) {
+		if (myReport.equals("MM")) {
+			switch (numMMOtherReports) {
+			case 0:
+				return 0.9;
+			case 1:
+				return 0.1;
+			case 2:
+				return 1.5;
+			case 3:
+				return 0.8;
+			}
+
+		} else {
+			switch (numMMOtherReports) {
+			case 0:
+				return 0.8;
+			case 1:
+				return 1.5;
+			case 2:
+				return 0.1;
+			case 3:
+				return 0.9;
+			}
+		}
+		return -1;
+	}
 
 	// public List<String> getSignalsForPlayer(String hitId) {
 	// List<String> list = new ArrayList<String>();
