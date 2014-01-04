@@ -673,12 +673,12 @@ public class Game {
 
 	}
 
-	public Map<String, Double> getOppHistory(int round, String hitId) {
+	public Map<String, Double> getOppPopulationStrategy(int round, String excludeHitId) {
 		Map<String, Integer> temp = new HashMap<String, Integer>();
 		temp.put("MM", 0);
 		temp.put("GB", 0);
 		for (String playerHitId : playerHitIds) {
-			if (playerHitId.equals(hitId))
+			if (playerHitId.equals(excludeHitId))
 				continue;
 			for (int i = 0; i < rounds.size(); i++) {
 				String report = rounds.get(i).getReport(playerHitId);
@@ -688,11 +688,11 @@ public class Game {
 			}
 		}
 		
-		Map<String, Double> oppHistory = new HashMap<String, Double>();
+		Map<String, Double> oppPopStrategy = new HashMap<String, Double>();
 		int total = temp.get("MM") + temp.get("GB");
-		oppHistory.put("MM", temp.get("MM") * 1.0 / total);
-		oppHistory.put("GB", temp.get("GB") * 1.0 / total);
-		return oppHistory;
+		oppPopStrategy.put("MM", temp.get("MM") * 1.0 / total);
+		oppPopStrategy.put("GB", temp.get("GB") * 1.0 / total);
+		return oppPopStrategy;
 	}
 
 	public Map<String, Double> getPlayerHistory(int round, String hitId) {
