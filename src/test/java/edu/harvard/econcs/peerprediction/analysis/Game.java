@@ -32,6 +32,7 @@ public class Game {
 
 	Map<String, Double> bonus;
 	Map<String, Double> ficPlayPayoff;
+	Map<String, Double> bestResponsePayoff;
 	
 	Map<String, List<String>> reportList;
 	Map<String, List<Pair<String, String>>> signalReportPairList;
@@ -60,6 +61,7 @@ public class Game {
 		
 		bonus = new HashMap<String, Double>();
 		ficPlayPayoff = new HashMap<String, Double>();
+		bestResponsePayoff = new HashMap<String, Double>();
 
 		gson = new Gson();
 		
@@ -673,7 +675,7 @@ public class Game {
 
 	}
 
-	public Map<String, Double> getOppPopulationStrategy(int round, String excludeHitId) {
+	public Map<String, Double> getOppPopStrFull(int round, String excludeHitId) {
 		Map<String, Integer> temp = new HashMap<String, Integer>();
 		temp.put("MM", 0);
 		temp.put("GB", 0);
@@ -686,6 +688,26 @@ public class Game {
 				num++;
 				temp.put(report, num);
 			}
+		}
+		
+		Map<String, Double> oppPopStrategy = new HashMap<String, Double>();
+		int total = temp.get("MM") + temp.get("GB");
+		oppPopStrategy.put("MM", temp.get("MM") * 1.0 / total);
+		oppPopStrategy.put("GB", temp.get("GB") * 1.0 / total);
+		return oppPopStrategy;
+	}
+
+	public Map<String, Double> getOppPopStrPrevRound(int i, String excludeHitId) {
+		Map<String, Integer> temp = new HashMap<String, Integer>();
+		temp.put("MM", 0);
+		temp.put("GB", 0);
+		for (String playerHitId : playerHitIds) {
+			if (playerHitId.equals(excludeHitId))
+				continue;
+			String report = rounds.get(i - 1).getReport(playerHitId);
+			int num = temp.get(report);
+			num++;
+			temp.put(report, num);
 		}
 		
 		Map<String, Double> oppPopStrategy = new HashMap<String, Double>();
