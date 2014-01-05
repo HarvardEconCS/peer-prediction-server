@@ -13,13 +13,11 @@ public class Round {
 	Map<String, Double> chosenWorld;
 	Map<String, Map<String, Object>> roundPlay;
 	Map<String, Map<String, Object>> roundResult;
-	Gson gson;
+	Gson gson = new Gson();
 	int durationInMS;
 	String endTimeString;
 
 	public Round() {
-		gson = new Gson();
-
 		chosenWorld = new HashMap<String, Double>();
 		roundPlay = new HashMap<String, Map<String, Object>>();
 		roundResult = new HashMap<String, Map<String, Object>>();

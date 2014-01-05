@@ -20,7 +20,7 @@ public class ExitSurvey {
 	String comments;
 	
 	public ExitSurvey(String comment) {
-		Map<String, Map<String, String>> simpleQuestions = new HashMap<String, Map<String, String>>();
+//		Map<String, Map<String, String>> simpleQuestions = new HashMap<String, Map<String, String>>();
 		
 		Gson gson = new Gson();
 		Map<String, Object> exitSurveyMap = gson.fromJson(comment,
