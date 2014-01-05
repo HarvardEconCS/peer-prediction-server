@@ -18,14 +18,14 @@ public class PaymentRule {
 	public static PaymentRule getTestPaymentRule() {
 		PaymentRule rule = new PaymentRule();
 		
-		rule.addRule("MM", "0", 0.90);
+		rule.addRule("MM", "0", 0.10);
 		rule.addRule("MM", "1", 0.10);
 		rule.addRule("MM", "2", 1.50);
-		rule.addRule("MM", "3", 0.80);
-		rule.addRule("GB", "0", 0.80);
-		rule.addRule("GB", "1", 1.50);
-		rule.addRule("GB", "2", 0.10);
-		rule.addRule("GB", "3", 0.90);
+		rule.addRule("MM", "3", 0.15);
+		rule.addRule("GB", "0", 0.15);
+		rule.addRule("GB", "1", 0.90);
+		rule.addRule("GB", "2", 0.15);
+		rule.addRule("GB", "3", 0.10);
 		
 		return rule;
 	}
