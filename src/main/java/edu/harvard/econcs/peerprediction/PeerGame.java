@@ -93,12 +93,19 @@ public class PeerGame {
 		playerNames = new String[numPlayers];
 		combinedGroup.getHITIds().toArray(playerNames);
 
+		// Convert paymentArray to part string, so that it displays correctly in the logs.
+		double[][] paymentArray = paymentRule.getPayment2DArray(); 
+		int len = paymentArray.length;
+		String[] paymentStringArray = new String[len];
+		for (int i = 0; i < len; i++) {
+			paymentStringArray[i] = Arrays.toString(paymentArray[i]);
+		}
+		
 		expLog.printf("Prior is %s", prior.toString());
 		expLog.printf("General information sent: numPlayers=%d, numRounds=%s, " +
 				"playerNames=%s, paymentRule=%s, signalList=%s",  
 				numPlayers, nRounds, Arrays.toString(playerNames), 
-				Arrays.toString(paymentRule.getPayment2DArray()), 
-//				Arrays.toString(paymentRule.getPaymentArray()), 
+				Arrays.toString(paymentStringArray),  
 				Arrays.toString(prior.getSignalArray()));
 		
 		for (HITWorker worker : combinedGroup.getHITWorkers()) {
@@ -109,7 +116,6 @@ public class PeerGame {
 					playerNames,
 					worker.getHitId(),  
 					paymentRule.getPayment2DArray(), 
-//					paymentRule.getPaymentArray(), 
 					prior.getSignalArray());
 		}
 

@@ -35,14 +35,7 @@ public class PlayerUtils {
 
 	public static void sendGeneralInfo(HITWorker worker, int nPlayers, int nRounds, 
 			String[] playerNames, String yourName, double[][] paymentArray, String[] signalList) {		
-		
-		// Convert paymentArray to part string, so that it displays correctly in the logs.
-		int len = paymentArray.length;
-		String[] paymentStringArray = new String[len];
-		for (int i = 0; i < len; i++) {
-			paymentStringArray[i] = Arrays.toString(paymentArray[i]);
-		}
-		
+				
 		Map<String, Object> msg = new HashMap<String, Object>();
 		msg.put("status"		, "generalInfo");
 		msg.put("numPlayers"	, nPlayers);
@@ -50,10 +43,7 @@ public class PlayerUtils {
 		msg.put("yourName"		, yourName);
 		msg.put("signalList"    , signalList);	
 		msg.put("numRounds"		, nRounds);
-		
-		// Convert payment array to string
-//		msg.put("payments"		, paymentArray);
-		msg.put("payments"      , Arrays.toString(paymentStringArray));
+		msg.put("payments"		, paymentArray);
 		
 		try {
 			worker.deliverExperimentService(msg);
