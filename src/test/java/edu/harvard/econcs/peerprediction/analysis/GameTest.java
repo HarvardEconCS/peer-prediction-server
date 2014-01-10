@@ -150,15 +150,15 @@ public class GameTest {
 	@Test
 	public void testGetPaymentT3() {
 		
-		assertEquals(0.9, game.getPaymentT3("MM", 0), AnalysisUtils.eps);
-		assertEquals(0.1, game.getPaymentT3("MM", 1), AnalysisUtils.eps);
-		assertEquals(1.5, game.getPaymentT3("MM", 2), AnalysisUtils.eps);
-		assertEquals(0.8, game.getPaymentT3("MM", 3), AnalysisUtils.eps);
+		assertEquals(0.9, AnalysisUtils.getPaymentT3("MM", 0), AnalysisUtils.eps);
+		assertEquals(0.1, AnalysisUtils.getPaymentT3("MM", 1), AnalysisUtils.eps);
+		assertEquals(1.5, AnalysisUtils.getPaymentT3("MM", 2), AnalysisUtils.eps);
+		assertEquals(0.8, AnalysisUtils.getPaymentT3("MM", 3), AnalysisUtils.eps);
 		
-		assertEquals(0.8, game.getPaymentT3("GB", 0), AnalysisUtils.eps);
-		assertEquals(1.5, game.getPaymentT3("GB", 1), AnalysisUtils.eps);
-		assertEquals(0.1, game.getPaymentT3("GB", 2), AnalysisUtils.eps);
-		assertEquals(0.9, game.getPaymentT3("GB", 3), AnalysisUtils.eps);
+		assertEquals(0.8, AnalysisUtils.getPaymentT3("GB", 0), AnalysisUtils.eps);
+		assertEquals(1.5, AnalysisUtils.getPaymentT3("GB", 1), AnalysisUtils.eps);
+		assertEquals(0.1, AnalysisUtils.getPaymentT3("GB", 2), AnalysisUtils.eps);
+		assertEquals(0.9, AnalysisUtils.getPaymentT3("GB", 3), AnalysisUtils.eps);
 		
 	}
 

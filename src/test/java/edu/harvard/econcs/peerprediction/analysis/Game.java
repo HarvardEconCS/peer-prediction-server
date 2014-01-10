@@ -442,12 +442,12 @@ public class Game {
 		return AnalysisUtils.getOppPopStr(otherReports);
 	}
 
-	private List<String> getOtherReportList(Round prevRound, String excludeHitId) {
+	public List<String> getOtherReportList(Round round, String excludeHitId) {
 		List<String> reportArray = new ArrayList<String>();
 		for (String hitId: this.playerHitIds) {
 			if (hitId.equals(excludeHitId))
 				continue;
-			reportArray.add(prevRound.getReport(hitId));
+			reportArray.add(round.getReport(hitId));
 		}
 		return reportArray;
 	}
@@ -461,34 +461,6 @@ public class Game {
 			return paymentArray[2];
 		else if (myReport.equals("GB") && refReport.equals("GB"))
 			return paymentArray[3];
-		return -1;
-	}
-
-	public double getPaymentT3(String myReport, int numMMOtherReports) {
-		if (myReport.equals("MM")) {
-			switch (numMMOtherReports) {
-			case 0:
-				return 0.9;
-			case 1:
-				return 0.1;
-			case 2:
-				return 1.5;
-			case 3:
-				return 0.8;
-			}
-
-		} else {
-			switch (numMMOtherReports) {
-			case 0:
-				return 0.8;
-			case 1:
-				return 1.5;
-			case 2:
-				return 0.1;
-			case 3:
-				return 0.9;
-			}
-		}
 		return -1;
 	}
 
@@ -540,24 +512,24 @@ public class Game {
 	public double getPayoffT3(String myReport,
 			Map<String, Double> oppPopStrategy) {
 		return 
-				this.getPaymentT3(myReport, 0) 
+				AnalysisUtils.getPaymentT3(myReport, 0) 
 					* oppPopStrategy.get("GB") 
 					* oppPopStrategy.get("GB") 
 					* oppPopStrategy.get("GB")
 				
-				+ this.getPaymentT3(myReport, 1) * 
+				+ AnalysisUtils.getPaymentT3(myReport, 1) * 
 					(3 * oppPopStrategy.get("MM")  
 					   * oppPopStrategy.get("GB") 
 					   * oppPopStrategy.get("GB")
 					)
 						
-				+ this.getPaymentT3(myReport, 2) * 
+				+ AnalysisUtils.getPaymentT3(myReport, 2) * 
 					(3 * oppPopStrategy.get("MM")  
 					   * oppPopStrategy.get("MM") 
 					   * oppPopStrategy.get("GB")
 						)
 						
-				+ this.getPaymentT3(myReport, 3) 
+				+ AnalysisUtils.getPaymentT3(myReport, 3) 
 					* oppPopStrategy.get("MM") 
 					* oppPopStrategy.get("MM") 
 					* oppPopStrategy.get("MM")

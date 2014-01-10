@@ -83,10 +83,12 @@ public class LogReader {
 //	static String setId = "mar-13-fixed";
 //	static String treatment = "ten-cent-base";
 	static String setId = "vary-payment";
-	static String treatment = "prior2-basic";
+//	static String treatment = "prior2-basic";
 //	static String treatment = "prior2-outputagreement";
 //	static String treatment = "prior2-uniquetruthful";
+	static String treatment = "prior2-symmlowpay";
 //	static String treatment = "prior2-constant";
+
 
 	static final String rootDir = "/Users/alicexigao/Dropbox/peer_prediction/data/"
 			+ treatment + "/";
@@ -115,7 +117,7 @@ public class LogReader {
 	
 	public static void main(String[] args) throws Exception {
 
-		if (treatment.equals("prior2-constant"))
+		if (treatment.equals("prior2-constant") || treatment.equals("prior2-symmlowpay"))
 			choseReport = Pattern.compile("^(\\d{2}:\\d{2}.\\d{3}) ([a-zA-Z\\s0-9]+) @ HIT ([a-zA-Z\\s0-9]+) chose report ([A-Z]{2}) \\(radio: [0-9]\\)");
 		else 
 			choseReport = Pattern.compile("^(\\d{2}:\\d{2}.\\d{3}) ([a-zA-Z\\s0-9]+) @ HIT ([a-zA-Z\\s0-9]+) chose report ([A-Z]{2})");
@@ -125,17 +127,16 @@ public class LogReader {
 
 		parseLog();
 		parseExitSurvey();
-
-		System.out.println("treatment: " + treatment);
-		System.out.printf("non-killed games: %d\n\n", expSet.games.size());
-
-		// Learning analysis
-		bestResponse("BR");
-		bestResponse("FP");
-		
-		System.exit(0);
-		
 		playerComments();
+		
+		System.out.println(Arrays.toString(expSet.games.get(0).priorProbs));
+		System.out.println(expSet.games.get(0).worlds.toString());
+		
+//		strategyPayoffAnalysisT5("T3");
+//		strategyPayoffAnalysisT5("T5");
+
+		System.out.println("\ntreatment: " + treatment);
+		System.out.printf("non-killed games: %d\n\n", expSet.games.size());
 
 		if (treatment.equals("prior2-basic") || treatment.equals("prior2-outputagreement")) {	
 			numPlayers = 3;
@@ -146,9 +147,18 @@ public class LogReader {
 		} else if (treatment.equals("prior2-constant")) {
 			numPlayers = 1;
 			numStrategies = 2;
+		} else if (treatment.equals("prior2-symmlowpay")) {
+			numPlayers = 4;
+			numStrategies = 2;
+		}
+		
+		if (treatment.equals("prior2-symmlowpay")) {
+			numRounds = 30;
+		} else {
+			numRounds = 20;
 		}
 		strategyNames = new String[numStrategies];
-
+		
 		// HMM analysis
 		learnHMM();
 		fillStrategyNames();
@@ -156,8 +166,16 @@ public class LogReader {
 		determineHMMType();
 		genStateSeqDistMatlabCode();
 		genPredictedStrategyChangeCode();
+		System.exit(0);
 		
-		// Simple method
+		strategyPayoffAnalysis();
+		
+		// Learning analysis
+		learningAnalysis("BR");
+		learningAnalysis("FP");
+//		noRegretLearningAnalysis();
+		
+		// Simple convergence analysis
 		if (treatment.equals("prior2-basic") 
 				|| treatment.equals("prior2-outputagreement")
 				|| treatment.equals("prior2-constant")) {
@@ -170,11 +188,209 @@ public class LogReader {
 		}
 	}
 
-	private static void bestResponse(String type) throws IOException {
+	private static void strategyPayoffAnalysisT5(String rule) {
+		
+		System.out.println("\n" + "Strategy payoff analysis -- " + rule);
+		
+		// use this to get general parameter, such as the prior
+		Game firstGame = expSet.games.get(0);
+		List<Map<String, Double>> prior = firstGame.worlds;
+		double[] priorProbs = firstGame.priorProbs;
+
+		double truthfulPayoffT3 = AnalysisUtils.getTruthfulPayoff(rule, priorProbs, prior);
+		System.out.printf("Payoff at truthful equilibrium: %.6f\n", truthfulPayoffT3);	
+		
+		double mixedPayoff = 0.0;
+		double[] strategy = new double[2];
+		
+		double unit = 0.1;
+		int numUnit = Math.round((int)(1 / unit));
+		
+		for (int i = 0; i <= numUnit; i++) {
+			for (int j = 0; j <= numUnit; j++) {
+				double strategyMMGivenMM = unit * i;
+				double strategyMMGivenGB = unit * j;
+				double mixedPayoffT5 = AnalysisUtils.getMixedPayoff(rule,
+						priorProbs, prior, strategyMMGivenMM, strategyMMGivenGB);
+//				System.out.printf("mixed strategy is (%.2f, %.2f), payoff is %.6f\n",
+//						strategyMMGivenMM, strategyMMGivenGB, mixedPayoffT5);
+				if (mixedPayoffT5 > mixedPayoff) {
+					mixedPayoff = mixedPayoffT5;
+					strategy[0] = strategyMMGivenMM;
+					strategy[1] = strategyMMGivenGB;
+				}
+			}
+		}
+		System.out.printf("best mixed strategy; (%.2f, %.2f), best payoff; %.6f", 
+				strategy[0], strategy[1], mixedPayoff);
+	}
+	
+	private static void strategyPayoffAnalysis() {
+		
+		if (!treatment.equals("prior2-uniquetruthful"))
+			return;
+
+		System.out.println("\n" + "Strategy payoff analysis");
+		
+		// use this to get general parameter, such as the prior
+		Game firstGame = expSet.games.get(0);
+		List<Map<String, Double>> prior = firstGame.worlds;
+		double[] priorProbs = firstGame.priorProbs;
+		
+		String rule = "T3";
+		double truthfulPayoffT3 = AnalysisUtils.getTruthfulPayoff(rule, priorProbs, prior);
+		System.out.printf("Payoff at truthful equilibrium: %.6f\n", truthfulPayoffT3);
+		
+		// Payoff of mixed strategies
+		if (mixedState == -1) {
+			System.out.printf("HMM did not learn a mixed strategy.  Do not analyze its payoff");
+		} else {
+			Opdf<SigActObservation<CandySignal, CandyReport>> opdfMixed = learntHmm.getOpdf(mixedState);
+			System.out.printf("Mixed strategy: %s", opdfMixed.toString());
+			double probMMGivenMM = opdfMixed
+					.probability(new SigActObservation<CandySignal, CandyReport>(
+							CandySignal.MM, CandyReport.MM));
+			double probMMGivenGB = opdfMixed
+					.probability(new SigActObservation<CandySignal, CandyReport>(
+							CandySignal.GB, CandyReport.MM));
+			double mixedPayoffT3 = AnalysisUtils.getMixedPayoff(rule, priorProbs, prior, probMMGivenMM, probMMGivenGB);
+			System.out.printf("Payoff with symmetric mixed strategies:  %.6f\n", mixedPayoffT3);
+		}
+		
+		// Average of all players' actual payoffs
+		int count = 0;
+		double totalPayoff = 0.0;
+		for (Game game : expSet.games) {
+			for (String hitId : game.playerHitIds) {
+				count++;
+				totalPayoff += game.actualPayoff.get(hitId);
+			}
+		}
+		double avgPayoff = totalPayoff / count;
+		System.out.printf("avg of all players' actual payoffs %.6f", avgPayoff);
+
+		
+		
+		
+	}
+	
+	
+
+	private static void noRegretLearningAnalysis() {
+		
+		List<Map<String, Map<String, Double>>> experts = 
+				new ArrayList<Map<String, Map<String, Double>>>();
+		double unit = 0.25;
+		int numUnit = Math.round((int) (1 / unit));
+		for (int i = 0; i <= numUnit; i++) {
+			for (int j = 0; j <= numUnit; j++) {
+				double probMMGivenMM = i * unit;
+				double probMMGivenGB = j * unit;
+
+				Map<String, Map<String, Double>> strategy = 
+						new HashMap<String, Map<String, Double>>();
+
+				Map<String, Double> mmStrategy = new HashMap<String, Double>();
+				mmStrategy.put("MM", probMMGivenMM);
+				mmStrategy.put("GB", 1 - probMMGivenMM);
+				Map<String, Double> gbStrategy = new HashMap<String, Double>();
+				gbStrategy.put("MM", probMMGivenGB);
+				gbStrategy.put("GB", 1 - probMMGivenGB);
+
+				strategy.put("MM", mmStrategy);
+				strategy.put("GB", mmStrategy);
+
+				experts.add(strategy);
+			}
+		}
+		System.out.printf("number of experts %d\n", experts.size());
+		
+		// Put in initial weights
+		List<List<Double>> weights = new ArrayList<List<Double>>();
+		List<Double> initWeights = new ArrayList<Double>();
+		for (int i = 0; i < experts.size(); i++) {
+			initWeights.add(1.0);
+		}
+		weights.add(initWeights);
+		
+		for (Game game : expSet.games) {
+//		Game game = expSet.games.get(10);
+		
+			for (String hitId : game.playerHitIds) {
+//			String hitId = game.playerHitIds[0];
+		
+			System.out.printf("actual payoff %.2f\n", game.actualPayoff.get(hitId));
+			
+				for (int i = 0; i < numRounds; i++) {
+					
+					// Calculate payoffs
+					List<Double> expertPayoffs = new ArrayList<Double>();
+					for (int j = 0; j < experts.size(); j++) {
+						
+						if (treatment.equals("prior2-uniquetruthful")) {
+							double currPayoff = getPayoffT3(hitId, game, i, experts.get(j));
+							expertPayoffs.add(currPayoff);
+						} else {
+							
+						}
+					}
+					
+					// Calculate player payoff
+					double playerPayoff = 0.0;
+					double totalWeight = 0.0;
+					for (int j = 0; j < experts.size(); j++) {
+						totalWeight += weights.get(i).get(j);
+					}
+					for (int j = 0;  j < experts.size(); j++) {
+						playerPayoff += weights.get(i).get(j) / totalWeight * expertPayoffs.get(j);
+					}
+					System.out.printf("round %s: my payoff %.2f\n", i, playerPayoff);
+					
+					// Update weights
+					List<Double> currWeights = new ArrayList<Double>();
+					for (int j = 0; j < experts.size(); j++) {
+						double weight = weights.get(i).get(j);
+						double newWeight = weight * (1 + 0.1 * expertPayoffs.get(j));
+						currWeights.add(newWeight);
+					}
+					weights.add(currWeights);
+//					System.out.printf("round %s: %s\n", i, currWeights.toString());
+					
+				}
+				
+			}
+		}
+	}
+	
+	private static double getPayoffT3(String hitId, Game game, int i,
+			Map<String, Map<String, Double>> expert) {
+		
+		Round currRound = game.rounds.get(i);
+		String signal = currRound.getSignal(hitId);
+		Map<String, Double> strategyForSignal = expert.get(signal);
+		List<String> otherReports = game.getOtherReportList(currRound, hitId);
+
+		int numMMInOtherReports = game.getNumMMInRefReports(otherReports);
+
+		return strategyForSignal.get("MM") * AnalysisUtils.getPaymentT3("MM", numMMInOtherReports)
+				+ strategyForSignal.get("GB") * AnalysisUtils.getPaymentT3("GB", numMMInOtherReports);
+	}
+
+	private static double getPayoffT3(Map<String, Double> strategyForSignal,
+			int numMMInOtherReports) {
+		return strategyForSignal.get("MM") * AnalysisUtils.getPaymentT3("MM", numMMInOtherReports)
+				+ strategyForSignal.get("GB") * AnalysisUtils.getPaymentT3("GB", numMMInOtherReports);
+	}
+
+	private static void learningAnalysis(String type) throws IOException {
 		if (type.equals("BR"))
-			System.out.println("Best response analysis");
+			System.out.println("\n" + "Best response analysis");
 		else if (type.equals("FP"))
-			System.out.println("Fictitious play analysis");
+			System.out.println("\n" + "Fictitious play analysis");
+		else if (type.equals("NR")) {
+			System.out.println("No regret learning analysis -- not implemented yet");
+			return;
+		}
 		
 		if (treatment.equals("prior2-constant")) {
 			System.out.println("Skipping best response analysis for constant payment treatment");
@@ -188,14 +404,6 @@ public class LogReader {
 		double diffTotal = 0;
 		int count = 0;
 		for (Game game : expSet.games) {
-
-//			Map<String, List<String>> reportList = game.reportList;
-//			for (String hitId: game.playerHitIds) {
-//				List<String> list = reportList.get(hitId);
-//				System.out.print(String.format("%s: %s, %.2f\n", 
-//						hitId, list.toString(), game.actualPayoff.get(hitId)));
-//			}
-//			System.out.println();
 			
 			for (String hitId : game.playerHitIds) {
 
@@ -232,7 +440,7 @@ public class LogReader {
 					if (treatment.equals("prior2-uniquetruthful")) {
 						List<String> refReports = game.getRefReports(hitId, i);
 						int numMM = game.getNumMMInRefReports(refReports);						
-						myPayoffs[i] = game.getPaymentT3(myReport, numMM);
+						myPayoffs[i] = AnalysisUtils.getPaymentT3(myReport, numMM);
 					} else {
 						String refReport = game.getRefReport(hitId, i);
 						myPayoffs[i] = game.getPaymentT1N2(myReport, refReport, paymentArray);
@@ -302,162 +510,10 @@ public class LogReader {
 		writerMatlab.close();
 		
 	}
-
-
 	
-	private static void fictitiousPlay() throws IOException {
-		
-		System.out.println("Fictitious play analysis");
-		
-		if (treatment.equals("prior2-constant")) {
-			System.out.println("Skipping fictitious play analysis for constant payment treatment");
-			return;
-		}
-		
-		
-		BufferedWriter writer = new BufferedWriter(new FileWriter(rootDir 
-				+ "fictitiousPlay.csv"));
-		writer.write("hitId, actual payoff, simulated payoff, improvement\n");
-		
-		double diffTotal = 0;
-		int count = 0;
-		for (Game game : expSet.games) {
-
-//			Map<String, List<String>> reportList = game.reportList;
-//			for (String hitId: game.playerHitIds) {
-//				List<String> list = reportList.get(hitId);
-//				System.out.print(String.format("%s: %s, %.2f\n", 
-//						hitId, list.toString(), game.bonus.get(hitId)));
-//			}
-//			System.out.println();
-			
-			for (String hitId : game.playerHitIds) {
-
-				// Array of other players' HIT ids
-				ArrayList<String> otherHitIds = new ArrayList<String>();
-				for (String innerHitId: game.playerHitIds) {
-					if (innerHitId.equals(hitId))
-						continue;
-					else
-						otherHitIds.add(innerHitId);
-				}
-				String[] otherHitIdArray = otherHitIds.toArray(new String[]{});
-				
-				double[] myPayoffs = new double[numRounds];
-				String[] myReports = new String[numRounds];
-				
-				for (int i = 0; i < numRounds; i++) {
-					
-					Round currRound = game.rounds.get(i);
-					double[] paymentArray = game.paymentArrayT1N2;
-					
-					String myReport;
-					if (i == 0) {
-						myReport = currRound.getReport(hitId);
-						
-					} else {
-
-						Map<String, Double> oppPopStrategy = game.getOppPopStrFull(i, hitId);
-						
-						if (treatment.equals("prior2-uniquetruthful")) {
-							myReport = game.getBestResponseT3(oppPopStrategy);							
-						} else {
-							myReport = game.getBestResponseT1N2(oppPopStrategy, paymentArray);							
-						}
-					}
-					
-					myReports[i] = myReport;
-					
-					if (!treatment.equals("prior2-uniquetruthful")) {
-						
-						Map<String, Map<String, Object>> roundResult = currRound.roundResult;
-						Map<String, Object> myResult = roundResult.get(hitId);
-						String refPlayerHitId = (String) myResult.get("refPlayer");
-						Map<String, Object> refPlayerResult = roundResult.get(refPlayerHitId);
-						String refReport = (String) refPlayerResult.get("report");
-						
-						myPayoffs[i] = game.getPaymentT1N2(myReport, refReport, paymentArray);
-						
-					} else {
-						
-						String[] refReports = new String[otherHitIdArray.length];
-						for (int k = 0; k < otherHitIdArray.length; k++) {
-							refReports[k] = game.rounds.get(i).getReport(otherHitIdArray[k]);
-						}
-						int numMM = 0;
-						for (int k = 0; k < refReports.length; k++) {
-							if (refReports[k].equals("MM"))
-								numMM++;
-						}
-						myPayoffs[i] = game.getPaymentT3(myReport, numMM);
-					}
-				}
-				
-				double totalPayoff = 0;
-				for (int i = 0; i < numRounds; i++) {
-					totalPayoff += myPayoffs[i];
-				}
-				double simulatedAvgPayoff = totalPayoff / numRounds;
-				game.simulatedFPPayoff.put(hitId, simulatedAvgPayoff);
-				
-//				System.out.print(String.format("%s: %s, %.2f\n\n", hitId, Arrays.toString(playerReports), avgPayoff));
-				
-				double actualAvgPayoff = game.actualPayoff.get(hitId);
-				
-				double diff = simulatedAvgPayoff - actualAvgPayoff;
-				diffTotal += diff;
-				count++;
-				
-				// Print out information
-				writer.write(String.format("%s, %.2f, %.2f\n", 
-						hitId, actualAvgPayoff, simulatedAvgPayoff));
-//				System.out.print(String.format("%s: ", hitId));
-//				System.out.print(String.format("%.2f, %.2f\n", 
-//						actualAvgPayoff, simulatedAvgPayoff));
-			}
-		}
-
-		writer.flush();
-		writer.close();
-
-		System.out.println("diff average " + diffTotal * 1.0 / count);
-		
-		BufferedWriter writerMatlab = new BufferedWriter(new FileWriter(rootDir
-				+ "ficPlayPairedTTest.m"));
-		writerMatlab.write("actual = [");
-		for (Game game : expSet.games) {
-			for (String hitId : game.playerHitIds) {
-				writerMatlab.write(String.format("%.2f ", game.actualPayoff.get(hitId)));
-			}
-		}
-		writerMatlab.write("];\n");
-		
-		writerMatlab.write("simulated = [");
-		for (Game game : expSet.games) {
-			for (String hitId : game.playerHitIds) {
-				writerMatlab.write(String.format("%.2f ", game.simulatedFPPayoff.get(hitId)));
-			}
-		}
-		writerMatlab.write("];\n");
-		writerMatlab.write("[h,p] = ttest(actual,simulated)\n");
-		writerMatlab.write("diff = simulated - actual;\n");
-		writerMatlab.write("m = mean(diff);\n" +
-				"v = std(diff);\n" +
-				"diff2 = (diff - m)/v;\n" +
-				"h2=kstest(diff2)\n" +
-				"[f,x_values] = ecdf(diff2);\n" + 
-				"F = plot(x_values,f);\n" + 
-				"set(F,'LineWidth',2);\n" + 
-				"hold on;\n" +
-				"G = plot(x_values,normcdf(x_values,0,1),'r-');\n" + 
-				"set(G,'LineWidth',2);\n");
-		writerMatlab.flush();
-		writerMatlab.close();
-	}
-
 	private static void learnHMM() throws IOException {
 
-		System.out.println("Learning HMM");
+		System.out.println("\nLearning HMM");
 		
 		// produce list of signal, report pairs
 		List<List<SigActObservation<CandySignal, CandyReport>>> seq = 
@@ -582,6 +638,7 @@ public class LogReader {
 				for (int state : stateSeq) {
 					writer.write(state + ",");
 				}
+				writer.write(String.format("%.2f", game.actualPayoff.get(hitId)));
 				writer.write("\n");
 			}
 			writer.write("\n");
@@ -624,10 +681,10 @@ public class LogReader {
 						game.hmmTypeArray[i] = truthfulState;
 					} else if (typeCountPerRound[mmState] == 1
 							&& typeCountPerRound[gbState] == 3) {
-						game.hmmTypeArray[i] = 13;
+						game.hmmTypeArray[i] = 4;
 					} else if (typeCountPerRound[mmState] == 3
 							&& typeCountPerRound[gbState] == 1) {
-						game.hmmTypeArray[i] = 31;
+						game.hmmTypeArray[i] = 5;
 					} else {
 						game.hmmTypeArray[i] = -1;
 					}
@@ -638,7 +695,7 @@ public class LogReader {
 			
 		}
 		
-		int[][] hmmTypeCount = new int[numRounds][numStrategies];
+		int[][] hmmTypeCount = new int[numRounds][numStrategies + 2];
 		for (Game game : expSet.games) {
 			for (int i = 0; i < numRounds; i++) {
 				if (game.hmmTypeArray[i] == -1)
@@ -654,20 +711,19 @@ public class LogReader {
 		for (int j = 0; j < numStrategies; j++) {
 			writerCsv.write(String.format("%s,", strategyNames[j]));
 		}
+		writerCsv.write(String.format("%s,", "1MM3GB"));
+		writerCsv.write(String.format("%s,", "3MM1GB"));
 		writerCsv.write("\n");
-		
 		for (int i = 0; i < numRounds; i++) {
 			for (int j = 0; j < numStrategies; j++) {
 				writerCsv.write(String.format("%d,", hmmTypeCount[i][j]));
-//				System.out.print(String.format("%d,", hmmTypeCount[i][j]));
 			}
+			writerCsv.write(String.format("%d,", hmmTypeCount[i][numStrategies]));
+			writerCsv.write(String.format("%d,", hmmTypeCount[i][numStrategies + 1]));
 			writerCsv.write("\n");
-//			System.out.print("\n");
 		}
 		writerCsv.flush();
 		writerCsv.close();
-		
-		
 		
 		BufferedWriter writerMatlab = new BufferedWriter(new FileWriter(rootDir
 				+ "hmmType" + numStrategies + "Strategies.m"));
@@ -680,28 +736,21 @@ public class LogReader {
 			writerMatlab.write("]';\n");
 		}
 		writerMatlab.write("\n");
-		
 		writerMatlab.write("figure;\n");
-		
 		writerMatlab.write(String.format("bar(1:%d, [", numRounds));
 		for (int j = 0; j < numStrategies; j++) {
 			writerMatlab.write(String.format("%s ", strategyNames[j]));
 		}
 		writerMatlab.write("], 0.5, 'stack');\n");
-		
 		writerMatlab.write("xlabel('Round');\n");
 		writerMatlab.write("ylabel('Number of games');\n");
-		
 		writerMatlab.write("legend(");
 		for (int j = 0; j < numStrategies; j++) {
 			writerMatlab.write(String.format("'%s', ", strategyNames[j]));
 		}
 		writerMatlab.write("'NorthWest');");
-		
 		writerMatlab.flush();
 		writerMatlab.close();
-		
-		
 	}
 
 	private static void genStateSeqDistMatlabCode() throws IOException {
