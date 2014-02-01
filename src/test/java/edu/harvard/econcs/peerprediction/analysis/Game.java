@@ -23,7 +23,6 @@ public class Game {
 	String[] playerHitIds;
 	List<Round> rounds;
 	
-	
 	double[] paymentArrayT1N2;
 
 	Map<String, String> exitSurvey;
@@ -44,7 +43,7 @@ public class Game {
 	String convergenceTypeRelaxed;
 	int roundConvergedRelaxed;
 
-	int[] hmmTypeArray;
+	int[] strategyComboTypeArray;
 
 	public Game() {
 

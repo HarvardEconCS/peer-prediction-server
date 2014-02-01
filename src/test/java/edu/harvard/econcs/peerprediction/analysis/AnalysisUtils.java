@@ -1,17 +1,18 @@
 package edu.harvard.econcs.peerprediction.analysis;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
 
+import net.andrewmao.misc.Pair;
+
 import org.apache.commons.math3.util.ArithmeticUtils;
 
-import be.ac.ulg.montefiore.run.jahmm.Opdf;
-
-import net.andrewmao.misc.Pair;
-import net.andrewmao.models.games.SigActObservation;
+import com.google.common.collect.ImmutableMap;
 
 public class AnalysisUtils {
 
@@ -45,6 +46,104 @@ public class AnalysisUtils {
 		return oppPopStrategy;
 	}
 
+	public static void getSymmMixedStrEq3Players(String rule) {
+		
+		System.out.printf("\nSolving for symmetric mixed strategy equilibrium.  %s\n", rule);
+		
+		double[] priorProbs = new double[] { 0.5, 0.5 };
+		List<Map<String, Double>> prior = new ArrayList<Map<String, Double>>();
+		prior.add(ImmutableMap.of("MM", 0.2, "GB", 0.8));
+		prior.add(ImmutableMap.of("MM", 0.7, "GB", 0.3));
+		
+		double minDiffGB = Double.POSITIVE_INFINITY;
+		double minDiffMM = Double.POSITIVE_INFINITY;
+		double[] strategy = new double[]{0.0, 0.0};
+		
+		double unit = 0.001;
+		int numUnit = (int) (1 / unit);
+		for (int i = 1; i < numUnit; i++) {
+			for (int j = 1; j < numUnit; j++) {
+				double strategyMMGivenMM = unit * i;
+				double strategyMMGivenGB = unit * j;
+				
+				double payoffMMSignalMMReport = 
+						AnalysisUtils.getMixedPayoffForSignalAndReport3Players(rule, priorProbs, prior, 
+								strategyMMGivenMM, strategyMMGivenGB, "MM", "MM");
+				double payoffMMSignalGBReport = 
+						AnalysisUtils.getMixedPayoffForSignalAndReport3Players(rule, priorProbs, prior, 
+								strategyMMGivenMM, strategyMMGivenGB, "MM", "GB");
+				double diffMMSignal = Math.abs(payoffMMSignalMMReport - payoffMMSignalGBReport);
+				
+				double payoffForGBSignalMMReport = 
+						AnalysisUtils.getMixedPayoffForSignalAndReport3Players(rule, priorProbs, prior, 
+								strategyMMGivenMM, strategyMMGivenGB, "GB", "MM");
+				double payoffForGBSignalGBReport = 
+						AnalysisUtils.getMixedPayoffForSignalAndReport3Players(rule, priorProbs, prior, 
+								strategyMMGivenMM, strategyMMGivenGB, "GB", "GB");
+				double diffGBSignal = Math.abs(payoffForGBSignalMMReport - payoffForGBSignalGBReport);
+				
+				if (diffGBSignal < minDiffGB && diffMMSignal < minDiffMM) {
+					minDiffGB = diffGBSignal;
+					minDiffMM = diffMMSignal;
+					strategy[0] = strategyMMGivenMM;
+					strategy[1] = strategyMMGivenGB;
+				}
+			}
+		}
+		
+		System.out.printf("Close to mixed strategy equilibrium is %s\n", Arrays.toString(strategy));
+		System.out.printf("Best diff is %.4f for MM signal and %.4f for GB signal\n", minDiffMM, minDiffGB);
+	}
+	
+	public static void getSymmMixedStrEq4Players(String rule) {
+		
+		System.out.printf("\nSolving for symmetric mixed strategy equilibrium.  %s\n", rule);
+		
+		double[] priorProbs = new double[] { 0.5, 0.5 };
+		List<Map<String, Double>> prior = new ArrayList<Map<String, Double>>();
+		prior.add(ImmutableMap.of("MM", 0.2, "GB", 0.8));
+		prior.add(ImmutableMap.of("MM", 0.7, "GB", 0.3));
+		
+		double minDiffGB = Double.POSITIVE_INFINITY;
+		double minDiffMM = Double.POSITIVE_INFINITY;
+		double[] strategy = new double[]{0.0, 0.0};
+		
+		double unit = 0.001;
+		int numUnit = (int) (1 / unit);
+		for (int i = 1; i < numUnit; i++) {
+			for (int j = 1; j < numUnit; j++) {
+				double strategyMMGivenMM = unit * i;
+				double strategyMMGivenGB = unit * j;
+				
+				double payoffMMSignalMMReport = 
+						AnalysisUtils.getMixedPayoffForSignalAndReport4Players(rule, priorProbs, prior, 
+								strategyMMGivenMM, strategyMMGivenGB, "MM", "MM");
+				double payoffMMSignalGBReport = 
+						AnalysisUtils.getMixedPayoffForSignalAndReport4Players(rule, priorProbs, prior, 
+								strategyMMGivenMM, strategyMMGivenGB, "MM", "GB");
+				double diffMMSignal = Math.abs(payoffMMSignalMMReport - payoffMMSignalGBReport);
+				
+				double payoffForGBSignalMMReport = 
+						AnalysisUtils.getMixedPayoffForSignalAndReport4Players(rule, priorProbs, prior, 
+								strategyMMGivenMM, strategyMMGivenGB, "GB", "MM");
+				double payoffForGBSignalGBReport = 
+						AnalysisUtils.getMixedPayoffForSignalAndReport4Players(rule, priorProbs, prior, 
+								strategyMMGivenMM, strategyMMGivenGB, "GB", "GB");
+				double diffGBSignal = Math.abs(payoffForGBSignalMMReport - payoffForGBSignalGBReport);
+				
+				if (diffGBSignal < minDiffGB && diffMMSignal < minDiffMM) {
+					minDiffGB = diffGBSignal;
+					minDiffMM = diffMMSignal;
+					strategy[0] = strategyMMGivenMM;
+					strategy[1] = strategyMMGivenGB;
+				}
+			}
+		}
+		
+		System.out.printf("Close to mixed strategy equilibrium is %s\n", Arrays.toString(strategy));
+		System.out.printf("Best diff is %.4f for MM signal and %.4f for GB signal\n", minDiffMM, minDiffGB);
+	}
+	
 	/**
 	 * EM Algorithms
 	 * 
@@ -194,20 +293,32 @@ public class AnalysisUtils {
 		return logLikelihood;
 	}
 
-	public static double[] getRandomTwoVec() {
-		double first = rand.nextDouble();
-		return new double[] { first, 1 - first };
-	}
-
 	public static double[] getRandomVec(int length) {
-		List<Double> list = getRandomList(length, 1.0);
-		double[] vec = new double[length];
+		List<Double> list = getRandomList(length);
+		double[] array = new double[length];
 		for (int i = 0; i < length; i++) {
-			vec[i] = list.get(i).doubleValue();
+			array[i] = list.get(i).doubleValue();
 		}
-		return vec;
+		return array;
 	}
 
+	public static List<Double> getRandomList(int length) {
+		List<Double> list = new ArrayList<Double>();
+		for (int i = 1; i <= length - 1; i++) {
+			list.add(rand.nextDouble());
+		}
+		list.add(0.0);
+		list.add(1.0);
+		Collections.sort(list);
+		
+		List<Double> returnList = new ArrayList<Double>();
+		for (int i = 0; i < length; i++) {
+			double value = list.get(i + 1).doubleValue() - list.get(i).doubleValue();
+			returnList.add(value);
+		}
+		return returnList;
+	}
+	
 	public static List<Double> getRandomList(int length, double remaining) {
 		List<Double> list = new ArrayList<Double>();
 		if (length > 1) {
@@ -268,6 +379,7 @@ public class AnalysisUtils {
 
 	public static double getTruthfulPayoff(String rule, double[] priorProbs,
 			List<Map<String, Double>> prior) {
+		
 		double probMM = AnalysisUtils.getProbMM(priorProbs, prior);
 		double probGB = 1 - probMM;
 
@@ -300,54 +412,238 @@ public class AnalysisUtils {
 
 	}
 
+	private static double getMixedPayoffForSignalAndReport3Players(String rule,
+			double[] priorProbs, List<Map<String, Double>> prior,
+			double strategyMMGivenMM, double strategyMMGivenGB, 
+			String signal,
+			String report) {
+
+		double probMMRefReportGivenMM = 
+				AnalysisUtils.getProbRefReportGivenSignalAndStrategy("MM", "MM", 
+						strategyMMGivenMM, strategyMMGivenGB, priorProbs, prior);
+		double probGBRefReportGivenMM = 
+				AnalysisUtils.getProbRefReportGivenSignalAndStrategy("GB", "MM", 
+						strategyMMGivenMM, strategyMMGivenGB, priorProbs, prior);
+		
+		double probMMRefReportGivenGB = 
+				AnalysisUtils.getProbRefReportGivenSignalAndStrategy("MM", "GB", 
+						strategyMMGivenMM, strategyMMGivenGB, priorProbs, prior);
+		double probGBRefReportGivenGB = 
+				AnalysisUtils.getProbRefReportGivenSignalAndStrategy("GB", "GB", 
+						strategyMMGivenMM, strategyMMGivenGB, priorProbs, prior);
+		
+		if (signal.equals("MM") && report.equals("MM")) {
+			return probMMRefReportGivenMM * AnalysisUtils.getPayment(rule, "MM", "MM")
+				 + probGBRefReportGivenMM * AnalysisUtils.getPayment(rule, "MM", "GB");
+		} else if (signal.equals("MM") && report.equals("GB")) {
+			return probMMRefReportGivenMM * AnalysisUtils.getPayment(rule, "GB", "MM")
+				 + probGBRefReportGivenMM * AnalysisUtils.getPayment(rule, "GB", "GB");			
+		} else if (signal.equals("GB") && report.equals("MM")) {
+			return probMMRefReportGivenGB * AnalysisUtils.getPayment(rule, "MM", "MM")
+				 + probGBRefReportGivenGB * AnalysisUtils.getPayment(rule, "MM", "GB");			
+		} else if (signal.equals("GB") && report.equals("GB")) {
+			return probMMRefReportGivenGB * AnalysisUtils.getPayment(rule, "GB", "MM")
+				 + probGBRefReportGivenGB * AnalysisUtils.getPayment(rule, "GB", "GB");
+			
+		}
+		return -1;
+	}
+
+	public static double getMixedPayoffForSignalAndReport4Players(String rule, 
+			double[] priorProbs, List<Map<String, Double>> prior,
+			double strategyMMGivenMM, double strategyMMGivenGB,
+			String signal, String report) {
+		
+		double prob3MM0GBRefReportsGivenMM = 
+				AnalysisUtils.getProbRefReportsGivenSignalAndStrategy(3, 0, "MM", 
+						strategyMMGivenMM, strategyMMGivenGB, priorProbs, prior);
+		double prob2MM1GBRefReportsGivenMM = 
+				AnalysisUtils.getProbRefReportsGivenSignalAndStrategy(2, 1, "MM", 
+						strategyMMGivenMM, strategyMMGivenGB, priorProbs, prior);
+		double prob1MM2GBRefReportsGivenMM = 
+				AnalysisUtils.getProbRefReportsGivenSignalAndStrategy(1, 2, "MM", 
+						strategyMMGivenMM, strategyMMGivenGB, priorProbs, prior);
+		double prob0MM3GBRefReportsGivenMM = 	
+				AnalysisUtils.getProbRefReportsGivenSignalAndStrategy(0, 3, "MM", 
+						strategyMMGivenMM, strategyMMGivenGB, priorProbs, prior);
+
+		double prob3MM0GBRefReportsGivenGB = 
+				AnalysisUtils.getProbRefReportsGivenSignalAndStrategy(3, 0, "GB", 
+						strategyMMGivenMM, strategyMMGivenGB, priorProbs, prior);
+		double prob2MM1GBRefReportsGivenGB = 
+				AnalysisUtils.getProbRefReportsGivenSignalAndStrategy(2, 1, "GB", 
+						strategyMMGivenMM, strategyMMGivenGB, priorProbs, prior);
+		double prob1MM2GBRefReportsGivenGB =  
+				AnalysisUtils.getProbRefReportsGivenSignalAndStrategy(1, 2, "GB", 
+						strategyMMGivenMM, strategyMMGivenGB, priorProbs, prior);
+		double prob0MM3GBRefReportsGivenGB = 	
+				AnalysisUtils.getProbRefReportsGivenSignalAndStrategy(0, 3, "GB", 
+						strategyMMGivenMM, strategyMMGivenGB, priorProbs, prior);
+		
+		if (signal.equals("MM") && report.equals("MM")) {
+			return prob3MM0GBRefReportsGivenMM * AnalysisUtils.getPayment(rule, "MM", 3) 
+				 + prob2MM1GBRefReportsGivenMM * AnalysisUtils.getPayment(rule, "MM", 2)
+			 	 + prob1MM2GBRefReportsGivenMM * AnalysisUtils.getPayment(rule, "MM", 1) 
+			 	 + prob0MM3GBRefReportsGivenMM * AnalysisUtils.getPayment(rule, "MM", 0);
+		} else if (signal.equals("MM") && report.equals("GB")) {
+			return prob3MM0GBRefReportsGivenMM * AnalysisUtils.getPayment(rule, "GB", 3)
+				 + prob2MM1GBRefReportsGivenMM * AnalysisUtils.getPayment(rule, "GB", 2)
+				 + prob1MM2GBRefReportsGivenMM * AnalysisUtils.getPayment(rule, "GB", 1) 
+				 + prob0MM3GBRefReportsGivenMM * AnalysisUtils.getPayment(rule, "GB", 0);
+		} else if (signal.equals("GB") && report.equals("MM")){
+			return prob3MM0GBRefReportsGivenGB * AnalysisUtils.getPayment(rule, "MM", 3) 
+				 + prob2MM1GBRefReportsGivenGB * AnalysisUtils.getPayment(rule, "MM", 2)
+				 + prob1MM2GBRefReportsGivenGB * AnalysisUtils.getPayment(rule, "MM", 1) 
+				 + prob0MM3GBRefReportsGivenGB * AnalysisUtils.getPayment(rule, "MM", 0);
+		} else if (signal.equals("GB") && report.equals("GB")) {
+			return prob3MM0GBRefReportsGivenGB * AnalysisUtils.getPayment(rule, "GB", 3)
+				 + prob2MM1GBRefReportsGivenGB * AnalysisUtils.getPayment(rule, "GB", 2)
+				 + prob1MM2GBRefReportsGivenGB * AnalysisUtils.getPayment(rule, "GB", 1) 
+				 + prob0MM3GBRefReportsGivenGB * AnalysisUtils.getPayment(rule, "GB", 0);
+		}
+		return -1;
+	}
+	
+	
+	
 	public static double getMixedPayoff(String rule, double[] priorProbs,
 			List<Map<String, Double>> prior,
 			double strategyMMGivenMM, double strategyMMGivenGB) {
 
 //		System.out.printf("%.2f, %.2f", strategyMMGivenMM, strategyMMGivenGB);
 		
-		double probMM = AnalysisUtils.getProbMM(priorProbs, prior);
-		double probGB = 1 - probMM;
-	
-		double probMMGivenMM = AnalysisUtils.getProbSignalGivenSignal("MM", "MM", priorProbs, prior);
-		double probMMGivenGB = AnalysisUtils.getProbSignalGivenSignal("MM", "GB", priorProbs, prior);
-		
 		double prob3MM0GBRefReportsGivenMM = 
-				Math.pow((probMMGivenMM * strategyMMGivenMM + (1 - probMMGivenMM) * strategyMMGivenGB), 3);
-		double prob2MM1GBRefReportsGivenMM = 3 
-				* Math.pow((probMMGivenMM * strategyMMGivenMM + (1 - probMMGivenMM) * strategyMMGivenGB), 2)
-				* Math.pow((probMMGivenMM * (1-strategyMMGivenMM) + (1 - probMMGivenMM) * (1-strategyMMGivenGB)), 1);
-		double prob1MM2GBRefReportsGivenMM = 3 
-				* Math.pow((probMMGivenMM * strategyMMGivenMM + (1 - probMMGivenMM) * strategyMMGivenGB), 1)
-				* Math.pow((probMMGivenMM * (1-strategyMMGivenMM) + (1 - probMMGivenMM) * (1-strategyMMGivenGB)), 2);
+				AnalysisUtils.getProbRefReportsGivenSignalAndStrategy(3, 0, "MM", 
+						strategyMMGivenMM, strategyMMGivenGB, priorProbs, prior);
+		double prob2MM1GBRefReportsGivenMM = 
+				AnalysisUtils.getProbRefReportsGivenSignalAndStrategy(2, 1, "MM", 
+						strategyMMGivenMM, strategyMMGivenGB, priorProbs, prior);
+		double prob1MM2GBRefReportsGivenMM = 
+				AnalysisUtils.getProbRefReportsGivenSignalAndStrategy(1, 2, "MM", 
+						strategyMMGivenMM, strategyMMGivenGB, priorProbs, prior);
 		double prob0MM3GBRefReportsGivenMM = 	
-				Math.pow((probMMGivenMM * (1-strategyMMGivenMM) + (1 - probMMGivenMM) * (1-strategyMMGivenGB)), 3);
+				AnalysisUtils.getProbRefReportsGivenSignalAndStrategy(0, 3, "MM", 
+						strategyMMGivenMM, strategyMMGivenGB, priorProbs, prior);
 
 		double prob3MM0GBRefReportsGivenGB = 
-				Math.pow((probMMGivenGB * strategyMMGivenMM + (1 - probMMGivenGB) * strategyMMGivenGB), 3);
-		double prob2MM1GBRefReportsGivenGB = 3 
-				* Math.pow((probMMGivenGB * strategyMMGivenMM + (1 - probMMGivenGB) * strategyMMGivenGB), 2)
-				* Math.pow((probMMGivenGB * (1-strategyMMGivenMM) + (1 - probMMGivenGB) * (1-strategyMMGivenGB)), 1);
-		double prob1MM2GBRefReportsGivenGB = 3 
-				* Math.pow((probMMGivenGB * strategyMMGivenMM + (1 - probMMGivenGB) * strategyMMGivenGB), 1)
-				* Math.pow((probMMGivenGB * (1-strategyMMGivenMM) + (1 - probMMGivenGB) * (1-strategyMMGivenGB)), 2);
+				AnalysisUtils.getProbRefReportsGivenSignalAndStrategy(3, 0, "GB", 
+						strategyMMGivenMM, strategyMMGivenGB, priorProbs, prior);
+		double prob2MM1GBRefReportsGivenGB = 
+				AnalysisUtils.getProbRefReportsGivenSignalAndStrategy(2, 1, "GB", 
+						strategyMMGivenMM, strategyMMGivenGB, priorProbs, prior);
+		double prob1MM2GBRefReportsGivenGB =  
+				AnalysisUtils.getProbRefReportsGivenSignalAndStrategy(1, 2, "GB", 
+						strategyMMGivenMM, strategyMMGivenGB, priorProbs, prior);
 		double prob0MM3GBRefReportsGivenGB = 	
-				Math.pow((probMMGivenGB * (1-strategyMMGivenMM) + (1 - probMMGivenGB) * (1-strategyMMGivenGB)), 3);
+				AnalysisUtils.getProbRefReportsGivenSignalAndStrategy(0, 3, "GB", 
+						strategyMMGivenMM, strategyMMGivenGB, priorProbs, prior);
 
 //		System.out.printf("%.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f", 
 //				prob3MM0GBRefReportsGivenMM, prob2MM1GBRefReportsGivenMM, prob1MM2GBRefReportsGivenMM, prob0MM3GBRefReportsGivenMM, 
 //				prob3MM0GBRefReportsGivenGB, prob2MM1GBRefReportsGivenGB, prob1MM2GBRefReportsGivenGB, prob0MM3GBRefReportsGivenGB);
 
-		return (probMM * strategyMMGivenMM + probGB * strategyMMGivenGB)
-				* (		  prob3MM0GBRefReportsGivenMM * AnalysisUtils.getPayment(rule, "MM", 3) 
-						+ prob2MM1GBRefReportsGivenMM * AnalysisUtils.getPayment(rule, "MM", 2)
-						+ prob1MM2GBRefReportsGivenMM * AnalysisUtils.getPayment(rule, "MM", 1) 
-						+ prob0MM3GBRefReportsGivenMM * AnalysisUtils.getPayment(rule, "MM", 0))
-				+ (probMM * (1 - strategyMMGivenMM) + probGB * (1 - strategyMMGivenGB))
-				* (       prob3MM0GBRefReportsGivenGB * AnalysisUtils.getPayment(rule, "GB", 3)
-						+ prob2MM1GBRefReportsGivenGB * AnalysisUtils.getPayment(rule, "GB", 2)
-						+ prob1MM2GBRefReportsGivenGB * AnalysisUtils.getPayment(rule, "GB", 1) 
-						+ prob0MM3GBRefReportsGivenGB * AnalysisUtils.getPayment(rule, "GB", 0));
+		double probMM = AnalysisUtils.getProbMM(priorProbs, prior);
+		double probGB = 1 - probMM;
+		
+		return probMM * strategyMMGivenMM
+				* (prob3MM0GBRefReportsGivenMM * AnalysisUtils.getPayment(rule, "MM", 3) 
+				 + prob2MM1GBRefReportsGivenMM * AnalysisUtils.getPayment(rule, "MM", 2)
+				 + prob1MM2GBRefReportsGivenMM * AnalysisUtils.getPayment(rule, "MM", 1) 
+				 + prob0MM3GBRefReportsGivenMM * AnalysisUtils.getPayment(rule, "MM", 0))
+			+ probGB * strategyMMGivenGB
+			 	* (prob3MM0GBRefReportsGivenGB * AnalysisUtils.getPayment(rule, "MM", 3)
+				 + prob2MM1GBRefReportsGivenGB * AnalysisUtils.getPayment(rule, "MM", 2)
+				 + prob1MM2GBRefReportsGivenGB * AnalysisUtils.getPayment(rule, "MM", 1) 
+				 + prob0MM3GBRefReportsGivenGB * AnalysisUtils.getPayment(rule, "MM", 0))
+			+ probMM * (1 - strategyMMGivenMM) 
+				* (prob3MM0GBRefReportsGivenMM * AnalysisUtils.getPayment(rule, "GB", 3)
+				 + prob2MM1GBRefReportsGivenMM * AnalysisUtils.getPayment(rule, "GB", 2)
+				 + prob1MM2GBRefReportsGivenMM * AnalysisUtils.getPayment(rule, "GB", 1) 
+				 + prob0MM3GBRefReportsGivenMM * AnalysisUtils.getPayment(rule, "GB", 0))
+			+ probGB * (1 - strategyMMGivenGB)
+				* (prob3MM0GBRefReportsGivenGB * AnalysisUtils.getPayment(rule, "GB", 3)
+				 + prob2MM1GBRefReportsGivenGB * AnalysisUtils.getPayment(rule, "GB", 2)
+				 + prob1MM2GBRefReportsGivenGB * AnalysisUtils.getPayment(rule, "GB", 1) 
+				 + prob0MM3GBRefReportsGivenGB * AnalysisUtils.getPayment(rule, "GB", 0))
+			;
+	}
+
+	public static double getProbRefReportGivenSignalAndStrategy(
+			String refReport, String signal, 
+			double strategyMMGivenMM, double strategyMMGivenGB,
+			double[] priorProbs, List<Map<String, Double>> prior) {
+		
+		double probMMGivenMM = AnalysisUtils.getProbSignalGivenSignal("MM", "MM", priorProbs, prior);
+		double probGBGivenMM = 1 - probMMGivenMM;
+		double probMMGivenGB = AnalysisUtils.getProbSignalGivenSignal("MM", "GB", priorProbs, prior);
+		double probGBGivenGB = 1 - probMMGivenGB;
+		
+		double strategyGBGivenMM = 1 - strategyMMGivenMM;
+		double strategyGBGivenGB = 1 - strategyMMGivenGB;
+		
+		if (signal.equals("MM")) {
+			if (refReport.equals("MM")) {
+				return probMMGivenMM * strategyMMGivenMM + probGBGivenMM * strategyMMGivenGB;
+			} else if (refReport.equals("GB")) {
+				return probMMGivenMM * strategyGBGivenMM + probGBGivenMM * strategyGBGivenGB;				
+			}
+		} else if (signal.equals("GB")) {
+			if (refReport.equals("MM")) {
+				return probMMGivenGB * strategyMMGivenMM + probGBGivenGB * strategyMMGivenGB;
+			} else if (refReport.equals("GB")) {
+				return probMMGivenGB * strategyGBGivenMM + probGBGivenGB * strategyGBGivenGB;
+			}
+		}
+		return -1;
+	}
+
+	public static double getProbRefReportsGivenSignalAndStrategy(
+			int numMM, int numGB, String signal, 
+			double strategyMMGivenMM, double strategyMMGivenGB, 
+			double[] priorProbs, List<Map<String, Double>> prior) {
+		
+		double probMMGivenMM = AnalysisUtils.getProbSignalGivenSignal("MM", "MM", priorProbs, prior);
+		double probGBGivenMM = 1 - probMMGivenMM;
+		double probMMGivenGB = AnalysisUtils.getProbSignalGivenSignal("MM", "GB", priorProbs, prior);
+		double probGBGivenGB = 1 - probMMGivenGB;
+		
+		double strategyGBGivenMM = 1 - strategyMMGivenMM;
+		double strategyGBGivenGB = 1 - strategyMMGivenGB;
+		
+		if (signal.equals("MM")) {
+			return ArithmeticUtils.binomialCoefficient(3, numMM)
+					* Math.pow((probMMGivenMM * strategyMMGivenMM + probGBGivenMM * strategyMMGivenGB), numMM)
+					* Math.pow((probMMGivenMM * strategyGBGivenMM + probGBGivenMM * strategyGBGivenGB), numGB);
+		} else if (signal.equals("GB")) {
+			return ArithmeticUtils.binomialCoefficient(3, numMM)
+					* Math.pow((probMMGivenGB * strategyMMGivenMM + probGBGivenGB * strategyMMGivenGB), numMM)
+					* Math.pow((probMMGivenGB * strategyGBGivenMM + probGBGivenGB * strategyGBGivenGB), numGB);
+		}
+		return -1;
+	}
+
+	public static double getPayment(String rule, String myReport, String refReport) {
+		if (rule.equals("T1")) 
+			return AnalysisUtils.getPaymentT1(myReport, refReport);
+		else if (rule.equals("T2"))
+			return AnalysisUtils.getPaymentT2(myReport, refReport);
+		return -1;
+	}
+
+	private static double getPaymentT2(String myReport, String refReport) {
+		return -1;
+	}
+
+	public static double getPaymentT1(String myReport, String refReport) {
+		if (myReport.equals("MM") && refReport.equals("MM"))
+			return 1.5;
+		else if (myReport.equals("MM") && refReport.equals("GB"))
+			return 0.1;
+		else if (myReport.equals("GB") && refReport.equals("MM"))
+			return 0.3;
+		else if (myReport.equals("GB") && refReport.equals("GB"))
+			return 1.2;
+		return -1;
 	}
 
 	private static double getPayment(String rule ,String myReport, int numMMInRefReports) {
@@ -390,25 +686,25 @@ public class AnalysisUtils {
 		if (myReport.equals("MM")) {
 			switch (numMMOtherReports) {
 			case 0:
-				return 0.9;
+				return 0.90;
 			case 1:
-				return 0.1;
+				return 0.10;
 			case 2:
-				return 1.5;
+				return 1.50;
 			case 3:
-				return 0.8;
+				return 0.80;
 			}
 	
 		} else {
 			switch (numMMOtherReports) {
 			case 0:
-				return 0.8;
+				return 0.80;
 			case 1:
-				return 1.5;
+				return 1.50;
 			case 2:
-				return 0.1;
+				return 0.10;
 			case 3:
-				return 0.9;
+				return 0.90;
 			}
 		}
 		return -1;

@@ -1,8 +1,10 @@
 package edu.harvard.econcs.peerprediction.analysis;
 
+import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.sql.Connection;
@@ -13,13 +15,12 @@ import java.sql.Statement;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.Random;
 import java.util.Scanner;
-import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -42,7 +43,7 @@ public class LogReader {
 
 	static final Pattern experimentStart = Pattern
 			.compile("^(\\d{2}:\\d{2}.\\d{3}) (.*) (.*) started");
-	static final Pattern prior = Pattern
+	static final Pattern priorPattern = Pattern
 			.compile("^(\\d{2}:\\d{2}.\\d{3}) Prior is prob=(.*), worlds=(.*)");
 	static final Pattern generalInfo = Pattern
 			.compile("^(\\d{2}:\\d{2}.\\d{3}) General information sent: numPlayers=([0-9]+), "
@@ -86,9 +87,8 @@ public class LogReader {
 //	static String treatment = "prior2-basic";
 //	static String treatment = "prior2-outputagreement";
 //	static String treatment = "prior2-uniquetruthful";
-	static String treatment = "prior2-symmlowpay";
-//	static String treatment = "prior2-constant";
-
+//	static String treatment = "prior2-symmlowpay";
+	static String treatment = "prior2-constant";
 
 	static final String rootDir = "/Users/alicexigao/Dropbox/peer_prediction/data/"
 			+ treatment + "/";
@@ -101,7 +101,7 @@ public class LogReader {
 	static String[] strategyNames = null;
 
 	static int numRounds = 20;
-	static int numRestarts = 100;
+	static int numRestarts = 1000;
 	
 	static double tol = 0.02;
 	
@@ -112,63 +112,51 @@ public class LogReader {
 	static int gbState = -1;
 	static int truthfulState = -1;
 	static int mixedState = -1;
+	static int mixed2State = -1;
 	
 	static double eps = 0.000000001;
+
+	static double[] priorProbs = null;
+	static List<Map<String, Double>> prior = null;
 	
+
 	public static void main(String[] args) throws Exception {
 
-		if (treatment.equals("prior2-constant") || treatment.equals("prior2-symmlowpay"))
-			choseReport = Pattern.compile("^(\\d{2}:\\d{2}.\\d{3}) ([a-zA-Z\\s0-9]+) @ HIT ([a-zA-Z\\s0-9]+) chose report ([A-Z]{2}) \\(radio: [0-9]\\)");
-		else 
-			choseReport = Pattern.compile("^(\\d{2}:\\d{2}.\\d{3}) ([a-zA-Z\\s0-9]+) @ HIT ([a-zA-Z\\s0-9]+) chose report ([A-Z]{2})");
-		
 		File dir = new File(rootDir);
 		dir.mkdirs();
 
+		// Parsing game log and exit survey
 		parseLog();
 		parseExitSurvey();
 		playerComments();
-		
-		System.out.println(Arrays.toString(expSet.games.get(0).priorProbs));
-		System.out.println(expSet.games.get(0).worlds.toString());
-		
-//		strategyPayoffAnalysisT5("T3");
-//		strategyPayoffAnalysisT5("T5");
-
 		System.out.println("\ntreatment: " + treatment);
 		System.out.printf("non-killed games: %d\n\n", expSet.games.size());
+		
+		priorProbs = expSet.games.get(0).priorProbs;
+		prior = expSet.games.get(0).worlds;
+		System.out.printf("Prior probabilities: %s, ", Arrays.toString(priorProbs));
+		System.out.printf("%s\n", prior.toString());
+		
+//		AnalysisUtils.getSymmMixedStrEq3Players("T1");
+//		AnalysisUtils.getSymmMixedStrEq4Players("T3");
+//		AnalysisUtils.getSymmMixedStrEq4Players("T5");
+//		System.exit(0);
+		
+//		strategyPayoffAnalysis("T3");
+//		strategyPayoffAnalysis("T5");
+		
+		setNumberOfPlayersStrategiesRounds();
 
-		if (treatment.equals("prior2-basic") || treatment.equals("prior2-outputagreement")) {	
-			numPlayers = 3;
-			numStrategies = 3;
-		} else if (treatment.equals("prior2-uniquetruthful")) {
-			numPlayers = 4;
-			numStrategies = 4;
-		} else if (treatment.equals("prior2-constant")) {
-			numPlayers = 1;
-			numStrategies = 2;
-		} else if (treatment.equals("prior2-symmlowpay")) {
-			numPlayers = 4;
-			numStrategies = 2;
-		}
-		
-		if (treatment.equals("prior2-symmlowpay")) {
-			numRounds = 30;
-		} else {
-			numRounds = 20;
-		}
-		strategyNames = new String[numStrategies];
-		
-		// HMM analysis
+		// HMM analysis		
 		learnHMM();
-		fillStrategyNames();
-		calculateMostLikelyStateSeq();
-		determineHMMType();
-		genStateSeqDistMatlabCode();
+		setStrategyNames();
+		getStateSeq();
+		getHMMType();
+		writeStrategyDistributionMatlabCode();
+		writeStrategyHeatMap();
 		genPredictedStrategyChangeCode();
-		System.exit(0);
 		
-		strategyPayoffAnalysis();
+//		strategyPayoffAnalysis();
 		
 		// Learning analysis
 		learningAnalysis("BR");
@@ -181,22 +169,112 @@ public class LogReader {
 				|| treatment.equals("prior2-constant")) {
 			gameSymmetricConvergenceType();
 //			gameSymmetricConvergenceTypeRelaxed(3);
-
 		} else if (treatment.equals("prior2-uniquetruthful")) {
-			gameAsymmetricConvergenceType();
+			gameConvergenceTypeT3();
 //			gameAsymmetricConvergenceTypeRelaxed(3);
 		}
+		
+		graphLogLikelihood();
 	}
 
-	private static void strategyPayoffAnalysisT5(String rule) {
+	public static void setNumberOfPlayersStrategiesRounds() {
+		if (treatment.equals("prior2-basic") 
+				|| treatment.equals("prior2-outputagreement")) {	
+			numPlayers = 3;
+			numStrategies = 4;
+			numRounds = 20;
+		} else if (treatment.equals("prior2-uniquetruthful")) {
+			numPlayers = 4;
+			numStrategies = 4;
+			numRounds = 20;
+		} else if (treatment.equals("prior2-symmlowpay")) {
+			numPlayers = 4;
+			numStrategies = 4;
+			numRounds = 30;
+		} else if (treatment.equals("prior2-constant")) {
+			numPlayers = 1;
+			numStrategies = 4;
+			numRounds = 20;
+		}
+		strategyNames = new String[numStrategies];
+		System.out.printf("numPlayers: %d\n", numPlayers);
+		System.out.printf("numStrategies: %d\n", numStrategies);
+		System.out.printf("numRounds: %d\n", numRounds);
+	}
+
+	private static void graphLogLikelihood() throws IOException {
+		List<List<SigActObservation<CandySignal, CandyReport>>> seq = getActObsSequence();
+		double loglk;
+
+
+		BufferedWriter writerMatlab = new BufferedWriter(new FileWriter(rootDir
+				+ "logLikelihood.m"));
+		System.out.println("Graph log likelihood");
+
+		if (treatment.equals("prior2-basic"))
+			writerMatlab.write("treatment1loglk = [");
+		else if (treatment.equals("prior2-outputagreement"))
+			writerMatlab.write("treatment2loglk = [");
+		else if (treatment.equals("prior2-uniquetruthful"))
+			writerMatlab.write("treatment3loglk = [");
+		else if (treatment.equals("prior2-symmlowpay"))
+			writerMatlab.write("treatment4loglk = [");
+		else if (treatment.equals("prior2-constant"))
+			writerMatlab.write("treatment5loglk = [");
+		
+		for (int numStates = 2; numStates <= 6; numStates++) {
+			
+			Hmm<SigActObservation<CandySignal, CandyReport>> savedHmm = createHMMFromFile(numStates);
+			loglk = BWToleranceLearner.computeLogLk(savedHmm, seq);
+			
+			writerMatlab.write(String.format("%.6f ", loglk));
+		}
+		writerMatlab.write("];\n");
+
+		
+		double bic;
+		System.out.println("Graph Bayesian information criterion");
+		
+		if (treatment.equals("prior2-basic"))
+			writerMatlab.write("treatment1bic = [");
+		else if (treatment.equals("prior2-outputagreement"))
+			writerMatlab.write("treatment2bic = [");
+		else if (treatment.equals("prior2-uniquetruthful"))
+			writerMatlab.write("treatment3bic = [");
+		else if (treatment.equals("prior2-symmlowpay"))
+			writerMatlab.write("treatment4bic = [");
+		else if (treatment.equals("prior2-constant"))
+			writerMatlab.write("treatment5bic = [");
+		
+		for (int numStates = 2; numStates <= 6; numStates++) {
+			
+			Hmm<SigActObservation<CandySignal, CandyReport>> savedHmm = createHMMFromFile(numStates);
+			loglk = BWToleranceLearner.computeLogLk(savedHmm, seq);
+			
+			int numParams = (numStates * numStates + 2 * numStates - 1);
+			int numData = expSet.games.size() * numPlayers  * numRounds;
+			bic = -2 * loglk + numParams * Math.log(numData);
+			
+			writerMatlab.write(String.format("%.6f ", bic));
+		}
+		writerMatlab.write("];\n");
+		
+		
+//		writerMatlab.write("x = 2:6;\n");
+//		writerMatlab.write("figure;\n");
+//		writerMatlab.write("plot(x,loglk)\n");
+//		writerMatlab.write("xlabel('Number of strategies');\n");
+//		writerMatlab.write("ylabel('Log likelihood');\n");
+//		writerMatlab.write("set(gca,'XTick',2:6);\n");
+		writerMatlab.flush();
+		writerMatlab.close();
+		
+	}
+
+	private static void strategyPayoffAnalysis(String rule) {
 		
 		System.out.println("\n" + "Strategy payoff analysis -- " + rule);
 		
-		// use this to get general parameter, such as the prior
-		Game firstGame = expSet.games.get(0);
-		List<Map<String, Double>> prior = firstGame.worlds;
-		double[] priorProbs = firstGame.priorProbs;
-
 		double truthfulPayoffT3 = AnalysisUtils.getTruthfulPayoff(rule, priorProbs, prior);
 		System.out.printf("Payoff at truthful equilibrium: %.6f\n", truthfulPayoffT3);	
 		
@@ -232,11 +310,6 @@ public class LogReader {
 
 		System.out.println("\n" + "Strategy payoff analysis");
 		
-		// use this to get general parameter, such as the prior
-		Game firstGame = expSet.games.get(0);
-		List<Map<String, Double>> prior = firstGame.worlds;
-		double[] priorProbs = firstGame.priorProbs;
-		
 		String rule = "T3";
 		double truthfulPayoffT3 = AnalysisUtils.getTruthfulPayoff(rule, priorProbs, prior);
 		System.out.printf("Payoff at truthful equilibrium: %.6f\n", truthfulPayoffT3);
@@ -253,7 +326,8 @@ public class LogReader {
 			double probMMGivenGB = opdfMixed
 					.probability(new SigActObservation<CandySignal, CandyReport>(
 							CandySignal.GB, CandyReport.MM));
-			double mixedPayoffT3 = AnalysisUtils.getMixedPayoff(rule, priorProbs, prior, probMMGivenMM, probMMGivenGB);
+			double mixedPayoffT3 = AnalysisUtils.getMixedPayoff(rule, 
+					priorProbs, prior, probMMGivenMM, probMMGivenGB);
 			System.out.printf("Payoff with symmetric mixed strategies:  %.6f\n", mixedPayoffT3);
 		}
 		
@@ -267,11 +341,7 @@ public class LogReader {
 			}
 		}
 		double avgPayoff = totalPayoff / count;
-		System.out.printf("avg of all players' actual payoffs %.6f", avgPayoff);
-
-		
-		
-		
+		System.out.printf("Average of all players' actual payoffs %.6f", avgPayoff);
 	}
 	
 	
@@ -428,7 +498,8 @@ public class LogReader {
 							oppPopStrategy = game.getOppPopStrFull(i, hitId);		
 						}
 						
-						if (treatment.equals("prior2-uniquetruthful")) {
+						if (treatment.equals("prior2-uniquetruthful")
+								|| treatment.equals("prior2-symmlowpay")) {
 							myReport = game.getBestResponseT3(oppPopStrategy);							
 						} else {
 							myReport = game.getBestResponseT1N2(oppPopStrategy, paymentArray);							
@@ -437,7 +508,8 @@ public class LogReader {
 					
 					myReports[i] = myReport;
 					
-					if (treatment.equals("prior2-uniquetruthful")) {
+					if (treatment.equals("prior2-uniquetruthful")
+							|| treatment.equals("prior2-symmlowpay")) {
 						List<String> refReports = game.getRefReports(hitId, i);
 						int numMM = game.getNumMMInRefReports(refReports);						
 						myPayoffs[i] = AnalysisUtils.getPaymentT3(myReport, numMM);
@@ -513,22 +585,20 @@ public class LogReader {
 	
 	private static void learnHMM() throws IOException {
 
-		System.out.println("\nLearning HMM");
+		System.out.println("\n\nLearning HMM");
 		
 		// produce list of signal, report pairs
-		List<List<SigActObservation<CandySignal, CandyReport>>> seq = 
-				new ArrayList<List<SigActObservation<CandySignal, CandyReport>>>();
-		for (Game game : expSet.games) {
-			for (String hitId : game.playerHitIds) {
-				List<SigActObservation<CandySignal, CandyReport>> list = 
-						game.signalReportObjList.get(hitId);
-				seq.add(list);
-			}
-		}
+		List<List<SigActObservation<CandySignal, CandyReport>>> seq = getActObsSequence();
 		
 		BWToleranceLearner bwl = new BWToleranceLearner();
-		
+	
 		double loglk = Double.NEGATIVE_INFINITY;
+		File hmmFile = new File(String.format("%slearntHMM%dstrategies.txt", rootDir, numStrategies));
+		if (hmmFile.exists()) {
+			learntHmm = createHMMFromFile(numStrategies);
+			loglk = BWToleranceLearner.computeLogLk(learntHmm, seq);
+			System.out.printf("Starting loglikelihood : %.5f\n", loglk);			
+		}
 
 		for (int i = 0; i < numRestarts; i++) {
 
@@ -540,6 +610,11 @@ public class LogReader {
 		
 			double loglkTemp = BWToleranceLearner.computeLogLk(learntHmmTemp, seq);
 
+//			Investigate robustness
+//			if (loglkTemp > -2000) {
+//				System.out.println("\nGood HMM:\n" + learntHmmTemp);	
+//			}
+			
 			if (loglkTemp > loglk) {
 
 				origHmm = origHmmTemp;
@@ -549,6 +624,8 @@ public class LogReader {
 			
 		}
 
+		saveHMMToFile();
+		
 		double[] initPi = new double[numStrategies];
 		for (int i = 0; i < numStrategies; i++) {
 			initPi[i] = learntHmm.getPi(i);
@@ -565,14 +642,16 @@ public class LogReader {
 		double[] steadyState = calcSteadyStateProb(learntHmm);
 
 		// write HMM to console
-		System.out.println("Starting HMM:\n" + origHmm);
+//		System.out.println("Starting HMM:\n" + origHmm);
+		System.out.printf("Ending loglikelihood : %.5f\n", loglk);
 		System.out.println("\nResulting HMM:\n" + learntHmm);	
 		System.out.println("\nSteady state probabilities: " + Arrays.toString(steadyState));
 
 		// write HMM to file
 		BufferedWriter writer = new BufferedWriter(new FileWriter(rootDir
 				+ numStrategies + "StateHmm.txt"));
-		writer.write("\nStarting HMM:\n" + origHmm);
+//		writer.write("\nStarting HMM:\n" + origHmm);
+		writer.write(String.format("Ending loglikelihood : %.5f\n", loglk));
 		writer.write("\nResulting HMM:\n" + learntHmm);
 		writer.write("\nSteady state probabilities: " + Arrays.toString(steadyState));
 		writer.flush();
@@ -580,7 +659,20 @@ public class LogReader {
 
 	}
 
-	private static void fillStrategyNames() throws IOException {
+	public static List<List<SigActObservation<CandySignal, CandyReport>>> getActObsSequence() {
+		List<List<SigActObservation<CandySignal, CandyReport>>> seq = 
+				new ArrayList<List<SigActObservation<CandySignal, CandyReport>>>();
+		for (Game game : expSet.games) {
+			for (String hitId : game.playerHitIds) {
+				List<SigActObservation<CandySignal, CandyReport>> list = 
+						game.signalReportObjList.get(hitId);
+				seq.add(list);
+			}
+		}
+		return seq;
+	}
+
+	private static void setStrategyNames() throws IOException {
 		
 		System.out.println("\nGive strategies names");
 		
@@ -588,35 +680,58 @@ public class LogReader {
 		for (int i = 0; i < numStrategies; i++) {
 			Opdf <SigActObservation<CandySignal, CandyReport>> opdf = learntHmm.getOpdf(i);
 			if (isMMStrategy(opdf)) {
-				strategyNames[i] = "MM";
+				if (mmState == -1) {
+					strategyNames[i] = "MM";
+					mmState = i;
+				}else if (isBetterMMStrategy(i, mmState)) {
+					strategyNames[mmState] = "Mixed";
+					mixedState = mmState;
+					strategyNames[i] = "MM";
+					mmState = i;					
+				}
 			} else if (isGBStrategy(opdf)) {
-				strategyNames[i] = "GB";
+				if (gbState == -1) {
+					strategyNames[i] = "GB";
+					gbState = i;					
+				} else if (isBetterGBStrategy(i, gbState)) {
+					strategyNames[gbState] = "Mixed";
+					mixedState = gbState;
+					strategyNames[i] = "GB";
+					gbState = i;
+				}
 			} else if (isTruthfulStrategy(opdf)) {
-				strategyNames[i] = "Truthful";
-			} else {
-				strategyNames[i] = "Mixed";
+				if (truthfulState == -1) {
+					strategyNames[i] = "Truthful";		
+					truthfulState = i;				
+				} else if ( isBetterTruthfulStrategy(i, truthfulState)) {
+					strategyNames[truthfulState] = "Mixed";
+					mixedState = truthfulState;
+					
+					strategyNames[i] = "Truthful";		
+					truthfulState = i;
+				}
+			}
+			
+			if (strategyNames[i] == null) {
+				if (mixedState == -1) {
+					strategyNames[i] = "Mixed";
+					mixedState = i;					
+				} else {
+					strategyNames[i] = "Mixed2";
+					mixed2State = i;					
+				}
 			}
 		}
 		System.out.println(Arrays.toString(strategyNames));
-		
+		System.out.println(String.format("MM strategy: %d, GB strategy: %d, " +
+				"Truthful strategy: %d, Mixed strategy: %d, Mixed 2: %d", 
+				mmState, gbState, truthfulState, mixedState, mixed2State));
 
-		for (int i = 0; i < numStrategies; i++) {
-			if (strategyNames[i].startsWith("MM"))
-				mmState = i;
-			else if (strategyNames[i].startsWith("GB"))
-				gbState = i;
-			else if (strategyNames[i].startsWith("Truthful"))
-				truthfulState = i;
-			else if (strategyNames[i].startsWith("Mixed"))
-				mixedState = i;
-		}
-		System.out.println(String.format("mmState: %d, gbState: %d, truthfulState: %d, mixedStates: %d", 
-				mmState, gbState, truthfulState, mixedState));
 	}
 	
-	private static void calculateMostLikelyStateSeq() throws IOException {
+	private static void getStateSeq() throws IOException {
 		
-		// calculate most likely state sequence		
+		// Calculate most likely state sequence		
 		System.out.println("Calculate most likely state sequence");
 		for (Game game : expSet.games) {
 			game.stateSeq = new HashMap<String, int[]>();
@@ -630,11 +745,20 @@ public class LogReader {
 			}	
 		}
 		
+		// Write state sequence to csv
 		BufferedWriter writer = new BufferedWriter(new FileWriter(rootDir
 				+ "stateSeq" + numStrategies + "States.csv"));
+		
+		writer.write(String.format("hitId,"));
+		for (int i = 1; i <= numRounds; i++) {
+			writer.write(String.format("%d,", i));
+		}
+		writer.write(String.format("actual payoff\n"));
+		
 		for (Game game : expSet.games) {
 			for (String hitId : game.playerHitIds) {
 				int[] stateSeq = game.stateSeq.get(hitId);
+				writer.write(String.format("%s,",hitId));
 				for (int state : stateSeq) {
 					writer.write(state + ",");
 				}
@@ -649,162 +773,455 @@ public class LogReader {
 	}
 	
 	
-	private static void determineHMMType() throws IOException {
+	private static void getHMMType() throws IOException {
 		
 		System.out.println("Determining HMM type");
 		
-		// determine hmm type
+		// Determine HMM type
 		for (Game game : expSet.games) {
 
-			game.hmmTypeArray = new int[numRounds];
+			game.strategyComboTypeArray = new int[numRounds];
 			
-			// determining type array
-			for (int i = 0; i < numRounds; i++) {
-				int[] typeCountPerRound = new int[numStrategies];
+			for (int roundIndex = 0; roundIndex < numRounds; roundIndex++) {
+				int[] numPlayerForStrategy = new int[numStrategies];
 				for (String hitId : game.playerHitIds) {
-					typeCountPerRound[game.stateSeq.get(hitId)[i]]++;
+					
+					int strategyIndexForRound = game.stateSeq.get(hitId)[roundIndex];
+					numPlayerForStrategy[strategyIndexForRound]++;
 				}
 
 				if (!treatment.equals("prior2-uniquetruthful")) {
-					for (int j = 0; j < typeCountPerRound.length; j++) {
-						if (typeCountPerRound[j] == numPlayers) {
-							game.hmmTypeArray[i] = j;
+					// other treatments
+					
+					for (int strategyIndex = 0; strategyIndex < numStrategies; strategyIndex++) {
+						if (numPlayerForStrategy[strategyIndex] == numPlayers
+								&& (strategyIndex == mmState 
+								    || strategyIndex == gbState 
+								    || strategyIndex == truthfulState)) {
+							// all players are playing MM, GB or Truthful strategy
+							game.strategyComboTypeArray[roundIndex] = strategyIndex;
 							break;
-						} else if (typeCountPerRound[j] > 0) {
-							game.hmmTypeArray[i] = -1;
+						} else if (numPlayerForStrategy[strategyIndex] > 0) {
+							game.strategyComboTypeArray[roundIndex] = -1;
 							break;
 						}
 					}
 				} else {
-					//prior2-uniquetruthful
-					if (typeCountPerRound[truthfulState] == numStrategies) {
-						game.hmmTypeArray[i] = truthfulState;
-					} else if (typeCountPerRound[mmState] == 1
-							&& typeCountPerRound[gbState] == 3) {
-						game.hmmTypeArray[i] = 4;
-					} else if (typeCountPerRound[mmState] == 3
-							&& typeCountPerRound[gbState] == 1) {
-						game.hmmTypeArray[i] = 5;
+					//"prior2-uniquetruthful"
+					if (truthfulState != -1 
+							&& numPlayerForStrategy[truthfulState] == numStrategies) {
+						// truthful equilibrium
+						game.strategyComboTypeArray[roundIndex] = truthfulState;
+					} else if (mixedState != -1 
+							&& numPlayerForStrategy[mixedState] == numStrategies) {
+						// mixed strategy equilibrium
+						game.strategyComboTypeArray[roundIndex] = mixedState;
+					} else if (mmState != -1 && gbState != -1
+							&& numPlayerForStrategy[mmState] == 1
+							&& numPlayerForStrategy[gbState] == 3) {
+						// 1 MM 3 GB 
+						game.strategyComboTypeArray[roundIndex] = 4;
+					} else if (mmState != -1 && gbState != -1
+							&& numPlayerForStrategy[mmState] == 3
+							&& numPlayerForStrategy[gbState] == 1) {
+						// 3 MM 1 GB
+						game.strategyComboTypeArray[roundIndex] = 5;
 					} else {
-						game.hmmTypeArray[i] = -1;
+						// unclassified
+						game.strategyComboTypeArray[roundIndex] = -1;
 					}
 
 				}
 			}
-			System.out.println(Arrays.toString(game.hmmTypeArray));
-			
 		}
 		
+		
+		
+		// Write HMM type to csv
+		BufferedWriter writerCsv = new BufferedWriter(new FileWriter(rootDir
+				+ "hmmType" + numStrategies + "Strategies.csv"));
+		for (Game game : expSet.games) {
+			for (int i = 0; i < game.strategyComboTypeArray.length; i++) {
+				if (i == game.strategyComboTypeArray.length - 1) {
+					writerCsv.write(String.format("%d\n", game.strategyComboTypeArray[i]));
+				} else {
+					writerCsv.write(String.format("%d,", game.strategyComboTypeArray[i]));
+				}
+			}
+		}
+		writerCsv.flush();
+		writerCsv.close();
+		
+		// Determine HMM Type Count
 		int[][] hmmTypeCount = new int[numRounds][numStrategies + 2];
 		for (Game game : expSet.games) {
 			for (int i = 0; i < numRounds; i++) {
-				if (game.hmmTypeArray[i] == -1)
+				if (game.strategyComboTypeArray[i] == -1)
 					continue;
 				else
-					hmmTypeCount[i][game.hmmTypeArray[i]]++;
+					hmmTypeCount[i][game.strategyComboTypeArray[i]]++;
 			}
 		}
 		
-//		Write to CSV file
-		BufferedWriter writerCsv = new BufferedWriter(new FileWriter(rootDir
+		
+		
+		// Write hmmTypeCount to CSV file
+		writerCsv = new BufferedWriter(new FileWriter(rootDir
 				+ "stateSeqDist" + numStrategies + "Strategies.csv"));
 		for (int j = 0; j < numStrategies; j++) {
 			writerCsv.write(String.format("%s,", strategyNames[j]));
 		}
-		writerCsv.write(String.format("%s,", "1MM3GB"));
-		writerCsv.write(String.format("%s,", "3MM1GB"));
+		if (treatment.equals("prior2-uniquetruthful")) {
+			writerCsv.write(String.format("%s,", "1MM3GB"));
+			writerCsv.write(String.format("%s,", "3MM1GB"));
+		}
 		writerCsv.write("\n");
+		
 		for (int i = 0; i < numRounds; i++) {
 			for (int j = 0; j < numStrategies; j++) {
 				writerCsv.write(String.format("%d,", hmmTypeCount[i][j]));
 			}
-			writerCsv.write(String.format("%d,", hmmTypeCount[i][numStrategies]));
-			writerCsv.write(String.format("%d,", hmmTypeCount[i][numStrategies + 1]));
+			if (treatment.equals("prior2-uniquetruthful")) {
+				writerCsv.write(String.format("%d,", hmmTypeCount[i][numStrategies]));
+				writerCsv.write(String.format("%d,", hmmTypeCount[i][numStrategies + 1]));
+			}
 			writerCsv.write("\n");
 		}
 		writerCsv.flush();
 		writerCsv.close();
 		
+		
+		
+		// Generate Matlab file
 		BufferedWriter writerMatlab = new BufferedWriter(new FileWriter(rootDir
 				+ "hmmType" + numStrategies + "Strategies.m"));
 		
 		for (int j = 0; j < numStrategies; j++) {
+
+			if (treatment.equals("prior2-symmlowpay")) {
+				// treatment 4
+				if (strategyNames[j].equals("Mixed") || strategyNames[j].equals("Mixed2")) {
+					continue;
+				}				
+			} else if (treatment.equals("prior2-uniquetruthful")) {
+				// treatment 3, skip MM and GB strategies
+				if (strategyNames[j].equals("MM") || strategyNames[j].equals("GB")) {
+					continue;
+				}
+			} else {
+				// not treatment 3, skip mixed strategy
+				if (strategyNames[j].equals("Mixed")) {
+					continue;
+				}
+			}
+			
 			writerMatlab.write(String.format("%s = [", strategyNames[j]));
 			for (int i = 0; i < numRounds; i++) {
 				writerMatlab.write(String.format("%d ", hmmTypeCount[i][j]));
 			}
 			writerMatlab.write("]';\n");
+			
 		}
-		writerMatlab.write("\n");
+		if (treatment.equals("prior2-uniquetruthful")) {
+			writerMatlab.write(String.format("oneMMThreeGB = ["));
+			for (int i = 0; i < numRounds; i++) {
+				writerMatlab.write(String.format("%d ", hmmTypeCount[i][numStrategies]));
+			}
+			writerMatlab.write("]';\n");
+	
+			writerMatlab.write(String.format("threeMMOneGB = ["));
+			for (int i = 0; i < numRounds; i++) {
+				writerMatlab.write(String.format("%d ", hmmTypeCount[i][numStrategies + 1]));
+			}
+			writerMatlab.write("]';\n");
+		}
+		
+		writerMatlab.write(String.format("Unclassified = ["));
+		for (int i = 0; i < numRounds; i++) {
+			int num = expSet.games.size();
+ 			for (int j = 0; j < numStrategies; j++) {
+ 				num -= hmmTypeCount[i][j];
+ 			}
+ 			if (treatment.equals("prior2-uniquetruthful")) {
+ 				num -= hmmTypeCount[i][numStrategies];
+ 				num -= hmmTypeCount[i][numStrategies + 1];
+ 			}
+ 			writerMatlab.write(String.format("%d ", num));
+		}
+		writerMatlab.write("]';\n\n");		
+		
 		writerMatlab.write("figure;\n");
-		writerMatlab.write(String.format("bar(1:%d, [", numRounds));
-		for (int j = 0; j < numStrategies; j++) {
-			writerMatlab.write(String.format("%s ", strategyNames[j]));
+		
+		// plot bar chart
+		writerMatlab.write(String.format("hBar = bar(1:%d, [", numRounds));
+		if (treatment.equals("prior2-uniquetruthful")) {
+			writerMatlab.write("Truthful Mixed oneMMThreeGB threeMMOneGB ");
+		} else if (treatment.equals("prior2-symmlowpay")) {
+			writerMatlab.write("Truthful MM ");
+		} else {
+			writerMatlab.write("Truthful GB MM ");
+		} 		
+		writerMatlab.write(String.format("Unclassified], 0.5, 'stack');\n"));
+		
+		// labels
+		writerMatlab.write(
+				"xlh = xlabel('Round');\n" +
+				"ylh = ylabel('Number of games');\n" +
+				"set(xlh, 'FontSize', 26);\n" +
+				"set(ylh, 'FontSize', 26);\n" +
+				"axes = findobj(gcf,'type','axes');\n" +
+				"set(axes, 'FontSize', 26);\n");
+
+		// write legend
+		writerMatlab.write("lh = legend(");
+		
+		if (treatment.equals("prior2-uniquetruthful")) {
+			writerMatlab.write("'Truthful', 'Mixed', 'oneMMThreeGB', 'threeMMOneGB', ");
+		} else if (treatment.equals("prior2-symmlowpay")) {
+			writerMatlab.write("'Truthful', 'MM', ");			
+		} else {
+			writerMatlab.write("'Truthful', 'GB', 'MM', ");			
 		}
-		writerMatlab.write("], 0.5, 'stack');\n");
-		writerMatlab.write("xlabel('Round');\n");
-		writerMatlab.write("ylabel('Number of games');\n");
-		writerMatlab.write("legend(");
-		for (int j = 0; j < numStrategies; j++) {
-			writerMatlab.write(String.format("'%s', ", strategyNames[j]));
+		writerMatlab.write(String.format("'Unclassified', 'Location', 'Best');\n" +
+				"set(lh, 'FontSize', 20);\n"));
+		
+		// set axis range
+		writerMatlab.write(String.format("axis([0 %d 0 %d]);\n", numRounds + 1, expSet.games.size()));
+	
+		// set colors
+		writerMatlab.write(String.format("set(hBar,{'FaceColor'},{"));		
+		if (treatment.equals("prior2-uniquetruthful")) {
+			writerMatlab.write("'g';'m';'r';'y';");
+		} else if (treatment.equals("prior2-symmlowpay")) {
+			writerMatlab.write("'g';[1 0.64 0];");			
+		} else {
+			writerMatlab.write("'g';'b';[1 0.64 0];");			
 		}
-		writerMatlab.write("'NorthWest');");
+		writerMatlab.write(String.format("[0.82 0.82 0.82];});\n"));		
+		
 		writerMatlab.flush();
 		writerMatlab.close();
 	}
 
-	private static void genStateSeqDistMatlabCode() throws IOException {
-		// state sequence distribution
+	private static void writeStrategyHeatMap() throws IOException {
+		
 		BufferedWriter writer1 = new BufferedWriter(new FileWriter(rootDir
-				+ "stateSeqDist" + numStrategies + "States.m"));
-		int[][] distData = new int[numStrategies][numRounds];
+				+ "heatMap" + numStrategies + "StrategiesReverseCompare.m"));
+		
+		List<int[]> seqList = new ArrayList<int[]>();
+		for (Game game : expSet.games) {
+			for (String hitId: game.playerHitIds) {
+				int[] strategySeq = game.stateSeq.get(hitId);
+				seqList.add(strategySeq);
+			}
+		}		
+		
+		Collections.sort(seqList, new Comparator<int[]>() {
+
+			@Override
+			public int compare(int[] o1, int[] o2) {
+				return util(o1, o2, o1.length - 1);
+			}
+			
+			private int util(int[] o1, int[] o2, int index) {
+				if (index == 0) {
+					return o1[index] - o2[index]; 
+				} else {
+					if (o1[index] < o2[index])
+						return -1;
+					else if (o1[index] > o2[index])
+						return 1;
+					else 
+						return util(o1, o2, index-1);
+				}
+					
+			}
+			
+		});
+
+		List<int[]> newSeqList = new ArrayList<int[]>();
+		
+		for (int endStrIndex = 0; endStrIndex < 4; endStrIndex++) {
+
+			boolean blockFound = false;
+			boolean inBlock = false;
+
+			List<int[]> str0List = new ArrayList<int[]>();
+			List<int[]> str1List = new ArrayList<int[]>();
+			List<int[]> str2List = new ArrayList<int[]>();
+			List<int[]> str3List = new ArrayList<int[]>();
+
+			for (int seqIndex = 0; seqIndex < seqList.size(); seqIndex++) {
+				
+				int[] seq = seqList.get(seqIndex);
+				
+				if (!inBlock) {
+					if (seq[numRounds - 1] == endStrIndex) {
+						blockFound = true;
+						inBlock = true;
+					}
+				} else {
+					if (seq[numRounds - 1] != endStrIndex) 
+						inBlock = false;
+				}
+				
+				if (blockFound == false) {
+					continue;
+				} else if (inBlock == false) {
+					break;
+				} else {
+					if (seq[0] == 0)
+						str0List.add(seq);
+					else if (seq[0] == 1)
+						str1List.add(seq);
+					else if (seq[0] == 2)
+						str2List.add(seq);
+					else if (seq[0] == 3)
+						str3List.add(seq);
+				}
+			}
+			
+			newSeqList.addAll(str0List);
+			newSeqList.addAll(str1List);
+			newSeqList.addAll(str2List);
+			newSeqList.addAll(str3List);
+			
+		}
+		
+		seqList.clear();
+		seqList.addAll(newSeqList);
+
+		int index = 0;
+		for (int i = 0; i < seqList.size(); i++) {
+				int[] strategySeq = seqList.get(i);
+				writer1.write(String.format("x%d = %s;\n", index, Arrays.toString(strategySeq)));
+				index++;
+		}
+		
+		index = 0;
+		writer1.write("m = [");
+		for (int i = 0; i < seqList.size(); i++) {
+			writer1.write(String.format("x%d;", index));
+			index++;			
+		}
+		writer1.write("];\n\n");
+		writer1.write("api_path = '/tmp/plotly';\na" +
+				"ddpath(genpath(api_path));\n" +
+				"api_key = 'vivdmp4vf4';\n" +
+				"username = 'alice.gao';\n" +
+				"signin(username, api_key);\n");
+		
+		String truthfulColor = "50,205,50";
+		String gbColor 		 = "0,0,255";
+		String mixedColor 	 = "190,190,190";
+		String mixed2Color 	 = "127,127,127";
+		String mmColor 		 = "255,140,0";
+		
+		writer1.write("cs={{");
+		for (int i = 0; i <= 3; i++) {
+			double num = i * 1.0 / 3;
+			if (mmState == i) {
+					writer1.write(String.format("{%.2f, 'rgb(%s)'},", num, mmColor));
+			} else if (gbState == i) {
+					writer1.write(String.format("{%.2f, 'rgb(%s)'},", num, gbColor));
+			} else if (truthfulState == i) {
+					writer1.write(String.format("{%.2f, 'rgb(%s)'},", num, truthfulColor));
+			} else if (mixedState == i) {
+					writer1.write(String.format("{%.2f, 'rgb(%s)'},", num, mixedColor));				
+			} else if (mixed2State == i) {
+				writer1.write(String.format("{%.2f, 'rgb(%s)'},", num, mixed2Color));				
+			}
+		}
+		writer1.write("}};\n");
+		writer1.write("plotly({struct('z', m,'scl',cs,'type', 'heatmap')})\n");
+		writer1.flush();
+		writer1.close();
+	}
+	
+	private static void writeStrategyDistributionMatlabCode() throws IOException {
+		
+		// state sequence distribution
+		int[][] strategyCount = new int[numStrategies][numRounds];
 		for (Game game : expSet.games) {
 			for (String hitId : game.playerHitIds) {
-				int[] stateSeq = game.stateSeq.get(hitId);
-				for (int i = 0; i < stateSeq.length; i++) {
-					int state = stateSeq[i];
-					distData[state][i]++;
+				int[] strategySeq = game.stateSeq.get(hitId);
+				for (int roundIndex = 0; roundIndex < numRounds; roundIndex++) {
+					int strategyIndex = strategySeq[roundIndex];
+					strategyCount[strategyIndex][roundIndex]++;
 				}
 			}
 		}
-		double[][] dist = new double[numStrategies][numRounds];
-		int total = expSet.games.size() * numPlayers;
-		for (int j = 0; j < numRounds; j++) {
-			for (int i = 0; i < numStrategies; i++) {
-				dist[i][j] = distData[i][j] * 1.0 / total;
+		double[][] strategyDistribution = new double[numStrategies][numRounds];
+		int totalNumPlayers = expSet.games.size() * numPlayers;
+		for (int roundIndex = 0; roundIndex < numRounds; roundIndex++) {
+			for (int strategyIndex = 0; strategyIndex < numStrategies; strategyIndex++) {
+				strategyDistribution[strategyIndex][roundIndex] 
+						= strategyCount[strategyIndex][roundIndex] * 1.0 / totalNumPlayers;
 			}
 		}
 
-		writer1.write("x = [1:20]\n");
+		BufferedWriter writer1 = new BufferedWriter(new FileWriter(rootDir
+				+ "stateSeqDist" + numStrategies + "Strategies.m"));
 
-		for (int i = 0; i < numStrategies; i++) {
-			writer1.write("y" + i + " = [");
-			for (int j = 0; j < numRounds; j++) {
-				writer1.write(dist[i][j] + ",");
+		for (int strategyIndex = 0; strategyIndex < numStrategies; strategyIndex++) {
+			writer1.write(strategyNames[strategyIndex] + " = [");
+			for (int roundIndex = 0; roundIndex < numRounds; roundIndex++) {
+				writer1.write(String.format("%.10f ", strategyDistribution[strategyIndex][roundIndex]));
 			}
-			writer1.write("]\n");
+			writer1.write("]';\n");
 		}
 
-		writer1.write("plot(");
-		for (int i = 0; i < numStrategies; i++) {
-			writer1.write("x, y" + i);
-			if (i < numStrategies - 1)
-				writer1.write(",");
+		writer1.write(String.format("\n\n" +
+				"figure;\n" +
+				"hBar = bar(1:%d, ", numRounds));
+		if (treatment.equals("prior2-symmlowpay")) {
+			if (numStrategies == 4)
+				writer1.write("[Truthful MM Mixed Mixed2]");
+			else if (numStrategies == 3)			
+				writer1.write("[Truthful MM Mixed]");
+		} else {
+			writer1.write("[Truthful GB MM Mixed]");
 		}
-		writer1.write(")\n");
-
-		writer1.write("legend(");
-		for (int i = 0; i < numStrategies; i++) {
-			writer1.write("'" + strategyNames[i] + "'");
-			if (i < numStrategies - 1)
-				writer1.write(",");
+		writer1.write(", 0.5, 'stack');\n");
+		
+		writer1.write(
+				"xlh = xlabel('Round');\n" +
+				"ylh = ylabel('Percentage of players');\n" +
+				"set(xlh, 'FontSize', 26);\n" +
+				"set(ylh, 'FontSize', 26);\n" +
+				"axes = findobj(gcf,'type','axes');\n" +
+				"set(axes, 'FontSize', 26);\n");
+				
+		writer1.write(String.format("axis([0 %d 0 1]);\n", numRounds + 1));
+		
+		// legend
+		writer1.write("lh = legend(");
+		if (treatment.equals("prior2-symmlowpay")) {
+			if (numStrategies == 4)
+				writer1.write("'Truthful', 'MM', 'Mixed', 'Mixed2'");
+			else if (numStrategies == 3)
+				writer1.write("'Truthful', 'MM', 'Mixed'");
+		} else {
+			writer1.write("'Truthful', 'GB', 'MM', 'Mixed'");
 		}
-		writer1.write(")");
-
+		writer1.write(", 'Location', 'Best');\n" +
+				"set(lh, 'FontSize', 20);\n");
+		
+		
+		if (treatment.equals("prior2-symmlowpay")) {
+			if (numStrategies == 4)
+				writer1.write("set(hBar,{'FaceColor'},{'g';[1 0.64 0];[0.5 0.5 0.5];[0.8 0.8 0.8];});\n");
+			else if (numStrategies == 3)
+				writer1.write("set(hBar,{'FaceColor'},{'g';[1 0.64 0];[0.8 0.8 0.8];});\n");
+		} else {
+			writer1.write("set(hBar,{'FaceColor'},{'g';'b';[1 0.64 0];[0.8 0.8 0.8];});\n");
+		}
 		writer1.flush();
 		writer1.close();
 	}
 
+	
+	
 	private static void genPredictedStrategyChangeCode()
 			throws IOException {
 		// Predicted strategy change
@@ -856,32 +1273,64 @@ public class LogReader {
 		writer3.close();
 	}
 
-	private static boolean isTruthfulStrategy(
-			Opdf<SigActObservation<CandySignal, CandyReport>> opdf) {
-		SigActObservation<CandySignal, CandyReport> mmMM = 
-				new SigActObservation<CandySignal, CandyReport>(CandySignal.MM, CandyReport.MM);
-		SigActObservation<CandySignal, CandyReport> gbGB = 
-				new SigActObservation<CandySignal, CandyReport>(CandySignal.GB, CandyReport.GB);
-		return opdf.probability(mmMM) > 0.7 && opdf.probability(gbGB) > 0.7; 
-	}		
-	
 	private static boolean isGBStrategy(
 			Opdf<SigActObservation<CandySignal, CandyReport>> opdf) {
 		SigActObservation<CandySignal, CandyReport> mmGB = 
 				new SigActObservation<CandySignal, CandyReport>(CandySignal.MM, CandyReport.GB);
 		SigActObservation<CandySignal, CandyReport> gbGB = 
 				new SigActObservation<CandySignal, CandyReport>(CandySignal.GB, CandyReport.GB);
-		return opdf.probability(mmGB) > 0.7 && opdf.probability(gbGB) > 0.7; 
-	}	
-	
+		return opdf.probability(mmGB) > 0.8 && opdf.probability(gbGB) > 0.8; 
+	}
+
+	private static boolean isBetterGBStrategy(int i, int gbStrIndex) {
+		Opdf <SigActObservation<CandySignal, CandyReport>> opdf1 = learntHmm.getOpdf(i);
+		Opdf <SigActObservation<CandySignal, CandyReport>> opdf2 = learntHmm.getOpdf(gbStrIndex);
+		SigActObservation<CandySignal, CandyReport> mmGB = 
+				new SigActObservation<CandySignal, CandyReport>(CandySignal.MM, CandyReport.GB);
+		SigActObservation<CandySignal, CandyReport> gbGB = 
+				new SigActObservation<CandySignal, CandyReport>(CandySignal.GB, CandyReport.GB);
+		return opdf1.probability(mmGB) > opdf2.probability(mmGB) 
+				&& opdf1.probability(mmGB) > opdf2.probability(mmGB) ;
+	}
+
 	private static boolean isMMStrategy(
 			Opdf<SigActObservation<CandySignal, CandyReport>> opdf) {
 		SigActObservation<CandySignal, CandyReport> mmMM = 
 				new SigActObservation<CandySignal, CandyReport>(CandySignal.MM, CandyReport.MM);
 		SigActObservation<CandySignal, CandyReport> gbMM = 
 				new SigActObservation<CandySignal, CandyReport>(CandySignal.GB, CandyReport.MM);
-//		System.out.println("Pr(MM,MM) = " + opdf.probability(mmMM) + " Pro(GB, MM) = " + opdf.probability(gbMM));
-		return opdf.probability(mmMM) > 0.7 && opdf.probability(gbMM) > 0.7; 
+		return opdf.probability(mmMM) > 0.8 && opdf.probability(gbMM) > 0.8; 
+	}
+
+	private static boolean isBetterMMStrategy(int i, int mmStrIndex) {
+		Opdf <SigActObservation<CandySignal, CandyReport>> opdf1 = learntHmm.getOpdf(i);
+		Opdf <SigActObservation<CandySignal, CandyReport>> opdf2 = learntHmm.getOpdf(mmStrIndex);
+		SigActObservation<CandySignal, CandyReport> mmMM = 
+				new SigActObservation<CandySignal, CandyReport>(CandySignal.MM, CandyReport.MM);
+		SigActObservation<CandySignal, CandyReport> gbMM = 
+				new SigActObservation<CandySignal, CandyReport>(CandySignal.GB, CandyReport.MM);
+		return opdf1.probability(mmMM) > opdf2.probability(mmMM) 
+				&& opdf1.probability(gbMM) > opdf2.probability(gbMM) ;
+	}
+
+	private static boolean isTruthfulStrategy(
+			Opdf<SigActObservation<CandySignal, CandyReport>> opdf) {
+		SigActObservation<CandySignal, CandyReport> mmMM = 
+				new SigActObservation<CandySignal, CandyReport>(CandySignal.MM, CandyReport.MM);
+		SigActObservation<CandySignal, CandyReport> gbGB = 
+				new SigActObservation<CandySignal, CandyReport>(CandySignal.GB, CandyReport.GB);
+		return opdf.probability(mmMM) > 0.8 && opdf.probability(gbGB) > 0.8; 
+	}		
+	
+	private static boolean isBetterTruthfulStrategy(int i, int truthfulState2) {
+		Opdf <SigActObservation<CandySignal, CandyReport>> opdf1 = learntHmm.getOpdf(i);
+		Opdf <SigActObservation<CandySignal, CandyReport>> opdf2 = learntHmm.getOpdf(truthfulState2);
+		SigActObservation<CandySignal, CandyReport> mmMM = 
+				new SigActObservation<CandySignal, CandyReport>(CandySignal.MM, CandyReport.MM);
+		SigActObservation<CandySignal, CandyReport> gbGB = 
+				new SigActObservation<CandySignal, CandyReport>(CandySignal.GB, CandyReport.GB);
+		return opdf1.probability(mmMM) > opdf2.probability(mmMM) 
+				&& opdf1.probability(gbGB) > opdf2.probability(gbGB);
 	}
 
 	private static double[] calcSteadyStateProb(
@@ -903,8 +1352,117 @@ public class LogReader {
 		return Aij.getRow(0);
 	}
 
-	
-	
+	private static void saveHMMToFile() throws IOException {
+		BufferedWriter writer = new BufferedWriter(new FileWriter(
+				String.format("%slearntHMM%dstrategies.txt", rootDir, numStrategies)));
+		int numStates = learntHmm.nbStates();
+		writer.write(String.format("numStates:%d\n", numStates));
+		
+		for (int i = 0; i < numStates; i++) {
+			writer.write(String.format("pi,%d:%.17f\n", i, learntHmm.getPi(i)));
+		}
+		
+		for (int i = 0; i < numStates; i++) {
+			Opdf<SigActObservation<CandySignal, CandyReport>> opdf = learntHmm.getOpdf(i);
+			double reportMMGivenSignalMM = opdf.probability(
+					new SigActObservation<CandySignal, CandyReport>(CandySignal.MM, CandyReport.MM));
+			double reportMMGivenSignalGB = opdf.probability(
+					new SigActObservation<CandySignal, CandyReport>(CandySignal.GB, CandyReport.MM));
+			writer.write(String.format("opdf,%d:%.17f,%.17f\n", 
+					i, reportMMGivenSignalMM, reportMMGivenSignalGB));
+		}
+		
+		for (int i = 0; i < numStates; i++) {
+			for (int j = 0; j < numStates; j++) {
+				writer.write(String.format("aij,%d,%d:%.17f\n", i, j, learntHmm.getAij(i, j)));
+			}
+		}
+		writer.flush();
+		writer.close();
+	}
+
+	private static Hmm<SigActObservation<CandySignal, CandyReport>> createHMMFromFile(int numStr) 
+			throws IOException {
+		BufferedReader reader = new BufferedReader(new FileReader(
+				String.format("%slearntHMM%dstrategies.txt", rootDir, numStr)));
+		String line = reader.readLine();
+		Matcher matcher = Pattern.compile("numStates:(.*)").matcher(line);
+		int numStates = -1;
+		if (matcher.matches())
+			numStates = Integer.parseInt(matcher.group(1));
+//		System.out.printf("num states: %d\n", numStates);
+		
+		double[] pi = new double[numStates];
+		for (int i = 0; i < numStates; i++) {
+			if (i == numStates - 1) {
+				line = reader.readLine();
+				double left = 1.0;
+				for (int j = 0; j < numStates - 1; j++) {
+					left -= pi[j];
+				}
+				pi[numStates - 1] = left;
+			} else {
+				line = reader.readLine();
+				matcher = Pattern.compile("pi,(.*):(.*)").matcher(line);
+				if (matcher.matches()) {
+					pi[i] = Double.parseDouble(matcher.group(2));
+				}
+			}	
+		}
+//		System.out.printf("pi: %s\n", Arrays.toString(pi));
+
+		List<OpdfStrategy<CandySignal, CandyReport>> opdfs = 
+				new ArrayList<OpdfStrategy<CandySignal, CandyReport>>();
+
+		for (int i = 0; i < numStates; i++) {
+			line = reader.readLine();
+			matcher = Pattern.compile("opdf,(.*):(.*),(.*)").matcher(line);
+			if (matcher.matches()) {
+				double[][] probs = new double[2][2];
+				probs[0][0] = Double.parseDouble(matcher.group(2));
+				probs[0][1] = 1 - probs[0][0];
+				probs[1][0] = Double.parseDouble(matcher.group(3));
+				probs[1][1] = 1 - probs[1][0];
+				OpdfStrategy<CandySignal, CandyReport> opdf = 
+						new OpdfStrategy<CandySignal, CandyReport>(CandySignal.class,
+						CandyReport.class, signalPrior, probs);
+//				System.out.printf("opdf,%d:%s", i, opdf.toString());
+				opdfs.add(opdf);
+			}
+		}
+		
+		double[][] aij = new double[numStates][numStates];
+		for (int i = 0; i < numStates; i++) {
+			for (int j = 0; j < numStates; j++) {
+				line = reader.readLine();
+				if (j == numStates - 1) {
+					double left = 1.0;
+					for (int jj = 0; jj < numStates - 1; jj++) {
+						left -= aij[i][jj];
+					}
+					aij[i][numStates - 1] = left;
+				} else {
+					matcher = Pattern.compile("aij,(.*),(.*):(.*)").matcher(line);
+					if (matcher.matches()) {
+						int ii = Integer.parseInt(matcher.group(1));
+						int jj = Integer.parseInt(matcher.group(2));
+						double prob = Double.parseDouble(matcher.group(3));
+						aij[ii][jj] = prob;
+					}
+				}
+			}
+		}
+//		System.out.println("Aij:");
+//		for (int i = 0; i < numStates; i++) {
+//			System.out.println(Arrays.toString(aij[i]));
+//		}
+		reader.close();		
+		Hmm<SigActObservation<CandySignal, CandyReport>> hmm = 
+				new Hmm<SigActObservation<CandySignal, CandyReport>>(
+						pi, aij, opdfs);
+		return hmm;
+	}
+
 	/**
 	 * A random 3-state HMM
 	 * @param numStates 
@@ -914,22 +1472,22 @@ public class LogReader {
 	private static Hmm<SigActObservation<CandySignal, CandyReport>> getInitHmm(int numStates) {
 		
 		double[] pi = AnalysisUtils.getRandomVec(numStates);
-
+	
 		double[][] a = new double[numStates][numStates];
 		for (int i = 0; i < a.length; i++) {
 			a[i] = AnalysisUtils.getRandomVec(numStates);
 		}
-
+	
 		List<OpdfStrategy<CandySignal, CandyReport>> opdfs = 
 				new ArrayList<OpdfStrategy<CandySignal, CandyReport>>();
 		
 		for (int i = 0; i < numStates; i++) {
 			double[][] probs = new double[][] { 
-					AnalysisUtils.getRandomTwoVec(),
-					AnalysisUtils.getRandomTwoVec() };
+					AnalysisUtils.getRandomVec(2),
+					AnalysisUtils.getRandomVec(2) };
 			opdfs.add(getOpdf(probs));
 		}
-
+	
 		return new Hmm<SigActObservation<CandySignal, CandyReport>>(
 				pi, a, opdfs);
 	}
@@ -1017,11 +1575,11 @@ public class LogReader {
 				numTotal));
 	}
 
-	private static void gameAsymmetricConvergenceType() {
+	private static void gameConvergenceTypeT3() {
 
 		int numHO = 0;
-		int num3MM = 0;
-		int num3GB = 0;
+		int num3MM1GB = 0;
+		int num1MM3GB = 0;
 		int numUnclassified = 0;
 		
 		for (Game game : expSet.games) {
@@ -1029,9 +1587,9 @@ public class LogReader {
 			game.fillAsymmetricConvergenceType();
 			
 			if (game.convergenceType.equals("3MM"))
-				num3MM++;
+				num3MM1GB++;
 			else if (game.convergenceType.equals("3GB"))
-				num3GB++;
+				num1MM3GB++;
 			else if (game.convergenceType.equals("HO"))
 				numHO++;
 			else 
@@ -1039,7 +1597,7 @@ public class LogReader {
 		}
 		
 		System.out.println(String.format("3GB: %d, 3MM: %d, HO: %d, Unclassified: %d, Total: %d", 
-				num3GB, num3MM, numHO, numUnclassified, expSet.games.size()));
+				num1MM3GB, num3MM1GB, numHO, numUnclassified, expSet.games.size()));
 		
 	}
 
@@ -1115,6 +1673,11 @@ public class LogReader {
 	private static void parseLog() {
 
 		System.out.println("Parsing game log");
+		
+		if (treatment.equals("prior2-constant") || treatment.equals("prior2-symmlowpay"))
+			choseReport = Pattern.compile("^(\\d{2}:\\d{2}.\\d{3}) ([a-zA-Z\\s0-9]+) @ HIT ([a-zA-Z\\s0-9]+) chose report ([A-Z]{2}) \\(radio: [0-9]\\)");
+		else 
+			choseReport = Pattern.compile("^(\\d{2}:\\d{2}.\\d{3}) ([a-zA-Z\\s0-9]+) @ HIT ([a-zA-Z\\s0-9]+) chose report ([A-Z]{2})");
 		
 		expSet = new Experiment();
 		expSet.setId = setId;
@@ -1248,7 +1811,7 @@ public class LogReader {
 
 			currentLine = sc.nextLine();
 			lineIndex++;
-			matcher = prior.matcher(currentLine);
+			matcher = priorPattern.matcher(currentLine);
 			if (matcher.matches()) {
 				// System.out.println("Prior message found");
 				// System.out.printf("%s, %s, %s\n\n", matcher.group(1),
