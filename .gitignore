@@ -3,5 +3,9 @@
 .settings/
 target/
 velocity.log
-src/test/resources/*.txt
-src/test/resources/*.csv
+src/test/resources/*.*
+src/test/resources/*
+
+src/test/java/market
+src/main/java/market
+src/test/resources/mturk.properties

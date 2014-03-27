@@ -86,9 +86,9 @@ public class LogReader {
 	static String setId = "vary-payment";
 //	static String treatment = "prior2-basic";
 //	static String treatment = "prior2-outputagreement";
-//	static String treatment = "prior2-uniquetruthful";
-//	static String treatment = "prior2-symmlowpay";
-	static String treatment = "prior2-constant";
+//  static String treatment = "prior2-uniquetruthful";
+	static String treatment = "prior2-symmlowpay";
+//	static String treatment = "prior2-constant";
 
 	static final String rootDir = "/Users/alicexigao/Dropbox/peer_prediction/data/"
 			+ treatment + "/";
@@ -101,7 +101,7 @@ public class LogReader {
 	static String[] strategyNames = null;
 
 	static int numRounds = 20;
-	static int numRestarts = 1000;
+	static int numRestarts = 10;
 	
 	static double tol = 0.02;
 	
@@ -125,29 +125,14 @@ public class LogReader {
 		File dir = new File(rootDir);
 		dir.mkdirs();
 
-		// Parsing game log and exit survey
+		// Parsing game log and exit survey, and print info
 		parseLog();
 		parseExitSurvey();
 		playerComments();
-		System.out.println("\ntreatment: " + treatment);
-		System.out.printf("non-killed games: %d\n\n", expSet.games.size());
+		printInfo();
 		
-		priorProbs = expSet.games.get(0).priorProbs;
-		prior = expSet.games.get(0).worlds;
-		System.out.printf("Prior probabilities: %s, ", Arrays.toString(priorProbs));
-		System.out.printf("%s\n", prior.toString());
-		
-//		AnalysisUtils.getSymmMixedStrEq3Players("T1");
-//		AnalysisUtils.getSymmMixedStrEq4Players("T3");
-//		AnalysisUtils.getSymmMixedStrEq4Players("T5");
-//		System.exit(0);
-		
-//		strategyPayoffAnalysis("T3");
-//		strategyPayoffAnalysis("T5");
-		
-		setNumberOfPlayersStrategiesRounds();
-
 		// HMM analysis		
+		setNumberOfPlayersStrategiesRounds();
 		learnHMM();
 		setStrategyNames();
 		getStateSeq();
@@ -155,26 +140,64 @@ public class LogReader {
 		writeStrategyDistributionMatlabCode();
 		writeStrategyHeatMap();
 		genPredictedStrategyChangeCode();
+
+//		strategyChangeT1();
 		
-//		strategyPayoffAnalysis();
+		graphLogLikelihood();
+
+//		mixedStrategyPayoff("T3");
 		
-		// Learning analysis
-		learningAnalysis("BR");
-		learningAnalysis("FP");
-//		noRegretLearningAnalysis();
+		// Analyze payoffs of different strategies
+//		strategyPayoffAnalysis("T3");
+//		strategyPayoffAnalysis("T5");
+		if (treatment.equals("prior2-uniquetruthful"))
+			strategyPayoffAnalysis("T3");
+		else if (treatment.equals("prior2-symmlowpay"))
+			strategyPayoffAnalysis("T5");
+//		AnalysisUtils.getSymmMixedStrEq3Players("T1");
+//		AnalysisUtils.getSymmMixedStrEq4Players("T3");
+//		AnalysisUtils.getSymmMixedStrEq4Players("T5");
+//		System.exit(0);
+
 		
 		// Simple convergence analysis
 		if (treatment.equals("prior2-basic") 
 				|| treatment.equals("prior2-outputagreement")
-				|| treatment.equals("prior2-constant")) {
+				|| treatment.equals("prior2-symmlowpay")) {
 			gameSymmetricConvergenceType();
 //			gameSymmetricConvergenceTypeRelaxed(3);
 		} else if (treatment.equals("prior2-uniquetruthful")) {
 			gameConvergenceTypeT3();
 //			gameAsymmetricConvergenceTypeRelaxed(3);
 		}
+
+		// Learning analysis
+//		learningAnalysis("BR");
+//		learningAnalysis("FP");
+//		noRegretLearningAnalysis();
+
+	}
+
+	private static void mixedStrategyPayoff(String rule) {
+		if (!treatment.equals("prior2-uniquetruthful"))
+			return;
 		
-		graphLogLikelihood();
+//		double truthfulPayoffT3 = AnalysisUtils.getTruthfulPayoff(rule, priorProbs, prior);
+//		System.out.printf("Payoff at truthful equilibrium: %.6f\n", truthfulPayoffT3);	
+//
+//		double mixedPayoffT3 = AnalysisUtils.getMixedPayoff(rule, priorProbs, prior, strategyMMGivenMM, strategyMMGivenGB);
+		
+		
+	}
+
+	public static void printInfo() {
+		System.out.println("\ntreatment: " + treatment);
+		System.out.printf("non-killed games: %d\n\n", expSet.games.size());
+		
+		priorProbs = expSet.games.get(0).priorProbs;
+		prior = expSet.games.get(0).worlds;
+		System.out.printf("Prior probabilities: %s, ", Arrays.toString(priorProbs));
+		System.out.printf("%s\n", prior.toString());
 	}
 
 	public static void setNumberOfPlayersStrategiesRounds() {
@@ -200,6 +223,66 @@ public class LogReader {
 		System.out.printf("numPlayers: %d\n", numPlayers);
 		System.out.printf("numStrategies: %d\n", numStrategies);
 		System.out.printf("numRounds: %d\n", numRounds);
+	}
+
+	private static void strategyChangeT1() {
+		if (!treatment.equals("prior2-basic"))
+			return;
+		
+		int numMMEq = 0;
+		int numMixedToMM = 0;
+		int numTruthfulToMM = 0;
+		for (Game game : expSet.games) {
+			
+			boolean convergedToMM = true;
+			for (String hitId : game.playerHitIds) {
+				if (game.stateSeq.get(hitId)[numRounds - 1] != mmState) {
+					convergedToMM = false;
+					break;
+				}
+			}
+			
+			if (!convergedToMM)
+				continue;
+			
+			numMMEq++;
+			for (String hitId : game.playerHitIds) {
+				int[] stateSeq = game.stateSeq.get(hitId);
+				if (hasMixedAndMM(stateSeq))
+					numMixedToMM++;
+				else if (hasTruthfulAndMM(stateSeq))
+					numTruthfulToMM++;
+			}
+		}
+		System.out.printf("MM eq : %d, mixed to MM: %d, truthful to MM: %d\n", 
+				numMMEq, numMixedToMM, numTruthfulToMM);
+		
+	}
+
+	private static boolean hasTruthfulAndMM(int[] stateSeq) {
+		boolean hasTruthful = false;
+		for (int i = 0; i < stateSeq.length; i++) {
+			if (stateSeq[i] == truthfulState) {
+				hasTruthful = true;
+			} else if (stateSeq[i] == mmState) {
+			} else { 
+				return false;
+			}
+		}
+		return hasTruthful;
+	}
+
+	private static boolean hasMixedAndMM(int[] stateSeq) {
+		boolean hasMixed = false;
+		for (int i = 0; i < stateSeq.length; i++) {
+			if (stateSeq[i] == mixedState) {
+				hasMixed = true;
+			} else if (stateSeq[i] == mmState) {
+			} else { 
+				return false;
+			}
+		}
+		return hasMixed;
 	}
 
 	private static void graphLogLikelihood() throws IOException {
@@ -271,46 +354,42 @@ public class LogReader {
 		
 	}
 
-	private static void strategyPayoffAnalysis(String rule) {
-		
-		System.out.println("\n" + "Strategy payoff analysis -- " + rule);
-		
-		double truthfulPayoffT3 = AnalysisUtils.getTruthfulPayoff(rule, priorProbs, prior);
-		System.out.printf("Payoff at truthful equilibrium: %.6f\n", truthfulPayoffT3);	
-		
-		double mixedPayoff = 0.0;
-		double[] strategy = new double[2];
-		
-		double unit = 0.1;
-		int numUnit = Math.round((int)(1 / unit));
-		
-		for (int i = 0; i <= numUnit; i++) {
-			for (int j = 0; j <= numUnit; j++) {
-				double strategyMMGivenMM = unit * i;
-				double strategyMMGivenGB = unit * j;
-				double mixedPayoffT5 = AnalysisUtils.getMixedPayoff(rule,
-						priorProbs, prior, strategyMMGivenMM, strategyMMGivenGB);
-//				System.out.printf("mixed strategy is (%.2f, %.2f), payoff is %.6f\n",
-//						strategyMMGivenMM, strategyMMGivenGB, mixedPayoffT5);
-				if (mixedPayoffT5 > mixedPayoff) {
-					mixedPayoff = mixedPayoffT5;
-					strategy[0] = strategyMMGivenMM;
-					strategy[1] = strategyMMGivenGB;
-				}
-			}
-		}
-		System.out.printf("best mixed strategy; (%.2f, %.2f), best payoff; %.6f", 
-				strategy[0], strategy[1], mixedPayoff);
-	}
+//	private static void strategyPayoffAnalysis(String rule) {
+//		
+//		System.out.println("\n" + "Strategy payoff analysis -- " + rule);
+//		
+//		double truthfulPayoffT3 = AnalysisUtils.getTruthfulPayoff(rule, priorProbs, prior);
+//		System.out.printf("Payoff at truthful equilibrium: %.6f\n", truthfulPayoffT3);	
+//		
+//		double mixedPayoff = 0.0;
+//		double[] strategy = new double[2];
+//		
+//		double unit = 0.1;
+//		int numUnit = Math.round((int)(1 / unit));
+//		
+//		for (int i = 0; i <= numUnit; i++) {
+//			for (int j = 0; j <= numUnit; j++) {
+//				double strategyMMGivenMM = unit * i;
+//				double strategyMMGivenGB = unit * j;
+//				double mixedPayoffT5 = AnalysisUtils.getMixedPayoff(rule,
+//						priorProbs, prior, strategyMMGivenMM, strategyMMGivenGB);
+////				System.out.printf("mixed strategy is (%.2f, %.2f), payoff is %.6f\n",
+////						strategyMMGivenMM, strategyMMGivenGB, mixedPayoffT5);
+//				if (mixedPayoffT5 > mixedPayoff) {
+//					mixedPayoff = mixedPayoffT5;
+//					strategy[0] = strategyMMGivenMM;
+//					strategy[1] = strategyMMGivenGB;
+//				}
+//			}
+//		}
+//		System.out.printf("best mixed strategy; (%.2f, %.2f), best payoff; %.6f", 
+//				strategy[0], strategy[1], mixedPayoff);
+//	}
 	
-	private static void strategyPayoffAnalysis() {
-		
-		if (!treatment.equals("prior2-uniquetruthful"))
-			return;
+	private static void strategyPayoffAnalysis(String rule) {
 
 		System.out.println("\n" + "Strategy payoff analysis");
 		
-		String rule = "T3";
 		double truthfulPayoffT3 = AnalysisUtils.getTruthfulPayoff(rule, priorProbs, prior);
 		System.out.printf("Payoff at truthful equilibrium: %.6f\n", truthfulPayoffT3);
 		
@@ -329,19 +408,57 @@ public class LogReader {
 			double mixedPayoffT3 = AnalysisUtils.getMixedPayoff(rule, 
 					priorProbs, prior, probMMGivenMM, probMMGivenGB);
 			System.out.printf("Payoff with symmetric mixed strategies:  %.6f\n", mixedPayoffT3);
+			
+			// Average of payoffs for players using mixed strategy by the end
+			int count = 0;
+			double totalPayoff = 0.0;
+			for (Game game : expSet.games) {
+				for (String hitId : game.playerHitIds) {
+					if (game.stateSeq.get(hitId)[numRounds - 1] == mixedState) {
+						count++;
+						totalPayoff += game.actualPayoff.get(hitId);
+					}
+				}
+			}
+			double avgPayoff = totalPayoff / count;
+			System.out.printf("Average of payoffs for mixed strategy:  %.6f\n", avgPayoff);
 		}
 		
-		// Average of all players' actual payoffs
-		int count = 0;
-		double totalPayoff = 0.0;
-		for (Game game : expSet.games) {
-			for (String hitId : game.playerHitIds) {
-				count++;
-				totalPayoff += game.actualPayoff.get(hitId);
+		if (mixed2State == -1) {
+			System.out.printf("HMM did not learn a mixed 2 strategy.  Do not analyze its payoff");
+		} else {
+			Opdf<SigActObservation<CandySignal, CandyReport>> opdfMixed = learntHmm.getOpdf(mixed2State);
+			System.out.printf("Mixed strategy: %s", opdfMixed.toString());
+			double probMMGivenMM = opdfMixed
+					.probability(new SigActObservation<CandySignal, CandyReport>(
+							CandySignal.MM, CandyReport.MM));
+			double probMMGivenGB = opdfMixed
+					.probability(new SigActObservation<CandySignal, CandyReport>(
+							CandySignal.GB, CandyReport.MM));
+			double mixedPayoffT3 = AnalysisUtils.getMixedPayoff(rule, 
+					priorProbs, prior, probMMGivenMM, probMMGivenGB);
+			System.out.printf("Payoff with symmetric mixed strategies:  %.6f\n", mixedPayoffT3);
+			
+			
+			// Average of payoffs for players using mixed strategy by the end
+			int count = 0;
+			double totalPayoff = 0.0;
+			for (Game game : expSet.games) {
+				for (String hitId : game.playerHitIds) {
+					if (game.stateSeq.get(hitId)[numRounds - 1] == mixed2State) {
+						count++;
+						totalPayoff += game.actualPayoff.get(hitId);
+					}
+				}
 			}
+			double avgPayoff = totalPayoff / count;
+			System.out.printf("Average of payoffs for mixed 2 strategy:  %.6f\n",
+					avgPayoff);
 		}
-		double avgPayoff = totalPayoff / count;
-		System.out.printf("Average of all players' actual payoffs %.6f", avgPayoff);
+		
+
+		
+		
 	}
 	
 	
@@ -620,11 +737,14 @@ public class LogReader {
 				origHmm = origHmmTemp;
 				learntHmm = learntHmmTemp;
 				loglk = loglkTemp;
+				
+				System.out.println(loglk);
+				saveHMMToFile();
 			}
 			
 		}
 
-		saveHMMToFile();
+//		saveHMMToFile();
 		
 		double[] initPi = new double[numStrategies];
 		for (int i = 0; i < numStrategies; i++) {
@@ -774,31 +894,31 @@ public class LogReader {
 	
 	
 	private static void getHMMType() throws IOException {
-		
+
 		System.out.println("Determining HMM type");
-		
+
 		// Determine HMM type
 		for (Game game : expSet.games) {
 
 			game.strategyComboTypeArray = new int[numRounds];
-			
+
 			for (int roundIndex = 0; roundIndex < numRounds; roundIndex++) {
 				int[] numPlayerForStrategy = new int[numStrategies];
 				for (String hitId : game.playerHitIds) {
-					
+
 					int strategyIndexForRound = game.stateSeq.get(hitId)[roundIndex];
 					numPlayerForStrategy[strategyIndexForRound]++;
 				}
 
 				if (!treatment.equals("prior2-uniquetruthful")) {
 					// other treatments
-					
+
 					for (int strategyIndex = 0; strategyIndex < numStrategies; strategyIndex++) {
 						if (numPlayerForStrategy[strategyIndex] == numPlayers
-								&& (strategyIndex == mmState 
-								    || strategyIndex == gbState 
-								    || strategyIndex == truthfulState)) {
-							// all players are playing MM, GB or Truthful strategy
+								&& (strategyIndex == mmState
+										|| strategyIndex == gbState || strategyIndex == truthfulState)) {
+							// all players are playing MM, GB or Truthful
+							// strategy
 							game.strategyComboTypeArray[roundIndex] = strategyIndex;
 							break;
 						} else if (numPlayerForStrategy[strategyIndex] > 0) {
@@ -807,19 +927,19 @@ public class LogReader {
 						}
 					}
 				} else {
-					//"prior2-uniquetruthful"
-					if (truthfulState != -1 
+					// "prior2-uniquetruthful"
+					if (truthfulState != -1
 							&& numPlayerForStrategy[truthfulState] == numStrategies) {
 						// truthful equilibrium
 						game.strategyComboTypeArray[roundIndex] = truthfulState;
-					} else if (mixedState != -1 
+					} else if (mixedState != -1
 							&& numPlayerForStrategy[mixedState] == numStrategies) {
 						// mixed strategy equilibrium
 						game.strategyComboTypeArray[roundIndex] = mixedState;
 					} else if (mmState != -1 && gbState != -1
 							&& numPlayerForStrategy[mmState] == 1
 							&& numPlayerForStrategy[gbState] == 3) {
-						// 1 MM 3 GB 
+						// 1 MM 3 GB
 						game.strategyComboTypeArray[roundIndex] = 4;
 					} else if (mmState != -1 && gbState != -1
 							&& numPlayerForStrategy[mmState] == 3
@@ -834,24 +954,24 @@ public class LogReader {
 				}
 			}
 		}
-		
-		
-		
+
 		// Write HMM type to csv
 		BufferedWriter writerCsv = new BufferedWriter(new FileWriter(rootDir
 				+ "hmmType" + numStrategies + "Strategies.csv"));
 		for (Game game : expSet.games) {
 			for (int i = 0; i < game.strategyComboTypeArray.length; i++) {
 				if (i == game.strategyComboTypeArray.length - 1) {
-					writerCsv.write(String.format("%d\n", game.strategyComboTypeArray[i]));
+					writerCsv.write(String.format("%d\n",
+							game.strategyComboTypeArray[i]));
 				} else {
-					writerCsv.write(String.format("%d,", game.strategyComboTypeArray[i]));
+					writerCsv.write(String.format("%d,",
+							game.strategyComboTypeArray[i]));
 				}
 			}
 		}
 		writerCsv.flush();
 		writerCsv.close();
-		
+
 		// Determine HMM Type Count
 		int[][] hmmTypeCount = new int[numRounds][numStrategies + 2];
 		for (Game game : expSet.games) {
@@ -862,12 +982,10 @@ public class LogReader {
 					hmmTypeCount[i][game.strategyComboTypeArray[i]]++;
 			}
 		}
-		
-		
-		
+
 		// Write hmmTypeCount to CSV file
-		writerCsv = new BufferedWriter(new FileWriter(rootDir
-				+ "stateSeqDist" + numStrategies + "Strategies.csv"));
+		writerCsv = new BufferedWriter(new FileWriter(rootDir + "stateSeqDist"
+				+ numStrategies + "Strategies.csv"));
 		for (int j = 0; j < numStrategies; j++) {
 			writerCsv.write(String.format("%s,", strategyNames[j]));
 		}
@@ -876,36 +994,39 @@ public class LogReader {
 			writerCsv.write(String.format("%s,", "3MM1GB"));
 		}
 		writerCsv.write("\n");
-		
+
 		for (int i = 0; i < numRounds; i++) {
 			for (int j = 0; j < numStrategies; j++) {
 				writerCsv.write(String.format("%d,", hmmTypeCount[i][j]));
 			}
 			if (treatment.equals("prior2-uniquetruthful")) {
-				writerCsv.write(String.format("%d,", hmmTypeCount[i][numStrategies]));
-				writerCsv.write(String.format("%d,", hmmTypeCount[i][numStrategies + 1]));
+				writerCsv.write(String.format("%d,",
+						hmmTypeCount[i][numStrategies]));
+				writerCsv.write(String.format("%d,",
+						hmmTypeCount[i][numStrategies + 1]));
 			}
 			writerCsv.write("\n");
 		}
 		writerCsv.flush();
 		writerCsv.close();
-		
-		
-		
+
 		// Generate Matlab file
 		BufferedWriter writerMatlab = new BufferedWriter(new FileWriter(rootDir
 				+ "hmmType" + numStrategies + "Strategies.m"));
-		
+
+		// write data arrays
 		for (int j = 0; j < numStrategies; j++) {
 
 			if (treatment.equals("prior2-symmlowpay")) {
 				// treatment 4
-				if (strategyNames[j].equals("Mixed") || strategyNames[j].equals("Mixed2")) {
+				if (strategyNames[j].equals("Mixed")
+						|| strategyNames[j].equals("Mixed2")) {
 					continue;
-				}				
+				}
 			} else if (treatment.equals("prior2-uniquetruthful")) {
 				// treatment 3, skip MM and GB strategies
-				if (strategyNames[j].equals("MM") || strategyNames[j].equals("GB")) {
+				if (strategyNames[j].equals("MM")
+						|| strategyNames[j].equals("GB")) {
 					continue;
 				}
 			} else {
@@ -914,93 +1035,139 @@ public class LogReader {
 					continue;
 				}
 			}
-			
+
 			writerMatlab.write(String.format("%s = [", strategyNames[j]));
 			for (int i = 0; i < numRounds; i++) {
-				writerMatlab.write(String.format("%d ", hmmTypeCount[i][j]));
+				double percent = hmmTypeCount[i][j] * 1.0 / expSet.games.size();
+				writerMatlab.write(String.format("%.10f ", percent));
 			}
 			writerMatlab.write("]';\n");
-			
+
 		}
 		if (treatment.equals("prior2-uniquetruthful")) {
+			// write data for treatment 3
 			writerMatlab.write(String.format("oneMMThreeGB = ["));
 			for (int i = 0; i < numRounds; i++) {
-				writerMatlab.write(String.format("%d ", hmmTypeCount[i][numStrategies]));
+				double percent = hmmTypeCount[i][numStrategies] * 1.0
+						/ expSet.games.size();
+				writerMatlab.write(String.format("%.10f ", percent));
 			}
 			writerMatlab.write("]';\n");
-	
+
 			writerMatlab.write(String.format("threeMMOneGB = ["));
 			for (int i = 0; i < numRounds; i++) {
-				writerMatlab.write(String.format("%d ", hmmTypeCount[i][numStrategies + 1]));
+				double percent = hmmTypeCount[i][numStrategies + 1] * 1.0
+						/ expSet.games.size();
+				writerMatlab.write(String.format("%.10f ", percent));
 			}
 			writerMatlab.write("]';\n");
 		}
 		
 		writerMatlab.write(String.format("Unclassified = ["));
 		for (int i = 0; i < numRounds; i++) {
-			int num = expSet.games.size();
- 			for (int j = 0; j < numStrategies; j++) {
- 				num -= hmmTypeCount[i][j];
- 			}
- 			if (treatment.equals("prior2-uniquetruthful")) {
- 				num -= hmmTypeCount[i][numStrategies];
- 				num -= hmmTypeCount[i][numStrategies + 1];
- 			}
- 			writerMatlab.write(String.format("%d ", num));
+			double num = 1.0;
+			for (int j = 0; j < numStrategies; j++) {
+				num -= hmmTypeCount[i][j] * 1.0 / expSet.games.size();
+			}
+			if (treatment.equals("prior2-uniquetruthful")) {
+				num -= hmmTypeCount[i][numStrategies] * 1.0
+						/ expSet.games.size();
+				num -= hmmTypeCount[i][numStrategies + 1] * 1.0
+						/ expSet.games.size();
+			}
+			num -= 0.0000000001;
+			writerMatlab.write(String.format("%.10f ", num));
 		}
-		writerMatlab.write("]';\n\n");		
-		
-		writerMatlab.write("figure;\n");
-		
-		// plot bar chart
-		writerMatlab.write(String.format("hBar = bar(1:%d, [", numRounds));
-		if (treatment.equals("prior2-uniquetruthful")) {
-			writerMatlab.write("Truthful Mixed oneMMThreeGB threeMMOneGB ");
-		} else if (treatment.equals("prior2-symmlowpay")) {
-			writerMatlab.write("Truthful MM ");
-		} else {
-			writerMatlab.write("Truthful GB MM ");
-		} 		
-		writerMatlab.write(String.format("Unclassified], 0.5, 'stack');\n"));
-		
-		// labels
-		writerMatlab.write(
-				"xlh = xlabel('Round');\n" +
-				"ylh = ylabel('Number of games');\n" +
-				"set(xlh, 'FontSize', 26);\n" +
-				"set(ylh, 'FontSize', 26);\n" +
-				"axes = findobj(gcf,'type','axes');\n" +
-				"set(axes, 'FontSize', 26);\n");
+		writerMatlab.write("]';\n\n");
 
-		// write legend
-		writerMatlab.write("lh = legend(");
-		
-		if (treatment.equals("prior2-uniquetruthful")) {
-			writerMatlab.write("'Truthful', 'Mixed', 'oneMMThreeGB', 'threeMMOneGB', ");
+		writerMatlab.write("fH = figure;\n" +
+				"set(fH, 'Position', [300, 300, 500, 400]);\n");
+
+		// plot bar chart
+		writerMatlab.write(String.format("hBar = bar(0:%d, [", numRounds-1));
+		if (treatment.equals("prior2-basic")) {
+			writerMatlab.write("MM GB Truthful");
+		} else if (treatment.equals("prior2-outputagreement")){
+	    	writerMatlab.write("GB MM Truthful");
+	    } else if (treatment.equals("prior2-uniquetruthful")) {
+			writerMatlab.write("Mixed threeMMOneGB oneMMThreeGB ");
 		} else if (treatment.equals("prior2-symmlowpay")) {
-			writerMatlab.write("'Truthful', 'MM', ");			
+			writerMatlab.write("MM");
 		} else {
-			writerMatlab.write("'Truthful', 'GB', 'MM', ");			
+			writerMatlab.write("Truthful GB MM");
 		}
-		writerMatlab.write(String.format("'Unclassified', 'Location', 'Best');\n" +
-				"set(lh, 'FontSize', 20);\n"));
+		writerMatlab.write(String.format("], 'BarWidth', 0.7, " +
+				"'BarLayout', 'stack', 'LineStyle', 'none');\n"));
+
+		// labels
+		int xylabelfontSize = 26;
+		int axisFontSize = 20;
+		
+		String ytick = "";
+		if (treatment.equals("prior2-basic")) {
+			ytick = "[0 0.45 0.54 1]";
+		} else if (treatment.equals("prior2-outputagreement")) {
+			ytick = "[0 0.36 0.46 1]";
+		} else if (treatment.equals("prior2-uniquetruthful")) {
+			ytick = "[0 0.12 0.17 1]";
+		} else if (treatment.equals("prior2-symmlowpay")) {
+			ytick = "[0.02 1]";
+		} else {
+			ytick = "[0 1]";
+		}
+		
+		writerMatlab.write(String.format("box off;\n" +
+				"set(gca,'Position',[.03 .15 .8 .8]);\n" +
+				"xlh = xlabel('Round');\n"
+				+ "set(xlh, 'FontSize', %d);\n" 
+				+ "axes = findobj(gcf,'type','axes');\n"
+				+ "set(axes, 'FontSize', %d);\n"
+				+ "set(axes, 'XTick', [0 %d]);\n" 
+				+ "B = axes;\n" +
+				"set(B, 'yaxislocation', 'right', 'ytick', %s);\n" +
+				"ylh = ylabel('Percentage of games');\n" +
+				"set(ylh, 'FontSize', %d);\n",
+				xylabelfontSize, axisFontSize, numRounds - 1, 
+				ytick, xylabelfontSize));
 		
 		// set axis range
-		writerMatlab.write(String.format("axis([0 %d 0 %d]);\n", numRounds + 1, expSet.games.size()));
-	
-		// set colors
-		writerMatlab.write(String.format("set(hBar,{'FaceColor'},{"));		
-		if (treatment.equals("prior2-uniquetruthful")) {
-			writerMatlab.write("'g';'m';'r';'y';");
-		} else if (treatment.equals("prior2-symmlowpay")) {
-			writerMatlab.write("'g';[1 0.64 0];");			
-		} else {
-			writerMatlab.write("'g';'b';[1 0.64 0];");			
-		}
-		writerMatlab.write(String.format("[0.82 0.82 0.82];});\n"));		
+		writerMatlab.write(String
+				.format("axis([-1 %d 0 1]);\n", numRounds));
 		
+		// write legend
+		writerMatlab.write("lh = legend(");
+
+		if (treatment.equals("prior2-uniquetruthful")) {
+			writerMatlab
+					.write("'Mixed', 'threeMMOneGB', 'oneMMThreeGB', ");
+		} else if (treatment.equals("prior2-symmlowpay")) {
+			writerMatlab.write("'MM', ");
+		} else if (treatment.equals("prior2-outputagreement")) {
+			writerMatlab.write("'GB', 'MM', 'Truthful', ");
+		} else {
+			writerMatlab.write("'MM', 'GB', 'Truthful', ");
+		}
+		writerMatlab.write(String
+				.format("'Location', 'Best');\n"
+						+ "set(lh, 'FontSize', 20);\n"));
+
+
+		// set colors
+		writerMatlab.write(String.format("set(hBar,{'FaceColor'},{"));
+		if (treatment.equals("prior2-uniquetruthful")) {
+			writerMatlab.write("[0.6 0.6 0.6];'y';'r';");
+		} else if (treatment.equals("prior2-symmlowpay")) {
+			writerMatlab.write("[1 0.64 0];");
+		} else if (treatment.equals("prior2-outputagreement")) {
+			writerMatlab.write("'b';[1 0.64 0];'g';");
+		} else {
+			writerMatlab.write("[1 0.64 0];'b';'g';");
+		}
+		writerMatlab.write(String.format("});\n"));
+
 		writerMatlab.flush();
 		writerMatlab.close();
+
 	}
 
 	private static void writeStrategyHeatMap() throws IOException {
@@ -1105,8 +1272,8 @@ public class LogReader {
 			index++;			
 		}
 		writer1.write("];\n\n");
-		writer1.write("api_path = '/tmp/plotly';\na" +
-				"ddpath(genpath(api_path));\n" +
+		writer1.write("api_path = '~/plotly';\n" +
+				"addpath(genpath(api_path));\n" +
 				"api_key = 'vivdmp4vf4';\n" +
 				"username = 'alice.gao';\n" +
 				"signin(username, api_key);\n");
@@ -1190,7 +1357,7 @@ public class LogReader {
 				"set(xlh, 'FontSize', 26);\n" +
 				"set(ylh, 'FontSize', 26);\n" +
 				"axes = findobj(gcf,'type','axes');\n" +
-				"set(axes, 'FontSize', 26);\n");
+				"set(axes, 'FontSize', 20);\n");
 				
 		writer1.write(String.format("axis([0 %d 0 1]);\n", numRounds + 1));
 		
@@ -1545,6 +1712,8 @@ public class LogReader {
 
 
 	private static void gameSymmetricConvergenceType() throws IOException {
+		
+		System.out.println("Classify equilibrium convergence using simple method");
 		
 		int numHO = 0;
 		int numMM = 0;

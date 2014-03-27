@@ -190,7 +190,7 @@ public class Game {
 		this.roundConverged = min;
 		
 		String gameType = "";
-		if (min > 15) {
+		if (min > (numRounds - 5)) {
 			gameType = "undecided";
 		} else {
 			if (gameMMStart == min) {
@@ -228,7 +228,7 @@ public class Game {
 		int min = Math.min(Math.min(gameMMStart, gameGBStart), gameHOStart);
 		this.roundConvergedRelaxed = min;
 		
-		if (min > (15 - i)) {
+		if (min > ((numRounds - 5) - i)) {
 			gameType = "undecided";
 		} else {
 			if (gameMMStart == min) {
@@ -301,7 +301,7 @@ public class Game {
 		this.roundConverged = min;
 		
 		String gameType = "";
-		if (min > 15) {
+		if (min > (numRounds - 5)) {
 			gameType = "undecided";
 		} else {
 			if (min == best3MMStart) {
@@ -370,7 +370,7 @@ public class Game {
 		this.roundConvergedRelaxed = min;
 	
 		String gameType = "";
-		if (min > (15 - i)) {
+		if (min > ((numRounds - 5) - i)) {
 			gameType = "undecided";
 		} else {
 			if (min == bestThreeMMOneGBStart) {
