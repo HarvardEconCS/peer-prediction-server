@@ -9,3 +9,4 @@ src/test/resources/*
 src/test/java/market
 src/main/java/market
 src/test/resources/mturk.properties
+bin/

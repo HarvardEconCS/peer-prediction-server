@@ -25,7 +25,7 @@ public class Game {
 	
 	double[] paymentArrayT1N2;
 
-	Map<String, String> exitSurvey;
+	Map<String, ExitSurvey> exitSurvey;
 	
 	Map<String, Double> actualPayoff;
 	Map<String, Double> simulatedFPPayoff;
@@ -49,7 +49,7 @@ public class Game {
 
 		worlds = new ArrayList<Map<String, Double>>();
 		rounds = new ArrayList<Round>();
-		exitSurvey = new HashMap<String, String>();
+		exitSurvey = new HashMap<String, ExitSurvey>();
 				
 		actualPayoff = new HashMap<String, Double>();
 		simulatedFPPayoff = new HashMap<String, Double>();
