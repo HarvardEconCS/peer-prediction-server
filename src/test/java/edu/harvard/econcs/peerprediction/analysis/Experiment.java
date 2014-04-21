@@ -7,7 +7,9 @@ import java.util.Map;
 public class Experiment {
 
 	String setId;
-	int numGames;
+	
+	int numTotalGames;
+	int numGames; // num non-killed games
 	
 	int numPlayers = -1;
 	int numRounds = -1;
@@ -15,6 +17,7 @@ public class Experiment {
 	List<Map<String, Double>> worlds = null;
 
 	List<Game> games;
+	
 	
 	public Experiment() {
 		games = new ArrayList<Game>();

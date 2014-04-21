@@ -13,6 +13,7 @@ import net.andrewmao.misc.Pair;
 import org.apache.commons.math3.util.ArithmeticUtils;
 
 import com.google.common.collect.ImmutableMap;
+import com.google.gson.Gson;
 
 public class AnalysisUtils {
 
@@ -20,6 +21,8 @@ public class AnalysisUtils {
 	static final double eps = 0.0000001;
 	public static final String[] signalList = new String[] { "MM", "GB" };
 
+	public static final Gson gson = new Gson();
+	
 	static int em_N;
 	static int em_K;
 	static double[] em_pi;
@@ -630,8 +633,11 @@ public class AnalysisUtils {
 		return -1;
 	}
 
-	private static double getPaymentT2(String myReport, String refReport) {
-		return -1;
+	public static double getPaymentT2(String myReport, String refReport) {
+		if (myReport.equals(refReport))
+			return 1.5;
+		else 
+			return 0.1;
 	}
 
 	public static double getPaymentT1(String myReport, String refReport) {

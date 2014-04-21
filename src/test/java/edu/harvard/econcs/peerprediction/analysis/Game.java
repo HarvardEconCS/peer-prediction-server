@@ -5,7 +5,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import net.andrewmao.misc.Pair;
 import net.andrewmao.models.games.SigActObservation;
 
 import com.google.gson.Gson;
@@ -31,8 +30,6 @@ public class Game {
 	Map<String, Double> simulatedFPPayoff;
 	Map<String, Double> simuatedBRPayoff;
 	
-	Map<String, List<String>> reportList;
-	Map<String, List<Pair<String, String>>> signalReportPairList;
 	Map<String, List<SigActObservation<CandySignal, CandyReport>>> signalReportObjList;
 	Map<String, int[]> stateSeq;
 		
@@ -384,29 +381,8 @@ public class Game {
 		this.convergenceTypeRelaxed = gameType;
 	}
 
-	public void populateInfo() {
+	public void saveSignalReportPairList() {
 
-		reportList = new HashMap<String, List<String>>();
-		for (String hitId: playerHitIds) {
-			List<String> list = new ArrayList<String>();
-			for (Round round : rounds) {
-				String report = round.getReport(hitId);
-				list.add(report);
-			}
-			reportList.put(hitId, list);
-		}
-		
-		signalReportPairList = new HashMap<String, List<Pair<String, String>>>();
-		for (String hitId : playerHitIds) {
-			List<Pair<String, String>> list = new ArrayList<Pair<String, String>>();
-			for (Round round : rounds) {
-				String signal = round.getSignal(hitId);
-				String report = round.getReport(hitId);
-				list.add(new Pair<String, String>(signal, report));
-			}
-			signalReportPairList.put(hitId, list);
-		}
-		
 		signalReportObjList = new HashMap<String, List<SigActObservation<CandySignal, CandyReport>>>();
 		for (String hitId: playerHitIds) {
 			List<SigActObservation<CandySignal, CandyReport>> list = 
@@ -497,7 +473,7 @@ public class Game {
 	public String getRefReport(String hitId, int i) {
 		Round currRound = this.rounds.get(i);
 
-		Map<String, Map<String, Object>> roundResult = currRound.roundResult;
+		Map<String, Map<String, Object>> roundResult = currRound.result;
 		Map<String, Object> myResult = roundResult.get(hitId);
 		
 		String refPlayerHitId = (String) myResult.get("refPlayer");
