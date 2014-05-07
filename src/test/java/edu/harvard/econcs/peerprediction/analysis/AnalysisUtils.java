@@ -98,9 +98,9 @@ public class AnalysisUtils {
 		System.out.printf("Best diff is %.4f for MM signal and %.4f for GB signal\n", minDiffMM, minDiffGB);
 	}
 	
-	public static void getSymmMixedStrEq4Players(String rule) {
+	public static void getSymmMixedStrEq4Players(String treatment) {
 		
-		System.out.printf("\nSolving for symmetric mixed strategy equilibrium.  %s\n", rule);
+		System.out.printf("\nSolving for symmetric mixed strategy equilibrium.  %s\n", treatment);
 		
 		double[] priorProbs = new double[] { 0.5, 0.5 };
 		List<Map<String, Double>> prior = new ArrayList<Map<String, Double>>();
@@ -119,18 +119,18 @@ public class AnalysisUtils {
 				double strategyMMGivenGB = unit * j;
 				
 				double payoffMMSignalMMReport = 
-						AnalysisUtils.getMixedPayoffForSignalAndReport4Players(rule, priorProbs, prior, 
+						AnalysisUtils.getMixedPayoffForSignalAndReport4Players(treatment, priorProbs, prior, 
 								strategyMMGivenMM, strategyMMGivenGB, "MM", "MM");
 				double payoffMMSignalGBReport = 
-						AnalysisUtils.getMixedPayoffForSignalAndReport4Players(rule, priorProbs, prior, 
+						AnalysisUtils.getMixedPayoffForSignalAndReport4Players(treatment, priorProbs, prior, 
 								strategyMMGivenMM, strategyMMGivenGB, "MM", "GB");
 				double diffMMSignal = Math.abs(payoffMMSignalMMReport - payoffMMSignalGBReport);
 				
 				double payoffForGBSignalMMReport = 
-						AnalysisUtils.getMixedPayoffForSignalAndReport4Players(rule, priorProbs, prior, 
+						AnalysisUtils.getMixedPayoffForSignalAndReport4Players(treatment, priorProbs, prior, 
 								strategyMMGivenMM, strategyMMGivenGB, "GB", "MM");
 				double payoffForGBSignalGBReport = 
-						AnalysisUtils.getMixedPayoffForSignalAndReport4Players(rule, priorProbs, prior, 
+						AnalysisUtils.getMixedPayoffForSignalAndReport4Players(treatment, priorProbs, prior, 
 								strategyMMGivenMM, strategyMMGivenGB, "GB", "GB");
 				double diffGBSignal = Math.abs(payoffForGBSignalMMReport - payoffForGBSignalGBReport);
 				
@@ -380,7 +380,7 @@ public class AnalysisUtils {
 		return probSignalAndWorld / probSignal;
 	}
 
-	public static double getTruthfulPayoff(String rule, double[] priorProbs,
+	public static double getTruthfulPayoff(String treatment, double[] priorProbs,
 			List<Map<String, Double>> prior) {
 		
 		double probMM = AnalysisUtils.getProbMM(priorProbs, prior);
@@ -404,18 +404,18 @@ public class AnalysisUtils {
 		double prob0MMGivenGB = AnalysisUtils.getProbSignalsGivenSignal(0, 3,
 				"GB", priorProbs, prior);
 
-		return probMM * ( prob3MMGivenMM * AnalysisUtils.getPayment(rule, "MM", 3)
-						+ prob2MMGivenMM * AnalysisUtils.getPayment(rule, "MM", 2)
-						+ prob1MMGivenMM * AnalysisUtils.getPayment(rule, "MM", 1) 
-						+ prob0MMGivenMM * AnalysisUtils.getPayment(rule, "MM", 0))
-			+ probGB * (  prob3MMGivenGB * AnalysisUtils.getPayment(rule, "GB", 3)
-						+ prob2MMGivenGB * AnalysisUtils.getPayment(rule, "GB", 2)
-						+ prob1MMGivenGB * AnalysisUtils.getPayment(rule, "GB", 1) 
-						+ prob0MMGivenGB * AnalysisUtils.getPayment(rule, "GB", 0));
+		return probMM * ( prob3MMGivenMM * AnalysisUtils.getPayment(treatment, "MM", 3)
+						+ prob2MMGivenMM * AnalysisUtils.getPayment(treatment, "MM", 2)
+						+ prob1MMGivenMM * AnalysisUtils.getPayment(treatment, "MM", 1) 
+						+ prob0MMGivenMM * AnalysisUtils.getPayment(treatment, "MM", 0))
+			+ probGB * (  prob3MMGivenGB * AnalysisUtils.getPayment(treatment, "GB", 3)
+						+ prob2MMGivenGB * AnalysisUtils.getPayment(treatment, "GB", 2)
+						+ prob1MMGivenGB * AnalysisUtils.getPayment(treatment, "GB", 1) 
+						+ prob0MMGivenGB * AnalysisUtils.getPayment(treatment, "GB", 0));
 
 	}
 
-	private static double getMixedPayoffForSignalAndReport3Players(String rule,
+	private static double getMixedPayoffForSignalAndReport3Players(String treatment,
 			double[] priorProbs, List<Map<String, Double>> prior,
 			double strategyMMGivenMM, double strategyMMGivenGB, 
 			String signal,
@@ -436,23 +436,23 @@ public class AnalysisUtils {
 						strategyMMGivenMM, strategyMMGivenGB, priorProbs, prior);
 		
 		if (signal.equals("MM") && report.equals("MM")) {
-			return probMMRefReportGivenMM * AnalysisUtils.getPayment(rule, "MM", "MM")
-				 + probGBRefReportGivenMM * AnalysisUtils.getPayment(rule, "MM", "GB");
+			return probMMRefReportGivenMM * AnalysisUtils.getPayment(treatment, "MM", "MM")
+				 + probGBRefReportGivenMM * AnalysisUtils.getPayment(treatment, "MM", "GB");
 		} else if (signal.equals("MM") && report.equals("GB")) {
-			return probMMRefReportGivenMM * AnalysisUtils.getPayment(rule, "GB", "MM")
-				 + probGBRefReportGivenMM * AnalysisUtils.getPayment(rule, "GB", "GB");			
+			return probMMRefReportGivenMM * AnalysisUtils.getPayment(treatment, "GB", "MM")
+				 + probGBRefReportGivenMM * AnalysisUtils.getPayment(treatment, "GB", "GB");			
 		} else if (signal.equals("GB") && report.equals("MM")) {
-			return probMMRefReportGivenGB * AnalysisUtils.getPayment(rule, "MM", "MM")
-				 + probGBRefReportGivenGB * AnalysisUtils.getPayment(rule, "MM", "GB");			
+			return probMMRefReportGivenGB * AnalysisUtils.getPayment(treatment, "MM", "MM")
+				 + probGBRefReportGivenGB * AnalysisUtils.getPayment(treatment, "MM", "GB");			
 		} else if (signal.equals("GB") && report.equals("GB")) {
-			return probMMRefReportGivenGB * AnalysisUtils.getPayment(rule, "GB", "MM")
-				 + probGBRefReportGivenGB * AnalysisUtils.getPayment(rule, "GB", "GB");
+			return probMMRefReportGivenGB * AnalysisUtils.getPayment(treatment, "GB", "MM")
+				 + probGBRefReportGivenGB * AnalysisUtils.getPayment(treatment, "GB", "GB");
 			
 		}
 		return -1;
 	}
 
-	public static double getMixedPayoffForSignalAndReport4Players(String rule, 
+	public static double getMixedPayoffForSignalAndReport4Players(String treatment, 
 			double[] priorProbs, List<Map<String, Double>> prior,
 			double strategyMMGivenMM, double strategyMMGivenGB,
 			String signal, String report) {
@@ -484,32 +484,32 @@ public class AnalysisUtils {
 						strategyMMGivenMM, strategyMMGivenGB, priorProbs, prior);
 		
 		if (signal.equals("MM") && report.equals("MM")) {
-			return prob3MM0GBRefReportsGivenMM * AnalysisUtils.getPayment(rule, "MM", 3) 
-				 + prob2MM1GBRefReportsGivenMM * AnalysisUtils.getPayment(rule, "MM", 2)
-			 	 + prob1MM2GBRefReportsGivenMM * AnalysisUtils.getPayment(rule, "MM", 1) 
-			 	 + prob0MM3GBRefReportsGivenMM * AnalysisUtils.getPayment(rule, "MM", 0);
+			return prob3MM0GBRefReportsGivenMM * AnalysisUtils.getPayment(treatment, "MM", 3) 
+				 + prob2MM1GBRefReportsGivenMM * AnalysisUtils.getPayment(treatment, "MM", 2)
+			 	 + prob1MM2GBRefReportsGivenMM * AnalysisUtils.getPayment(treatment, "MM", 1) 
+			 	 + prob0MM3GBRefReportsGivenMM * AnalysisUtils.getPayment(treatment, "MM", 0);
 		} else if (signal.equals("MM") && report.equals("GB")) {
-			return prob3MM0GBRefReportsGivenMM * AnalysisUtils.getPayment(rule, "GB", 3)
-				 + prob2MM1GBRefReportsGivenMM * AnalysisUtils.getPayment(rule, "GB", 2)
-				 + prob1MM2GBRefReportsGivenMM * AnalysisUtils.getPayment(rule, "GB", 1) 
-				 + prob0MM3GBRefReportsGivenMM * AnalysisUtils.getPayment(rule, "GB", 0);
+			return prob3MM0GBRefReportsGivenMM * AnalysisUtils.getPayment(treatment, "GB", 3)
+				 + prob2MM1GBRefReportsGivenMM * AnalysisUtils.getPayment(treatment, "GB", 2)
+				 + prob1MM2GBRefReportsGivenMM * AnalysisUtils.getPayment(treatment, "GB", 1) 
+				 + prob0MM3GBRefReportsGivenMM * AnalysisUtils.getPayment(treatment, "GB", 0);
 		} else if (signal.equals("GB") && report.equals("MM")){
-			return prob3MM0GBRefReportsGivenGB * AnalysisUtils.getPayment(rule, "MM", 3) 
-				 + prob2MM1GBRefReportsGivenGB * AnalysisUtils.getPayment(rule, "MM", 2)
-				 + prob1MM2GBRefReportsGivenGB * AnalysisUtils.getPayment(rule, "MM", 1) 
-				 + prob0MM3GBRefReportsGivenGB * AnalysisUtils.getPayment(rule, "MM", 0);
+			return prob3MM0GBRefReportsGivenGB * AnalysisUtils.getPayment(treatment, "MM", 3) 
+				 + prob2MM1GBRefReportsGivenGB * AnalysisUtils.getPayment(treatment, "MM", 2)
+				 + prob1MM2GBRefReportsGivenGB * AnalysisUtils.getPayment(treatment, "MM", 1) 
+				 + prob0MM3GBRefReportsGivenGB * AnalysisUtils.getPayment(treatment, "MM", 0);
 		} else if (signal.equals("GB") && report.equals("GB")) {
-			return prob3MM0GBRefReportsGivenGB * AnalysisUtils.getPayment(rule, "GB", 3)
-				 + prob2MM1GBRefReportsGivenGB * AnalysisUtils.getPayment(rule, "GB", 2)
-				 + prob1MM2GBRefReportsGivenGB * AnalysisUtils.getPayment(rule, "GB", 1) 
-				 + prob0MM3GBRefReportsGivenGB * AnalysisUtils.getPayment(rule, "GB", 0);
+			return prob3MM0GBRefReportsGivenGB * AnalysisUtils.getPayment(treatment, "GB", 3)
+				 + prob2MM1GBRefReportsGivenGB * AnalysisUtils.getPayment(treatment, "GB", 2)
+				 + prob1MM2GBRefReportsGivenGB * AnalysisUtils.getPayment(treatment, "GB", 1) 
+				 + prob0MM3GBRefReportsGivenGB * AnalysisUtils.getPayment(treatment, "GB", 0);
 		}
 		return -1;
 	}
 	
 	
 	
-	public static double getMixedPayoff(String rule, double[] priorProbs,
+	public static double getMixedPayoff(String treatment, double[] priorProbs,
 			List<Map<String, Double>> prior,
 			double strategyMMGivenMM, double strategyMMGivenGB) {
 
@@ -549,25 +549,25 @@ public class AnalysisUtils {
 		double probGB = 1 - probMM;
 		
 		return probMM * strategyMMGivenMM
-				* (prob3MM0GBRefReportsGivenMM * AnalysisUtils.getPayment(rule, "MM", 3) 
-				 + prob2MM1GBRefReportsGivenMM * AnalysisUtils.getPayment(rule, "MM", 2)
-				 + prob1MM2GBRefReportsGivenMM * AnalysisUtils.getPayment(rule, "MM", 1) 
-				 + prob0MM3GBRefReportsGivenMM * AnalysisUtils.getPayment(rule, "MM", 0))
+				* (prob3MM0GBRefReportsGivenMM * AnalysisUtils.getPayment(treatment, "MM", 3) 
+				 + prob2MM1GBRefReportsGivenMM * AnalysisUtils.getPayment(treatment, "MM", 2)
+				 + prob1MM2GBRefReportsGivenMM * AnalysisUtils.getPayment(treatment, "MM", 1) 
+				 + prob0MM3GBRefReportsGivenMM * AnalysisUtils.getPayment(treatment, "MM", 0))
 			+ probGB * strategyMMGivenGB
-			 	* (prob3MM0GBRefReportsGivenGB * AnalysisUtils.getPayment(rule, "MM", 3)
-				 + prob2MM1GBRefReportsGivenGB * AnalysisUtils.getPayment(rule, "MM", 2)
-				 + prob1MM2GBRefReportsGivenGB * AnalysisUtils.getPayment(rule, "MM", 1) 
-				 + prob0MM3GBRefReportsGivenGB * AnalysisUtils.getPayment(rule, "MM", 0))
+			 	* (prob3MM0GBRefReportsGivenGB * AnalysisUtils.getPayment(treatment, "MM", 3)
+				 + prob2MM1GBRefReportsGivenGB * AnalysisUtils.getPayment(treatment, "MM", 2)
+				 + prob1MM2GBRefReportsGivenGB * AnalysisUtils.getPayment(treatment, "MM", 1) 
+				 + prob0MM3GBRefReportsGivenGB * AnalysisUtils.getPayment(treatment, "MM", 0))
 			+ probMM * (1 - strategyMMGivenMM) 
-				* (prob3MM0GBRefReportsGivenMM * AnalysisUtils.getPayment(rule, "GB", 3)
-				 + prob2MM1GBRefReportsGivenMM * AnalysisUtils.getPayment(rule, "GB", 2)
-				 + prob1MM2GBRefReportsGivenMM * AnalysisUtils.getPayment(rule, "GB", 1) 
-				 + prob0MM3GBRefReportsGivenMM * AnalysisUtils.getPayment(rule, "GB", 0))
+				* (prob3MM0GBRefReportsGivenMM * AnalysisUtils.getPayment(treatment, "GB", 3)
+				 + prob2MM1GBRefReportsGivenMM * AnalysisUtils.getPayment(treatment, "GB", 2)
+				 + prob1MM2GBRefReportsGivenMM * AnalysisUtils.getPayment(treatment, "GB", 1) 
+				 + prob0MM3GBRefReportsGivenMM * AnalysisUtils.getPayment(treatment, "GB", 0))
 			+ probGB * (1 - strategyMMGivenGB)
-				* (prob3MM0GBRefReportsGivenGB * AnalysisUtils.getPayment(rule, "GB", 3)
-				 + prob2MM1GBRefReportsGivenGB * AnalysisUtils.getPayment(rule, "GB", 2)
-				 + prob1MM2GBRefReportsGivenGB * AnalysisUtils.getPayment(rule, "GB", 1) 
-				 + prob0MM3GBRefReportsGivenGB * AnalysisUtils.getPayment(rule, "GB", 0))
+				* (prob3MM0GBRefReportsGivenGB * AnalysisUtils.getPayment(treatment, "GB", 3)
+				 + prob2MM1GBRefReportsGivenGB * AnalysisUtils.getPayment(treatment, "GB", 2)
+				 + prob1MM2GBRefReportsGivenGB * AnalysisUtils.getPayment(treatment, "GB", 1) 
+				 + prob0MM3GBRefReportsGivenGB * AnalysisUtils.getPayment(treatment, "GB", 0))
 			;
 	}
 
@@ -625,22 +625,24 @@ public class AnalysisUtils {
 		return -1;
 	}
 
-	public static double getPayment(String rule, String myReport, String refReport) {
-		if (rule.equals("T1")) 
-			return AnalysisUtils.getPaymentT1(myReport, refReport);
-		else if (rule.equals("T2"))
-			return AnalysisUtils.getPaymentT2(myReport, refReport);
+	public static double getPayment(String treatment, String myReport, Object refInfo) {
+		if (treatment.equals("prior2-basic"))
+			return AnalysisUtils.getPaymentTreatmentBasic(myReport, (String) refInfo);
+		else if (treatment.equals("prior2-outputagreement"))
+			return AnalysisUtils.getPaymentTreatmentOutputAgreement(myReport,
+					(String) refInfo);
+		else if (treatment.equals("prior2-uniquetruthful") || treatment.equals("prior2-symmlowpay")) {
+			int numMMInRefReports = (int) refInfo;
+			if (treatment.equals("prior2-uniquetruthful"))
+				return AnalysisUtils.getPaymentTreatmentUniqueTruthful(myReport, numMMInRefReports);
+			else if (treatment.equals("prior2-symmlowpay"))
+				return AnalysisUtils.getPaymentTreatmentSymmLowPay(myReport, numMMInRefReports);
+		}
+
 		return -1;
 	}
 
-	public static double getPaymentT2(String myReport, String refReport) {
-		if (myReport.equals(refReport))
-			return 1.5;
-		else 
-			return 0.1;
-	}
-
-	public static double getPaymentT1(String myReport, String refReport) {
+	public static double getPaymentTreatmentBasic(String myReport, String refReport) {
 		if (myReport.equals("MM") && refReport.equals("MM"))
 			return 1.5;
 		else if (myReport.equals("MM") && refReport.equals("GB"))
@@ -652,65 +654,64 @@ public class AnalysisUtils {
 		return -1;
 	}
 
-	private static double getPayment(String rule ,String myReport, int numMMInRefReports) {
-		if (rule.equals("T3"))
-			return AnalysisUtils.getPaymentT3(myReport, numMMInRefReports);
-		else if (rule.equals("T5"))
-			return AnalysisUtils.getPaymentT5(myReport, numMMInRefReports);
-		return -1;
+	public static double getPaymentTreatmentOutputAgreement(String myReport, String refReport) {
+		if (myReport.equals(refReport))
+			return 1.5;
+		else 
+			return 0.1;
 	}
 
-	public static double getPaymentT5(String myReport, int numMMOtherReports) {
+	public static double getPaymentTreatmentUniqueTruthful(String myReport, int numMMOtherReports) {
 		if (myReport.equals("MM")) {
 			switch (numMMOtherReports) {
 			case 0:
-				return 0.10;
+				return 0.90;
 			case 1:
 				return 0.10;
 			case 2:
 				return 1.50;
 			case 3:
-				return 0.15;
+				return 0.80;
 			}
 	
 		} else {
 			switch (numMMOtherReports) {
 			case 0:
-				return 0.15;
+				return 0.80;
 			case 1:
-				return 0.90;
+				return 1.50;
 			case 2:
-				return 0.15;
-			case 3:
 				return 0.10;
+			case 3:
+				return 0.90;
 			}
 		}
 		return -1;
 	}
 
-	public static double getPaymentT3(String myReport, int numMMOtherReports) {
+	public static double getPaymentTreatmentSymmLowPay(String myReport, int numMMOtherReports) {
 		if (myReport.equals("MM")) {
 			switch (numMMOtherReports) {
 			case 0:
-				return 0.90;
+				return 0.10;
 			case 1:
 				return 0.10;
 			case 2:
 				return 1.50;
 			case 3:
-				return 0.80;
+				return 0.15;
 			}
 	
 		} else {
 			switch (numMMOtherReports) {
 			case 0:
-				return 0.80;
+				return 0.15;
 			case 1:
-				return 1.50;
-			case 2:
-				return 0.10;
-			case 3:
 				return 0.90;
+			case 2:
+				return 0.15;
+			case 3:
+				return 0.10;
 			}
 		}
 		return -1;

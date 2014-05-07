@@ -2,10 +2,16 @@ package edu.harvard.econcs.peerprediction.analysis;
 
 import static org.junit.Assert.*;
 
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Random;
+
 import org.junit.Test;
 
 public class LogReaderTest {
 
+	Random rand = new Random();
+	
 	@Test
 	public void testSelectByDist() {
 		
@@ -41,7 +47,6 @@ public class LogReaderTest {
 				countOne++;
 		}
 		assertEquals(count / 2, countOne, 50);
-		
 		
 		currPlayer = 1;
 		chosen = LogReader.chooseRefPlayer(currPlayer);
@@ -80,28 +85,63 @@ public class LogReaderTest {
 		assertEquals(3.0/6, dist[2], AnalysisUtils.eps);
 		
 	}
+
 	
 	@Test
-	public void testGetBestResponse() {
+	public void testGetExpectedPayoff() {
+		
 		LogReader.treatment = "prior2-basic";
-		String bestResponse = LogReader.getBestResponse(1, 1);
-		assertEquals("MM", bestResponse);
 		
-		bestResponse = LogReader.getBestResponse(2, 0);
-		assertEquals("MM", bestResponse);
-
-		bestResponse = LogReader.getBestResponse(0, 2);
-		assertEquals("GB", bestResponse);
-
-		LogReader.treatment = "prior2-outputagreement";
-		bestResponse = LogReader.getBestResponse(1, 1);
-		assertEquals("Mixed", bestResponse);
+		double pay = LogReader.getExpectedPayoffT12("MM", 2);
+		assertEquals(1.5, pay, AnalysisUtils.eps);
 		
-		bestResponse = LogReader.getBestResponse(2, 0);
-		assertEquals("MM", bestResponse);
-
-		bestResponse = LogReader.getBestResponse(0, 2);
-		assertEquals("GB", bestResponse);
-
+		pay = LogReader.getExpectedPayoffT12("MM", 0);
+		assertEquals(0.1, pay, AnalysisUtils.eps);
+		
+		pay = LogReader.getExpectedPayoffT12("MM", 1);
+		assertEquals(0.8, pay, AnalysisUtils.eps);
+		
+		pay = LogReader.getExpectedPayoffT12("GB", 2);
+		assertEquals(0.3, pay, AnalysisUtils.eps);
+		
+		pay = LogReader.getExpectedPayoffT12("GB", 0);
+		assertEquals(1.2, pay, AnalysisUtils.eps);
+		
+		pay = LogReader.getExpectedPayoffT12("GB", 1);
+		assertEquals(0.75, pay, AnalysisUtils.eps);
 	}
+	
+	@Test
+	public void testGetNumMMReports() {
+		String[] playerIds = new String[]{"0", "1", "2"};
+		Map<String, Map<String, Object>> result = new HashMap<String, Map<String, Object>>();
+		
+		int expectedNumMM = 0;
+		int excludeIndex = rand.nextInt(playerIds.length);
+		String excludeId = playerIds[excludeIndex];
+		
+		for (String id : playerIds) {
+			Map<String, Object> r = new HashMap<String, Object>();
+			if (rand.nextBoolean() == true) {
+				r.put("report", "MM");
+				if (!id.equals(excludeId))
+					expectedNumMM++;
+			} else {
+				r.put("report", "GB");
+			}
+			result.put(id, r);
+		}
+		int numMM = LogReader.getNumGivenReports("MM", playerIds, playerIds[excludeIndex], result);
+		assertEquals(expectedNumMM, numMM);
+	} 
+	
+	@Test
+	public void testGetMMProb() {
+		double mmProb = LogReader.getMMProb(10, 1, 1);
+		assertEquals(0.5, mmProb, AnalysisUtils.eps);
+		
+		mmProb = LogReader.getMMProb(4, 20, 20);
+		assertEquals(0.5, mmProb, AnalysisUtils.eps);
+	}
+	
 }

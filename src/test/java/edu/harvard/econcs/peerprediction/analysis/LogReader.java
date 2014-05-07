@@ -32,6 +32,8 @@ import net.andrewmao.models.games.SigActObservation;
 import org.apache.commons.math3.linear.Array2DRowRealMatrix;
 import org.apache.commons.math3.linear.RealMatrix;
 
+import com.google.common.collect.ImmutableMap;
+
 import be.ac.ulg.montefiore.run.jahmm.Hmm;
 import be.ac.ulg.montefiore.run.jahmm.Opdf;
 import be.ac.ulg.montefiore.run.jahmm.ViterbiCalculator;
@@ -41,11 +43,11 @@ public class LogReader {
 	static String dbUrl = "jdbc:mysql://localhost/peerprediction";
 	static String dbClass = "com.mysql.jdbc.Driver";
 	static String setId = "vary-payment";
-	 static String treatment = "prior2-basic";
-//	 static String treatment = "prior2-outputagreement";
-//	 static String treatment = "prior2-uniquetruthful";
-//	 static String treatment = "prior2-symmlowpay";
-//	 static String treatment = "prior2-constant";
+	static String treatment = "prior2-basic";
+	// static String treatment = "prior2-outputagreement";
+	// static String treatment = "prior2-uniquetruthful";
+	// static String treatment = "prior2-symmlowpay";
+	// static String treatment = "prior2-constant";
 
 	static final String rootDir = "/Users/alicexigao/Dropbox/peer-prediction/data/"
 			+ treatment + "/";
@@ -84,8 +86,8 @@ public class LogReader {
 		writeAvgBonus();
 
 		// HMM analysis
-		// learnHMM();
-		// setStrategyNames();
+		learnHMM();
+		setStrategyNames();
 		// writeStateSeq();
 		// eqConvergenceHmm();
 		// writeStrategyChangeHeatMap();
@@ -97,11 +99,14 @@ public class LogReader {
 		// Simple analysis
 		// eqConvergenceSimpleMethod();
 
+		estimateSFP();
+		estimateRL();
+
 		// Learning analysis
 		// simulateSFP();
-//		simulateSFPOneGame(1, 10, true);
+		// simulateSFPOneGame(1, 5, false);
 		// simulateRL();
-//		simulateRLOneGame(1, 10, true);
+		// simulateRLOneGame(1, 10, true);
 		// learningAnalysis("BR");
 		// learningAnalysis("FP");
 		// noRegretLearningAnalysis();
@@ -110,15 +115,327 @@ public class LogReader {
 
 		// strategyChangeT1();
 		// mixedStrategyPayoff("T3");
-		// strategyPayoffAnalysis("T3");
-		// strategyPayoffAnalysis("T5");
-		// if (treatment.equals("prior2-uniquetruthful"))
-		// strategyPayoffAnalysis("T3");
-		// else if (treatment.equals("prior2-symmlowpay"))
-		// strategyPayoffAnalysis("T5");
+		// strategyPayoffAnalysis("prior2-uniquetruthful");
+		// strategyPayoffAnalysis("prior2-symmlowpay");
 		// AnalysisUtils.getSymmMixedStrEq3Players("T1");
 		// AnalysisUtils.getSymmMixedStrEq4Players("T3");
 		// AnalysisUtils.getSymmMixedStrEq4Players("T5");
+	}
+
+	private static void estimateSFP() {
+
+		System.out
+				.println("\n\nEstimating Parameters for Stochastic Fictitious Play");
+
+		double discount; // discount factor
+		double discountStart = 0;
+		double discountEnd = 1;
+
+		double lambda; // sensitivity parameter
+		double lambdaStart = 1;
+		double lambdaEnd = 20;
+
+		boolean[] signalOpt = new boolean[] { true, false };
+
+		double bestDiscount = 0;
+		double bestLambda = 0;
+		boolean bestSignalOpt = true;
+		double bestLogLk = Double.NEGATIVE_INFINITY;
+
+		for (discount = discountStart; discount <= discountEnd; discount += 0.05) {
+			for (lambda = lambdaStart; lambda <= lambdaEnd; lambda++) {
+				for (int i = 0; i < signalOpt.length; i++) {
+
+					boolean considerSignal = signalOpt[i];
+
+					double loglk = computeLogLkSFP(lambda, discount,
+							considerSignal);
+
+					if (loglk > bestLogLk) {
+						bestDiscount = discount;
+						bestLambda = lambda;
+						bestSignalOpt = considerSignal;
+						bestLogLk = loglk;
+						// System.out.printf("l: %.2f, d: %.2f, s: %b, loglk=%.2f\n",
+						// lambda, discount, considerSignal, loglk);
+					}
+				}
+			}
+		}
+
+		System.out.printf(
+				"Best parameters for SFP; l=%.2f, d=%.2f, s=%b, loglk=%.2f\n",
+				bestLambda, bestDiscount, bestSignalOpt, bestLogLk);
+	}
+
+	/**
+	 * Computer Log Likelihood for Stochastic Fictitious Play
+	 */
+	private static double computeLogLkSFP(double lambda, double discount,
+			boolean considerSignal) {
+
+		double loglk = 0;
+		for (Game game : expSet.games) {
+
+			double gameLogLk = 0;
+
+			for (int i = 0; i < expSet.numRounds; i++) {
+
+				if (i == 0) {
+
+					gameLogLk += Math.log(Math.pow(0.5, expSet.numPlayers));
+
+				} else {
+
+					for (String currPlayerId : game.playerHitIds) {
+
+						Map<String, Double> strategy = getStrategySFP(
+								game.rounds, game.playerHitIds, i,
+								currPlayerId, considerSignal, discount, lambda);
+						String report = (String) game.rounds.get(i).result.get(
+								currPlayerId).get("report");
+
+						gameLogLk += Math.log(strategy.get(report));
+
+					}
+				}
+			}
+			loglk += gameLogLk;
+		}
+		return loglk;
+	}
+
+	private static Map<String, Double> getStrategySFP(List<Round> rounds,
+			String[] playerHitIds, int currRound, String currPlayerId,
+			boolean considerSignal, double discount, double lambda) {
+
+		String signalRoundI = (String) rounds.get(currRound).result.get(
+				currPlayerId).get("signal");
+
+		// index i counts number of rounds to have i MM reports
+		// for the other players.
+		double[] dRoundCount = new double[expSet.numPlayers];
+		double d = 1;
+
+		for (int k = currRound - 1; k >= 0; k--) {
+
+			Map<String, Map<String, Object>> roundResult = rounds.get(k).result;
+			String signalRoundK = (String) roundResult.get(currPlayerId).get(
+					"signal");
+
+			if ((considerSignal && signalRoundK.equals(signalRoundI))
+					|| (!considerSignal)) {
+				int numMMForRound = getNumGivenReports("MM", playerHitIds,
+						currPlayerId, roundResult);
+				dRoundCount[numMMForRound] += d;
+			}
+			d *= discount;
+		}
+
+		normalizeDist(dRoundCount);
+		double mmPayoff = getExpectedPayoffSFP("MM", dRoundCount);
+		double gbPayoff = getExpectedPayoffSFP("GB", dRoundCount);
+
+		double mmProb = getMMProb(lambda, mmPayoff, gbPayoff);
+		return ImmutableMap.of("MM", mmProb, "GB", 1 - mmProb);
+	}
+
+	private static void estimateRL() {
+
+		System.out
+				.println("\n\nEstimating Parameters for Reinforcement Learning");
+
+		double discount; // discount factor
+		double discountStart = 0;
+		double discountEnd = 1;
+
+		double lambda; // sensitivity parameter
+		double lambdaStart = 1;
+		double lambdaEnd = 20;
+
+		boolean[] signalOpt = new boolean[] { true, false };
+
+		double bestDiscount = 0;
+		double bestLambda = 0;
+		boolean bestSignalOpt = true;
+		double bestLogLk = Double.NEGATIVE_INFINITY;
+
+		for (discount = discountStart; discount <= discountEnd; discount += 0.05) {
+			for (lambda = lambdaStart; lambda <= lambdaEnd; lambda++) {
+				for (int i = 0; i < signalOpt.length; i++) {
+
+					boolean considerSignal = signalOpt[i];
+
+					double loglk = computeLogLkRL(considerSignal, discount,
+							lambda);
+
+					if (loglk > bestLogLk) {
+						bestDiscount = discount;
+						bestLambda = lambda;
+						bestSignalOpt = considerSignal;
+						bestLogLk = loglk;
+						System.out.printf(
+								"l: %.2f, d: %.2f, s: %b, loglk=%.2f\n",
+								lambda, discount, considerSignal, loglk);
+					}
+				}
+			}
+		}
+
+		System.out.printf(
+				"Best parameters for RL; l=%.2f, d=%.2f, s=%b, loglk=%.2f\n",
+				bestLambda, bestDiscount, bestSignalOpt, bestLogLk);
+	}
+
+	private static double computeLogLkRL(boolean considerSignal,
+			double discount, double lambda) {
+
+		double loglk = 0;
+		for (Game game : expSet.games) {
+
+			double gameLogLk = 0;
+
+			for (int i = 0; i < expSet.numRounds; i++) {
+
+				if (i == 0) {
+
+					gameLogLk += Math.log(Math.pow(0.5, expSet.numPlayers));
+
+				} else {
+
+					// add likelihood for rewards
+					for (String currPlayerId : game.playerHitIds) {
+
+						Map<String, Map<String, Object>> result = game.rounds
+								.get(i).result;
+
+						String refPlayer = (String) result.get(currPlayerId)
+								.get("refPlayer");
+						String refReport = (String) result.get(refPlayer)
+								.get("report");
+						int numRefReport = LogReader.getNumGivenReports(
+								refReport, game.playerHitIds, currPlayerId,
+								result);
+						double rewardLogLk = Math.log(numRefReport * 1.0 / (expSet.numPlayers - 1));
+						gameLogLk += rewardLogLk;
+					}
+
+					// add likelihood for reports
+					for (String currPlayerId : game.playerHitIds) {
+
+						Map<String, Double> strategy = getStrategyRL(
+								game.rounds, game.playerHitIds, i,
+								currPlayerId, considerSignal, discount, lambda);
+						String report = (String) game.rounds.get(i).result.get(
+								currPlayerId).get("report");
+
+						gameLogLk += Math.log(strategy.get(report));
+
+					}
+				}
+			}
+			loglk += gameLogLk;
+		}
+		return loglk;
+	}
+
+	private static Map<String, Double> getStrategyRL(List<Round> rounds,
+			String[] playerHitIds, int i, String currPlayerId,
+			boolean considerSignal, double discount, double lambda) {
+
+		String signalRoundI = (String) rounds.get(i).result.get(currPlayerId)
+				.get("signal");
+
+		Map<String, Double> payoffs = new HashMap<String, Double>();
+		payoffs.put("MM", 0.0);
+		payoffs.put("GB", 0.0);
+		double d = 1;
+
+		for (int k = i - 1; k >= 0; k--) {
+
+			Map<String, Map<String, Object>> resultRoundK = rounds.get(k).result;
+
+			Map<String, Object> currPlayerResult = resultRoundK
+					.get(currPlayerId);
+			String signal = (String) currPlayerResult.get("signal");
+
+			if ((considerSignal && signal.equals(signalRoundI))
+					|| (!considerSignal)) {
+
+				String report = (String) currPlayerResult.get("report");
+				double payoff = (double) currPlayerResult.get("reward");
+
+				payoffs.put(report, payoffs.get(report) + payoff * d);
+			}
+			d *= discount;
+		}
+
+		double mmProb = getMMProb(lambda, payoffs.get("MM"), payoffs.get("GB"));
+		return ImmutableMap.of("MM", mmProb, "GB", 1 - mmProb);
+	}
+
+	public static double getExpectedPayoffSFP(String report, double[] roundDist) {
+		double expPayoff = 0.0;
+		for (int i = 0; i < roundDist.length; i++) {
+			expPayoff += roundDist[i] * getExpectedPayoffT12(report, i);
+		}
+		return expPayoff;
+	}
+
+	public static double getExpectedPayoffT12(String report,
+			int numOtherMMReports) {
+
+		if (treatment.equals("prior2-basic")) {
+
+			if (numOtherMMReports == 2) {
+				return AnalysisUtils.getPaymentTreatmentBasic(report, "MM");
+			} else if (numOtherMMReports == 0) {
+				return AnalysisUtils.getPaymentTreatmentBasic(report, "GB");
+			} else if (numOtherMMReports == 1) {
+				return 0.5
+						* AnalysisUtils.getPaymentTreatmentBasic(report, "MM")
+						+ 0.5
+						* AnalysisUtils.getPaymentTreatmentBasic(report, "GB");
+			}
+
+		}
+
+		return -1;
+	}
+
+	public static double getMMProb(double lambda, double mmPayoff,
+			double gbPayoff) {
+		double mmProb = Math.pow(Math.E, lambda * mmPayoff)
+				/ (Math.pow(Math.E, lambda * mmPayoff) + Math.pow(Math.E,
+						lambda * gbPayoff));
+		return mmProb;
+	}
+
+	public static int getNumGivenReports(String givenReport,
+			String[] playerHitIds, String excludePlayerId,
+			Map<String, Map<String, Object>> roundResult) {
+		int numMM = 0;
+		for (String playerId : playerHitIds) {
+			if (excludePlayerId != playerId) {
+				String report = (String) roundResult.get(playerId)
+						.get("report");
+				if (report.equals(givenReport))
+					numMM++;
+			}
+		}
+		return numMM;
+	}
+
+	public static void normalizeDist(double[] actionDist) {
+		double sum = 0.0;
+		for (int x = 0; x < actionDist.length; x++) {
+			sum += actionDist[x];
+		}
+		if (sum == 0)
+			return;
+		for (int x = 0; x < actionDist.length; x++) {
+			actionDist[x] = actionDist[x] / sum;
+		}
 	}
 
 	private static void simulateSFP() {
@@ -126,61 +443,100 @@ public class LogReader {
 		System.out.println("\n\nSimulating Stochastic Fictitious Play");
 
 		double discount = 0; // discount factor
+		double discountStart = 1;
+		double discountEnd = 1;
+
 		double lambda = 0; // sensitivity parameter
-		int numSimGames = 100;
+		double lambdaStart = 5;
+		double lambdaEnd = 5;
 
-		double highestAvgPayoff = 0;
-		double chosenD = 0;
-		double chosenL = 0;
+		boolean[] signalOpt = new boolean[] { true };
 
-		for (discount = 0; discount <= 1; discount += 0.1) {
-			for (lambda = 1; lambda <= 10; lambda++) {
+		int numSimGames = 1000;
+		int totalCount = 0;
 
-				double totalPayoff = 0;
-				int count = 0;
-				List<List<Round>> simulatedGames = new ArrayList<List<Round>>();
-				for (int x = 0; x < numSimGames; x++) {
+		List<Round> simulatedMeanPath = new ArrayList<Round>();
+		initialize(simulatedMeanPath);
 
-					List<Round> rounds = simulateSFPOneGame(discount, lambda,
-							false);
-					simulatedGames.add(rounds);
+		for (discount = discountStart; discount <= discountEnd; discount += 0.1) {
+			for (lambda = lambdaStart; lambda <= lambdaEnd; lambda++) {
+				for (int i = 0; i < signalOpt.length; i++) {
 
-					double[] simulatedBonus = getAvgPayoffOneGame(rounds);
-					for (int i = 0; i < simulatedBonus.length; i++) {
-						totalPayoff += simulatedBonus[i];
-						count++;
+					boolean forSignal = signalOpt[i];
+
+					List<List<Round>> simulatedGames = new ArrayList<List<Round>>();
+
+					for (int k = 0; k < numSimGames; k++) {
+
+						List<Round> simulatedGame = simulateSFPOneGame(
+								discount, lambda, forSignal);
+
+						addToSimulatedMean(simulatedMeanPath, simulatedGame);
+						totalCount++;
+
+						simulatedGames.add(simulatedGame);
 					}
+				}
+			}
+		}
+
+		System.out.println(simulatedMeanPath.toString());
+		System.out.println(totalCount);
+
+	}
+
+	private static void initialize(List<Round> simulatedMeanPath) {
+		for (int i = 0; i < expSet.numRounds; i++) {
+			Round r = new Round();
+			r.roundNum = i;
+			for (int j = 0; j < expSet.numPlayers; j++) {
+				Map<String, Object> m = new HashMap<String, Object>();
+				m.put("numMMReports", 0);
+				String playerId = String.format("%d", j);
+				r.result.put(playerId, m);
+			}
+			simulatedMeanPath.add(r);
+		}
+	}
+
+	private static void addToSimulatedMean(List<Round> simulatedMeanPath,
+			List<Round> simulatedGame) {
+
+		for (int i = 0; i < expSet.numRounds; i++) {
+			for (int j = 0; j < expSet.numPlayers; j++) {
+				String playerId = String.format("%d", j);
+				String report = simulatedGame.get(i).result.get(playerId)
+						.get("report").toString();
+				if (report.equals("MM")) {
+					Map<String, Object> playerObj = new HashMap<String, Object>();
+					int numMMReports = (int) simulatedMeanPath.get(i).result
+							.get(playerId).get("numMMReports");
+					playerObj.put("numMMReports", numMMReports + 1);
+					simulatedMeanPath.get(i).result.put(playerId, playerObj);
 
 				}
-				double avgPayoff = totalPayoff / count;
-				if (avgPayoff > highestAvgPayoff) {
-					highestAvgPayoff = avgPayoff;
-					chosenD = discount;
-					chosenL = lambda;
-					System.out.printf("d=%.2f, l=%.2f, p=%.2f\n", discount,
-							lambda, avgPayoff);
-				}
+
 			}
 		}
 
 	}
 
-	/**
-	 * 
-	 * @param d
-	 * @param lambda
-	 * @param forSignal
-	 * @return
-	 */
-	private static List<Round> simulateSFPOneGame(
-			double d, double lambda, boolean forSignal) {
+	private static List<Round> simulateSFPOneGame(double discount,
+			double lambda, boolean forSignal) {
+
+		System.out.println("\n\nSimulating Stochastic Fictitious Play");
 
 		List<Round> rounds = new ArrayList<Round>();
+
+		String[] playerHitIds = new String[expSet.numPlayers];
+		for (int index = 0; index < expSet.numPlayers; index++) {
+			playerHitIds[index] = String.format("%d", index);
+		}
 
 		for (int i = 0; i < expSet.numRounds; i++) {
 
 			System.out.printf("Round %d\n", i);
-			
+
 			Round r = new Round();
 			r.roundNum = i;
 			int worldIndex = selectByDist(expSet.priorProbs[0]);
@@ -191,14 +547,15 @@ public class LogReader {
 			// Get signals and choose reports
 			String[] signals = new String[expSet.numPlayers];
 			String[] reports = new String[expSet.numPlayers];
+			double[] mmProbs = new double[expSet.numPlayers];
+
 			for (int j = 0; j < expSet.numPlayers; j++) {
 
-				System.out.printf("Player %d: ", j);
-				
+				String currPlayerId = String.format("%d", j);
+
 				// get signal
 				int signalIndex = selectByDist(r.chosenWorld.get("MM"));
 				signals[j] = signalList[signalIndex];
-				System.out.printf("signal=%s,", signals[j]);
 
 				// choose report
 				if (i == 0) {
@@ -206,55 +563,19 @@ public class LogReader {
 					// first round, choose reports randomly
 					int reportIndex = selectByDist(0.5);
 					reports[j] = signalList[reportIndex];
-					System.out.printf("report=%s,", reports[j]);
 
 				} else {
 
-					// choose report based on learning rule
-					double[] actionDist = new double[expSet.numPlayers];
-					double discount = 1;
-					
-					// count history
-					for (int k = i - 1; k >= 0; k--) {
+					Map<String, Double> strategy = getStrategySFP(rounds,
+							playerHitIds, i, currPlayerId, forSignal, discount,
+							lambda);
 
-						Map<String, Map<String, Object>> roundResult = rounds
-								.get(k).result;
+					mmProbs[j] = strategy.get("MM").doubleValue();
 
-						String currPlayerId = String.format("%d", j);
-						String signalRoundK = (String) roundResult.get(
-								currPlayerId).get("signal");
-
-						if ((forSignal && signalRoundK.equals(signals[j]))
-								|| (!forSignal)) {
-							int numMM = getNumMMReports(j, roundResult);
-							
-							actionDist[numMM] += discount;
-						}
-						
-						discount *= d;
-					}
-					
-					System.out.printf("action dist=[%.2f,%.2f,%.2f],", 
-							actionDist[0], actionDist[1], actionDist[2]);
-
-					// normalize action distribution
-					normalizeDist(actionDist);
-
-					// determine expected payoffs
-					double mmPayoff = determineExpectedPayoff("MM", actionDist);
-					double gbPayoff = determineExpectedPayoff("GB", actionDist);
-					System.out.printf("expected payoffs=[%.2f,%.2f],", mmPayoff, gbPayoff);
-					
-					// determine strategy
-					double mmProb = determineMMProb(lambda, mmPayoff, gbPayoff);
-					System.out.printf("strategy=[%.2f,%.2f]", mmProb, 1 - mmProb);
-
-					// determine action
-					int reportIndex = selectByDist(mmProb);
+					int reportIndex = selectByDist(mmProbs[j]);
 					reports[j] = signalList[reportIndex];
 				}
-				
-				System.out.println();
+
 			}
 
 			// determine payoffs
@@ -271,6 +592,7 @@ public class LogReader {
 				info.put("report", reports[j]);
 				info.put("refPlayer", refPlayerIndices[j]);
 				info.put("payoff", payoffs[j]);
+				info.put("mmProb", mmProbs[j]);
 
 				String id = String.format("%d", j);
 				result.put(id, info);
@@ -282,100 +604,6 @@ public class LogReader {
 		}
 
 		return rounds;
-	}
-
-	private static double determineExpectedPayoff(String report,
-			double[] actionDist) {
-		double expPayoff = 0.0;
-		for (int i = 0; i < actionDist.length; i++) {
-			expPayoff += actionDist[i] * determineExpectedPayoff(report, i);
-		}
-		return expPayoff;
-	}
-
-	private static double determineExpectedPayoff(String report, int numOtherMMReports) {
-		
-		if (numOtherMMReports == (expSet.numPlayers - 1)) {
-			return AnalysisUtils.getPaymentT1(report, "MM"); 
-		} else if (numOtherMMReports == 0) {
-			return AnalysisUtils.getPaymentT1(report, "GB");
-		} else if (numOtherMMReports == 1) {
-			return 0.5 * AnalysisUtils.getPaymentT1(report, "MM") 
-					+ 0.5 * AnalysisUtils.getPaymentT1(report, "GB");
-		}
-			
-		return 0;
-	}
-
-	private static int getNumMMReports(int excludePlayerId,
-			Map<String, Map<String, Object>> roundResult) {
-		int numMM = 0;
-		for (int l = 0; l < expSet.numPlayers; l++) {
-			if (l != excludePlayerId) {
-				String playerId = String.format("%d", l);
-				String report = (String) roundResult.get(playerId).get("report");
-				if (report.equals("MM"))
-					numMM++;
-			}
-		}
-		return numMM;
-	}
-
-	public static void normalizeDist(double[] actionDist) {
-		double sum = 0.0;
-		for (int x = 0; x < actionDist.length; x++) {
-			sum += actionDist[x];
-		}
-		if (sum == 0) return;
-		for (int x = 0; x < actionDist.length; x++) {
-			actionDist[x] = actionDist[x] / sum;
-		}
-	}
-
-	public static String getBestResponse(int numMMReports, int numGBReports) {
-		double refMMProb = 1.0 * numMMReports / (numMMReports + numGBReports);
-
-		if (treatment.equals("prior2-basic")) {
-
-			String myReport = "MM";
-			double reportMMPayoff = refMMProb
-					* AnalysisUtils.getPaymentT1(myReport, "MM")
-					+ (1 - refMMProb)
-					* AnalysisUtils.getPaymentT1(myReport, "GB");
-			myReport = "GB";
-			double reportGBPayoff = refMMProb
-					* AnalysisUtils.getPaymentT1(myReport, "MM")
-					+ (1 - refMMProb)
-					* AnalysisUtils.getPaymentT1(myReport, "GB");
-
-			if (reportMMPayoff > reportGBPayoff)
-				return "MM";
-			else if (reportMMPayoff == reportGBPayoff)
-				return "Mixed";
-			else
-				return "GB";
-		} else if (treatment.equals("prior2-outputagreement")) {
-
-			String myReport = "MM";
-			double reportMMPayoff = refMMProb
-					* AnalysisUtils.getPaymentT2(myReport, "MM")
-					+ (1 - refMMProb)
-					* AnalysisUtils.getPaymentT2(myReport, "GB");
-			myReport = "GB";
-			double reportGBPayoff = refMMProb
-					* AnalysisUtils.getPaymentT2(myReport, "MM")
-					+ (1 - refMMProb)
-					* AnalysisUtils.getPaymentT2(myReport, "GB");
-
-			if (reportMMPayoff > reportGBPayoff)
-				return "MM";
-			else if (reportMMPayoff == reportGBPayoff)
-				return "Mixed";
-			else
-				return "GB";
-
-		}
-		return null;
 	}
 
 	public static void simulateRL() {
@@ -398,8 +626,8 @@ public class LogReader {
 				List<List<Round>> simulatedGames = new ArrayList<List<Round>>();
 				for (int x = 0; x < numSimGames; x++) {
 
-					List<Round> rounds = simulateRLOneGame(discount, lambda,
-							true);
+					List<Round> rounds = simulateRLOneGame(true, discount,
+							lambda);
 					simulatedGames.add(rounds);
 
 					double[] simulatedBonus = getAvgPayoffOneGame(rounds);
@@ -426,17 +654,24 @@ public class LogReader {
 	 * Simulate reinforcement learning for one game, given a discount factor and
 	 * a sensitivity parameter
 	 * 
-	 * @param d
-	 * @param lambda
-	 * @param forSignal
+	 * @param considerSignal
 	 *            if this is true, the algorithm learns given the realized
 	 *            signal
+	 * @param discount
+	 * @param lambda
+	 * 
 	 * @return
 	 */
-	private static List<Round> simulateRLOneGame(
-			double d, double lambda, boolean forSignal) {
-		
+	private static List<Round> simulateRLOneGame(boolean considerSignal,
+			double discount, double lambda) {
+
 		List<Round> rounds = new ArrayList<Round>();
+
+		String[] playerHitIds = new String[expSet.numPlayers];
+		for (int index = 0; index < expSet.numPlayers; index++) {
+			playerHitIds[index] = String.format("%d", index);
+		}
+
 		for (int i = 0; i < expSet.numRounds; i++) {
 
 			Round r = new Round();
@@ -449,10 +684,11 @@ public class LogReader {
 			// get signals and choose reports
 			String[] signals = new String[expSet.numPlayers];
 			String[] reports = new String[expSet.numPlayers];
+			double[] mmProbs = new double[expSet.numPlayers];
 			for (int j = 0; j < expSet.numPlayers; j++) {
 
-				System.out.printf("Player %d: ", j);
-				
+				String currPlayerId = String.format("%d", j);
+
 				// get signal
 				int signalIndex = selectByDist(r.chosenWorld.get("MM"));
 				signals[j] = signalList[signalIndex];
@@ -465,50 +701,17 @@ public class LogReader {
 					int reportIndex = selectByDist(0.5);
 					reports[j] = signalList[reportIndex];
 					System.out.printf("report=%s,", reports[j]);
-					
+
 				} else {
 
-					// choose report based on learning rule
-					double[] payoffs = new double[]{0, 0};
-					double discount = 1;
-
-					// count history
-					for (int k = i - 1; k >= 0; k--) {
-						Map<String, Object> currPlayerResult = rounds.get(k).result
-								.get(String.format("%d", j));
-						String signal = (String) currPlayerResult.get("signal");
-
-						if ((forSignal && signal.equals(signals[j])) || (!forSignal)) {
-							
-							String report = (String) currPlayerResult
-									.get("report");
-							double payoff = (double) currPlayerResult
-									.get("payoff");
-							
-							int payoffIndex = 0;
-							if (report.equals("GB")) payoffIndex = 1;
-							
-							payoffs[payoffIndex] = payoffs[payoffIndex] +  payoff * discount;
-
-						}
-						discount *= d;
-					}
-					
-					System.out.printf("payoffs=[%.2f,%.2f],", payoffs[0], payoffs[1]);
-
-					// normalize payoff distribution
-					normalizeDist(payoffs);
-					
-					// determine strategy
-					double mmProb = determineMMProb(lambda, payoffs[0], payoffs[1]);
-					System.out.printf("strategy=[%.2f,%.2f]", mmProb, 1 - mmProb);
-					
-					// determine action
-					int reportIndex = selectByDist(mmProb);
+					Map<String, Double> strategy = getStrategyRL(
+							rounds, playerHitIds, i,
+							currPlayerId, considerSignal, discount, lambda);
+					mmProbs[j] = strategy.get("MM");
+					int reportIndex = selectByDist(strategy.get("MM"));
 					reports[j] = signalList[reportIndex];
 				}
-				
-				System.out.println();
+
 			}
 
 			// determine payoffs
@@ -525,23 +728,15 @@ public class LogReader {
 				info.put("report", reports[j]);
 				info.put("refPlayer", refPlayerIndices[j]);
 				info.put("payoff", payoffs[j]);
+				info.put("mmProb", mmProbs[j]);
 
 				String id = String.format("%d", j);
 				r.result.put(id, info);
 			}
 
-			System.out.printf("round %d, result: %s\n", i, r.result);
 			rounds.add(r);
 		}
 		return rounds;
-	}
-
-	private static double determineMMProb(double lambda,
-			double mmPayoff, double gbPayoff) {
-		double mmProb = Math.pow(Math.E, lambda * mmPayoff)
-				/ (Math.pow(Math.E, lambda * mmPayoff) 
-					+ Math.pow(Math.E, lambda * gbPayoff));
-		return mmProb;
 	}
 
 	private static double[] getAvgPayoffOneGame(List<Round> rounds) {
@@ -569,7 +764,8 @@ public class LogReader {
 				String myReport = reports[j];
 				refPlayerIndices[j] = chooseRefPlayer(j);
 				String refReport = reports[refPlayerIndices[j]];
-				payoffs[j] = AnalysisUtils.getPaymentT1(myReport, refReport);
+				payoffs[j] = AnalysisUtils.getPaymentTreatmentBasic(myReport,
+						refReport);
 
 			}
 
@@ -580,7 +776,8 @@ public class LogReader {
 				String myReport = reports[j];
 				refPlayerIndices[j] = chooseRefPlayer(j);
 				String refReport = reports[refPlayerIndices[j]];
-				payoffs[j] = AnalysisUtils.getPaymentT2(myReport, refReport);
+				payoffs[j] = AnalysisUtils.getPaymentTreatmentOutputAgreement(
+						myReport, refReport);
 
 			}
 		}
@@ -594,13 +791,14 @@ public class LogReader {
 	 */
 	public static int chooseRefPlayer(int currPlayerIndex) {
 		int shift = 0;
-		if (rand.nextBoolean()) shift = 1;
-		
+		if (rand.nextBoolean())
+			shift = 1;
+
 		if (shift >= currPlayerIndex)
 			return shift + 1;
-		else 
+		else
 			return shift;
-		
+
 	}
 
 	public static int selectByDist(double firstProb) {
@@ -667,8 +865,9 @@ public class LogReader {
 							|| treatment.equals("prior2-symmlowpay")) {
 						List<String> refReports = game.getRefReports(hitId, i);
 						int numMM = game.getNumMMInRefReports(refReports);
-						myPayoffs[i] = AnalysisUtils.getPaymentT3(myReport,
-								numMM);
+						myPayoffs[i] = AnalysisUtils
+								.getPaymentTreatmentUniqueTruthful(myReport,
+										numMM);
 					} else {
 						String refReport = game.getRefReport(hitId, i);
 						myPayoffs[i] = game.getPaymentT1N2(myReport, refReport,
@@ -951,19 +1150,18 @@ public class LogReader {
 					+ "(MM, 3) = 0.8, (MM, 2) = 1.5, (MM, 1) = 0.1, (MM, 0) = 0.9, \n"
 					+ "(GB, 3) = 0.9, (GB, 2) = 0.1, (GB, 1) = 1.5, (GB, 0) = 0.8, \n"
 					+ "where (A, B) = X denotes that if player P's report is A, B of the other 3 reports are MM, "
-					+ "then P's payoff is X.\n\n");			
+					+ "then P's payoff is X.\n\n");
 		} else if (treatment.equals("prior2-symmlowpay")) {
 			writer.write("Payment rule:\n"
 					+ "Each player's payoff depends on the player's report and all the other reports, as follows:\n"
 					+ "(MM, 3) = 0.15, (MM, 2) = 1.50, (MM, 1) = 0.10, (MM, 0) = 0.10, \n"
 					+ "(GB, 3) = 0.10, (GB, 2) = 0.15, (GB, 1) = 0.90, (GB, 0) = 0.15, \n"
 					+ "where (A, B) = X denotes that if player P's report is A, B of the other 3 reports are MM, "
-					+ "then P's payoff is X.\n\n");			
+					+ "then P's payoff is X.\n\n");
 		} else if (treatment.equals("prior2-constant")) {
 			writer.write("Payment rule:\n"
 					+ "Every player gets 0.90 for every round.\n\n");
 		}
-
 
 		int gameIndex = 0;
 		for (Game game : expSet.games) {
@@ -1117,11 +1315,11 @@ public class LogReader {
 	// strategy[0], strategy[1], mixedPayoff);
 	// }
 
-	private static void strategyPayoffAnalysis(String rule) {
+	private static void strategyPayoffAnalysis(String treatment) {
 
 		System.out.println("\n" + "Strategy payoff analysis");
 
-		double truthfulPayoffT3 = AnalysisUtils.getTruthfulPayoff(rule,
+		double truthfulPayoffT3 = AnalysisUtils.getTruthfulPayoff(treatment,
 				expSet.priorProbs, expSet.worlds);
 		System.out.printf("Payoff at truthful equilibrium: %.6f\n",
 				truthfulPayoffT3);
@@ -1140,7 +1338,7 @@ public class LogReader {
 			double probMMGivenGB = opdfMixed
 					.probability(new SigActObservation<CandySignal, CandyReport>(
 							CandySignal.GB, CandyReport.MM));
-			double mixedPayoffT3 = AnalysisUtils.getMixedPayoff(rule,
+			double mixedPayoffT3 = AnalysisUtils.getMixedPayoff(treatment,
 					expSet.priorProbs, expSet.worlds, probMMGivenMM,
 					probMMGivenGB);
 			System.out.printf(
@@ -1176,7 +1374,7 @@ public class LogReader {
 			double probMMGivenGB = opdfMixed
 					.probability(new SigActObservation<CandySignal, CandyReport>(
 							CandySignal.GB, CandyReport.MM));
-			double mixedPayoffT3 = AnalysisUtils.getMixedPayoff(rule,
+			double mixedPayoffT3 = AnalysisUtils.getMixedPayoff(treatment,
 					expSet.priorProbs, expSet.worlds, probMMGivenMM,
 					probMMGivenGB);
 			System.out.printf(
@@ -1213,17 +1411,21 @@ public class LogReader {
 		int numMMInOtherReports = game.getNumMMInRefReports(otherReports);
 
 		return strategyForSignal.get("MM")
-				* AnalysisUtils.getPaymentT3("MM", numMMInOtherReports)
+				* AnalysisUtils.getPaymentTreatmentUniqueTruthful("MM",
+						numMMInOtherReports)
 				+ strategyForSignal.get("GB")
-				* AnalysisUtils.getPaymentT3("GB", numMMInOtherReports);
+				* AnalysisUtils.getPaymentTreatmentUniqueTruthful("GB",
+						numMMInOtherReports);
 	}
 
 	private static double getPayoffT3(Map<String, Double> strategyForSignal,
 			int numMMInOtherReports) {
 		return strategyForSignal.get("MM")
-				* AnalysisUtils.getPaymentT3("MM", numMMInOtherReports)
+				* AnalysisUtils.getPaymentTreatmentUniqueTruthful("MM",
+						numMMInOtherReports)
 				+ strategyForSignal.get("GB")
-				* AnalysisUtils.getPaymentT3("GB", numMMInOtherReports);
+				* AnalysisUtils.getPaymentTreatmentUniqueTruthful("GB",
+						numMMInOtherReports);
 	}
 
 	public static void learnHMM() throws IOException {

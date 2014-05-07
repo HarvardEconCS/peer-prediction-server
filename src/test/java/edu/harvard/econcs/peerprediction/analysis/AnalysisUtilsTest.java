@@ -29,68 +29,66 @@ public class AnalysisUtilsTest {
 	}
 
 	public void testProbRefReportGivenSignalAndStrategy() {
-		double prob1 = 
-				AnalysisUtils.getProbRefReportGivenSignalAndStrategy("MM", "MM", 1.0, 1.0, priorProbs, prior);
+		double prob1 = AnalysisUtils.getProbRefReportGivenSignalAndStrategy(
+				"MM", "MM", 1.0, 1.0, priorProbs, prior);
 		assertEquals(1, prob1, AnalysisUtils.eps);
-		
+
 	}
-	
+
 	@Test
 	public void testGetRandomList() {
 		List<Double> list = AnalysisUtils.getRandomList(3);
 		double total = 0;
-		for (int i = 0 ; i < list.size(); i++) {
+		for (int i = 0; i < list.size(); i++) {
 			double value = list.get(i).doubleValue();
 			assertTrue(value > 0);
 			total += value;
 		}
 		assertEquals(1, total, AnalysisUtils.eps);
 
-		
 		list = AnalysisUtils.getRandomList(5);
 		total = 0;
-		for (int i = 0 ; i < list.size(); i++) {
+		for (int i = 0; i < list.size(); i++) {
 			double value = list.get(i).doubleValue();
 			assertTrue(value > 0);
 			total += value;
 		}
 		assertEquals(1, total, AnalysisUtils.eps);
 
-	
 	}
-	
+
 	@Test
 	public void testProbRefReportsGivenSignalAndStrategy() {
-		double prob1 = 
-				AnalysisUtils.getProbRefReportsGivenSignalAndStrategy(3, 0, "MM", 1.0, 1.0, priorProbs, prior);
+		double prob1 = AnalysisUtils.getProbRefReportsGivenSignalAndStrategy(3,
+				0, "MM", 1.0, 1.0, priorProbs, prior);
 		assertEquals(1, prob1, AnalysisUtils.eps);
-		
-		double prob2 = 
-				AnalysisUtils.getProbRefReportsGivenSignalAndStrategy(2, 1, "MM", 1.0, 1.0, priorProbs, prior);
+
+		double prob2 = AnalysisUtils.getProbRefReportsGivenSignalAndStrategy(2,
+				1, "MM", 1.0, 1.0, priorProbs, prior);
 		assertEquals(0, prob2, AnalysisUtils.eps);
-		
-		double prob3 = 
-				AnalysisUtils.getProbRefReportsGivenSignalAndStrategy(1, 2, "MM", 1.0, 1.0, priorProbs, prior);
+
+		double prob3 = AnalysisUtils.getProbRefReportsGivenSignalAndStrategy(1,
+				2, "MM", 1.0, 1.0, priorProbs, prior);
 		assertEquals(0, prob3, AnalysisUtils.eps);
-		
-		double prob4 = 
-				AnalysisUtils.getProbRefReportsGivenSignalAndStrategy(0, 3, "MM", 1.0, 1.0, priorProbs, prior);
+
+		double prob4 = AnalysisUtils.getProbRefReportsGivenSignalAndStrategy(0,
+				3, "MM", 1.0, 1.0, priorProbs, prior);
 		assertEquals(0, prob4, AnalysisUtils.eps);
 
-		double prob5 = 
-				AnalysisUtils.getProbRefReportsGivenSignalAndStrategy(0, 3, "MM", 0.5, 0.5, priorProbs, prior);
+		double prob5 = AnalysisUtils.getProbRefReportsGivenSignalAndStrategy(0,
+				3, "MM", 0.5, 0.5, priorProbs, prior);
 		assertEquals(0.125, prob5, AnalysisUtils.eps);
-		
-		double prob6 = 
-				AnalysisUtils.getProbRefReportsGivenSignalAndStrategy(0, 3, "GB", 0.5, 0.5, priorProbs, prior);
+
+		double prob6 = AnalysisUtils.getProbRefReportsGivenSignalAndStrategy(0,
+				3, "GB", 0.5, 0.5, priorProbs, prior);
 		assertEquals(0.125, prob6, AnalysisUtils.eps);
-		
-		double prob7 = 
-				AnalysisUtils.getProbRefReportsGivenSignalAndStrategy(1, 2, "GB", 0.5, 0.5, priorProbs, prior);
+
+		double prob7 = AnalysisUtils.getProbRefReportsGivenSignalAndStrategy(1,
+				2, "GB", 0.5, 0.5, priorProbs, prior);
 		assertEquals(0.375, prob7, AnalysisUtils.eps);
-		
+
 	}
-	
+
 	@Test
 	public void testProbSignalsGivenSignal() {
 
@@ -150,21 +148,21 @@ public class AnalysisUtilsTest {
 	@Test
 	public void testMixedPayoff() {
 
-		String rule = "T5";
-		double alwaysMMPayoffT5 = AnalysisUtils.getMixedPayoff(rule,
+		String treatment = "prior2-symmlowpay";
+		double alwaysMMPayoffT5 = AnalysisUtils.getMixedPayoff(treatment,
 				priorProbs, prior, 1.0, 1.0);
 		assertEquals(0.15, alwaysMMPayoffT5, AnalysisUtils.eps);
 
-		double alwaysGBPayoffT5 = AnalysisUtils.getMixedPayoff(rule,
+		double alwaysGBPayoffT5 = AnalysisUtils.getMixedPayoff(treatment,
 				priorProbs, prior, 0.0, 0.0);
 		assertEquals(0.15, alwaysGBPayoffT5, AnalysisUtils.eps);
 
-		rule = "T3";
-		double alwaysMMPayoffT3 = AnalysisUtils.getMixedPayoff(rule,
+		treatment = "prior2-uniquetruthful";
+		double alwaysMMPayoffT3 = AnalysisUtils.getMixedPayoff(treatment,
 				priorProbs, prior, 1.0, 1.0);
 		assertEquals(0.8, alwaysMMPayoffT3, AnalysisUtils.eps);
 
-		double alwaysGBPayoffT3 = AnalysisUtils.getMixedPayoff(rule,
+		double alwaysGBPayoffT3 = AnalysisUtils.getMixedPayoff(treatment,
 				priorProbs, prior, 0.0, 0.0);
 		assertEquals(0.8, alwaysGBPayoffT3, AnalysisUtils.eps);
 
@@ -172,40 +170,78 @@ public class AnalysisUtilsTest {
 
 	@Test
 	public void testGetPayment() {
-		assertEquals(1.5, AnalysisUtils.getPayment("T1", "MM", "MM"), AnalysisUtils.eps);
-		assertEquals(0.1, AnalysisUtils.getPayment("T1", "MM", "GB"), AnalysisUtils.eps);
-		assertEquals(0.3, AnalysisUtils.getPayment("T1", "GB", "MM"), AnalysisUtils.eps);
-		assertEquals(1.2, AnalysisUtils.getPayment("T1", "GB", "GB"), AnalysisUtils.eps);
+		String treatment = "prior2-basic";
+		assertEquals(1.5, AnalysisUtils.getPayment(treatment, "MM", "MM"),
+				AnalysisUtils.eps);
+		assertEquals(0.1, AnalysisUtils.getPayment(treatment, "MM", "GB"),
+				AnalysisUtils.eps);
+		assertEquals(0.3, AnalysisUtils.getPayment(treatment, "GB", "MM"),
+				AnalysisUtils.eps);
+		assertEquals(1.2, AnalysisUtils.getPayment(treatment, "GB", "GB"),
+				AnalysisUtils.eps);
+
+		treatment = "prior2-outputagreement";
+		assertEquals(1.5, AnalysisUtils.getPaymentTreatmentOutputAgreement("MM", "MM"),
+				AnalysisUtils.eps);
+		assertEquals(0.1, AnalysisUtils.getPaymentTreatmentOutputAgreement("MM", "GB"),
+				AnalysisUtils.eps);
+		assertEquals(0.1, AnalysisUtils.getPaymentTreatmentOutputAgreement("GB", "MM"),
+				AnalysisUtils.eps);
+		assertEquals(1.5, AnalysisUtils.getPaymentTreatmentOutputAgreement("GB", "GB"),
+				AnalysisUtils.eps);
 		
-	}
-	
-	@Test
-	public void testGetPaymentT1() {
-		assertEquals(1.5, AnalysisUtils.getPaymentT1("MM", "MM"), AnalysisUtils.eps);
-		assertEquals(0.1, AnalysisUtils.getPaymentT1("MM", "GB"), AnalysisUtils.eps);
-		assertEquals(0.3, AnalysisUtils.getPaymentT1("GB", "MM"), AnalysisUtils.eps);
-		assertEquals(1.2, AnalysisUtils.getPaymentT1("GB", "GB"), AnalysisUtils.eps);
-	}
-	
-	@Test
-	public void testGetPaymentT3() {
-
-		assertEquals(0.9, AnalysisUtils.getPaymentT3("MM", 0),
+		treatment = "prior2-uniquetruthful";
+		assertEquals(0.9,
+				AnalysisUtils.getPaymentTreatmentUniqueTruthful("MM", 0),
 				AnalysisUtils.eps);
-		assertEquals(0.1, AnalysisUtils.getPaymentT3("MM", 1),
+		assertEquals(0.1,
+				AnalysisUtils.getPaymentTreatmentUniqueTruthful("MM", 1),
 				AnalysisUtils.eps);
-		assertEquals(1.5, AnalysisUtils.getPaymentT3("MM", 2),
+		assertEquals(1.5,
+				AnalysisUtils.getPaymentTreatmentUniqueTruthful("MM", 2),
 				AnalysisUtils.eps);
-		assertEquals(0.8, AnalysisUtils.getPaymentT3("MM", 3),
+		assertEquals(0.8,
+				AnalysisUtils.getPaymentTreatmentUniqueTruthful("MM", 3),
 				AnalysisUtils.eps);
 
-		assertEquals(0.8, AnalysisUtils.getPaymentT3("GB", 0),
+		assertEquals(0.8,
+				AnalysisUtils.getPaymentTreatmentUniqueTruthful("GB", 0),
 				AnalysisUtils.eps);
-		assertEquals(1.5, AnalysisUtils.getPaymentT3("GB", 1),
+		assertEquals(1.5,
+				AnalysisUtils.getPaymentTreatmentUniqueTruthful("GB", 1),
 				AnalysisUtils.eps);
-		assertEquals(0.1, AnalysisUtils.getPaymentT3("GB", 2),
+		assertEquals(0.1,
+				AnalysisUtils.getPaymentTreatmentUniqueTruthful("GB", 2),
 				AnalysisUtils.eps);
-		assertEquals(0.9, AnalysisUtils.getPaymentT3("GB", 3),
+		assertEquals(0.9,
+				AnalysisUtils.getPaymentTreatmentUniqueTruthful("GB", 3),
+				AnalysisUtils.eps);
+		
+		treatment = "prior2-symmlowpay";
+		assertEquals(0.1,
+				AnalysisUtils.getPaymentTreatmentSymmLowPay("MM", 0),
+				AnalysisUtils.eps);
+		assertEquals(0.1,
+				AnalysisUtils.getPaymentTreatmentSymmLowPay("MM", 1),
+				AnalysisUtils.eps);
+		assertEquals(1.5,
+				AnalysisUtils.getPaymentTreatmentSymmLowPay("MM", 2),
+				AnalysisUtils.eps);
+		assertEquals(0.15,
+				AnalysisUtils.getPaymentTreatmentSymmLowPay("MM", 3),
+				AnalysisUtils.eps);
+
+		assertEquals(0.15,
+				AnalysisUtils.getPaymentTreatmentSymmLowPay("GB", 0),
+				AnalysisUtils.eps);
+		assertEquals(0.9,
+				AnalysisUtils.getPaymentTreatmentSymmLowPay("GB", 1),
+				AnalysisUtils.eps);
+		assertEquals(0.15,
+				AnalysisUtils.getPaymentTreatmentSymmLowPay("GB", 2),
+				AnalysisUtils.eps);
+		assertEquals(0.1,
+				AnalysisUtils.getPaymentTreatmentSymmLowPay("GB", 3),
 				AnalysisUtils.eps);
 
 	}

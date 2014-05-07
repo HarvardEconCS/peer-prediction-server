@@ -487,24 +487,24 @@ public class Game {
 	public double getPayoffT3(String myReport,
 			Map<String, Double> oppPopStrategy) {
 		return 
-				AnalysisUtils.getPaymentT3(myReport, 0) 
+				AnalysisUtils.getPaymentTreatmentUniqueTruthful(myReport, 0) 
 					* oppPopStrategy.get("GB") 
 					* oppPopStrategy.get("GB") 
 					* oppPopStrategy.get("GB")
 				
-				+ AnalysisUtils.getPaymentT3(myReport, 1) * 
+				+ AnalysisUtils.getPaymentTreatmentUniqueTruthful(myReport, 1) * 
 					(3 * oppPopStrategy.get("MM")  
 					   * oppPopStrategy.get("GB") 
 					   * oppPopStrategy.get("GB")
 					)
 						
-				+ AnalysisUtils.getPaymentT3(myReport, 2) * 
+				+ AnalysisUtils.getPaymentTreatmentUniqueTruthful(myReport, 2) * 
 					(3 * oppPopStrategy.get("MM")  
 					   * oppPopStrategy.get("MM") 
 					   * oppPopStrategy.get("GB")
 						)
 						
-				+ AnalysisUtils.getPaymentT3(myReport, 3) 
+				+ AnalysisUtils.getPaymentTreatmentUniqueTruthful(myReport, 3) 
 					* oppPopStrategy.get("MM") 
 					* oppPopStrategy.get("MM") 
 					* oppPopStrategy.get("MM")
