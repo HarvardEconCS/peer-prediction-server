@@ -20,7 +20,6 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Random;
 import java.util.Scanner;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -52,7 +51,6 @@ public class LogReader {
 	static final String rootDir = "/Users/alicexigao/Dropbox/peer-prediction/data/"
 			+ treatment + "/";
 
-	static Random rand = new Random();
 	static Experiment expSet;
 
 	// For HMM estimation
@@ -122,7 +120,7 @@ public class LogReader {
 		// AnalysisUtils.getSymmMixedStrEq4Players("T5");
 	}
 
-	private static void estimateSFP() {
+	public static void estimateSFP() {
 
 		System.out
 				.println("\n\nEstimating Parameters for Stochastic Fictitious Play");
@@ -225,25 +223,24 @@ public class LogReader {
 
 			if ((considerSignal && signalRoundK.equals(signalRoundI))
 					|| (!considerSignal)) {
-				int numMMForRound = getNumGivenReports("MM", playerHitIds,
+				int numMMForRound = Utils.getNumOfGivenReport("MM", playerHitIds,
 						currPlayerId, roundResult);
 				dRoundCount[numMMForRound] += d;
 			}
 			d *= discount;
 		}
 
-		normalizeDist(dRoundCount);
+		Utils.normalizeDist(dRoundCount);
 		double mmPayoff = getExpectedPayoffSFP("MM", dRoundCount);
 		double gbPayoff = getExpectedPayoffSFP("GB", dRoundCount);
 
-		double mmProb = getMMProb(lambda, mmPayoff, gbPayoff);
+		double mmProb = Utils.calcMMProb(lambda, mmPayoff, gbPayoff);
 		return ImmutableMap.of("MM", mmProb, "GB", 1 - mmProb);
 	}
 
-	private static void estimateRL() {
+	public static void estimateRL() {
 
-		System.out
-				.println("\n\nEstimating Parameters for Reinforcement Learning");
+		System.out.println("\n\nEstimating Parameters for Reinforcement Learning");
 
 		double discount; // discount factor
 		double discountStart = 0;
@@ -313,7 +310,7 @@ public class LogReader {
 								.get("refPlayer");
 						String refReport = (String) result.get(refPlayer)
 								.get("report");
-						int numRefReport = LogReader.getNumGivenReports(
+						int numRefReport = Utils.getNumOfGivenReport(
 								refReport, game.playerHitIds, currPlayerId,
 								result);
 						double rewardLogLk = Math.log(numRefReport * 1.0 / (expSet.numPlayers - 1));
@@ -370,155 +367,38 @@ public class LogReader {
 			d *= discount;
 		}
 
-		double mmProb = getMMProb(lambda, payoffs.get("MM"), payoffs.get("GB"));
+		double mmProb = Utils.calcMMProb(lambda, payoffs.get("MM"), payoffs.get("GB"));
 		return ImmutableMap.of("MM", mmProb, "GB", 1 - mmProb);
 	}
 
 	public static double getExpectedPayoffSFP(String report, double[] roundDist) {
 		double expPayoff = 0.0;
-		for (int i = 0; i < roundDist.length; i++) {
-			expPayoff += roundDist[i] * getExpectedPayoffT12(report, i);
+		for (int numMMReports = 0; numMMReports < roundDist.length; numMMReports++) {
+			expPayoff += roundDist[numMMReports] * getExpectedPayoff(report, numMMReports);
 		}
 		return expPayoff;
 	}
 
-	public static double getExpectedPayoffT12(String report,
-			int numOtherMMReports) {
+	public static double getExpectedPayoff(String report, int numOtherMMReports) {
 
-		if (treatment.equals("prior2-basic")) {
+		if (treatment.equals("prior2-basic")
+				|| treatment.equals("prior2-outputagreement")) {
 
 			if (numOtherMMReports == 2) {
-				return Utils.getPaymentTreatmentBasic(report, "MM");
+				return Utils.getPayment(treatment, report, "MM");
 			} else if (numOtherMMReports == 0) {
-				return Utils.getPaymentTreatmentBasic(report, "GB");
+				return Utils.getPayment(treatment, report, "GB");
 			} else if (numOtherMMReports == 1) {
-				return 0.5
-						* Utils.getPaymentTreatmentBasic(report, "MM")
-						+ 0.5
-						* Utils.getPaymentTreatmentBasic(report, "GB");
+				return 0.5 * Utils.getPayment(treatment, report, "MM") 
+					+ 0.5 * Utils.getPayment(treatment, report, "GB");
 			}
 
+		} else if (treatment.equals("prior2-uniquetruthful")
+				|| treatment.equals("prior2-symmlowpay")) {
+			return Utils.getPayment(treatment, report, numOtherMMReports);
 		}
 
 		return -1;
-	}
-
-	public static double getMMProb(double lambda, double mmPayoff,
-			double gbPayoff) {
-		double mmProb = Math.pow(Math.E, lambda * mmPayoff)
-				/ (Math.pow(Math.E, lambda * mmPayoff) + Math.pow(Math.E,
-						lambda * gbPayoff));
-		return mmProb;
-	}
-
-	public static int getNumGivenReports(String givenReport,
-			String[] playerHitIds, String excludePlayerId,
-			Map<String, Map<String, Object>> roundResult) {
-		int numMM = 0;
-		for (String playerId : playerHitIds) {
-			if (excludePlayerId != playerId) {
-				String report = (String) roundResult.get(playerId)
-						.get("report");
-				if (report.equals(givenReport))
-					numMM++;
-			}
-		}
-		return numMM;
-	}
-
-	public static void normalizeDist(double[] actionDist) {
-		double sum = 0.0;
-		for (int x = 0; x < actionDist.length; x++) {
-			sum += actionDist[x];
-		}
-		if (sum == 0)
-			return;
-		for (int x = 0; x < actionDist.length; x++) {
-			actionDist[x] = actionDist[x] / sum;
-		}
-	}
-
-	private static void simulateSFP() {
-
-		System.out.println("\n\nSimulating Stochastic Fictitious Play");
-
-		double discount = 0; // discount factor
-		double discountStart = 1;
-		double discountEnd = 1;
-
-		double lambda = 0; // sensitivity parameter
-		double lambdaStart = 5;
-		double lambdaEnd = 5;
-
-		boolean[] signalOpt = new boolean[] { true };
-
-		int numSimGames = 1000;
-		int totalCount = 0;
-
-		List<Round> simulatedMeanPath = new ArrayList<Round>();
-		initialize(simulatedMeanPath);
-
-		for (discount = discountStart; discount <= discountEnd; discount += 0.1) {
-			for (lambda = lambdaStart; lambda <= lambdaEnd; lambda++) {
-				for (int i = 0; i < signalOpt.length; i++) {
-
-					boolean forSignal = signalOpt[i];
-
-					List<List<Round>> simulatedGames = new ArrayList<List<Round>>();
-
-					for (int k = 0; k < numSimGames; k++) {
-
-						List<Round> simulatedGame = simulateSFPOneGame(
-								discount, lambda, forSignal);
-
-						addToSimulatedMean(simulatedMeanPath, simulatedGame);
-						totalCount++;
-
-						simulatedGames.add(simulatedGame);
-					}
-				}
-			}
-		}
-
-		System.out.println(simulatedMeanPath.toString());
-		System.out.println(totalCount);
-
-	}
-
-	private static void initialize(List<Round> simulatedMeanPath) {
-		for (int i = 0; i < expSet.numRounds; i++) {
-			Round r = new Round();
-			r.roundNum = i;
-			for (int j = 0; j < expSet.numPlayers; j++) {
-				Map<String, Object> m = new HashMap<String, Object>();
-				m.put("numMMReports", 0);
-				String playerId = String.format("%d", j);
-				r.result.put(playerId, m);
-			}
-			simulatedMeanPath.add(r);
-		}
-	}
-
-	private static void addToSimulatedMean(List<Round> simulatedMeanPath,
-			List<Round> simulatedGame) {
-
-		for (int i = 0; i < expSet.numRounds; i++) {
-			for (int j = 0; j < expSet.numPlayers; j++) {
-				String playerId = String.format("%d", j);
-				String report = simulatedGame.get(i).result.get(playerId)
-						.get("report").toString();
-				if (report.equals("MM")) {
-					Map<String, Object> playerObj = new HashMap<String, Object>();
-					int numMMReports = (int) simulatedMeanPath.get(i).result
-							.get(playerId).get("numMMReports");
-					playerObj.put("numMMReports", numMMReports + 1);
-					simulatedMeanPath.get(i).result.put(playerId, playerObj);
-
-				}
-
-			}
-		}
-
 	}
 
 	private static List<Round> simulateSFPOneGame(double discount,
@@ -539,7 +419,7 @@ public class LogReader {
 
 			Round r = new Round();
 			r.roundNum = i;
-			int worldIndex = selectByDist(expSet.priorProbs[0]);
+			int worldIndex = Utils.selectByBinaryDist(expSet.priorProbs[0]);
 			r.chosenWorld = expSet.worlds.get(worldIndex);
 
 			Map<String, Map<String, Object>> result = new HashMap<String, Map<String, Object>>();
@@ -554,14 +434,14 @@ public class LogReader {
 				String currPlayerId = String.format("%d", j);
 
 				// get signal
-				int signalIndex = selectByDist(r.chosenWorld.get("MM"));
+				int signalIndex = Utils.selectByBinaryDist(r.chosenWorld.get("MM"));
 				signals[j] = signalList[signalIndex];
 
 				// choose report
 				if (i == 0) {
 
 					// first round, choose reports randomly
-					int reportIndex = selectByDist(0.5);
+					int reportIndex = Utils.selectByBinaryDist(0.5);
 					reports[j] = signalList[reportIndex];
 
 				} else {
@@ -572,7 +452,7 @@ public class LogReader {
 
 					mmProbs[j] = strategy.get("MM").doubleValue();
 
-					int reportIndex = selectByDist(mmProbs[j]);
+					int reportIndex = Utils.selectByBinaryDist(mmProbs[j]);
 					reports[j] = signalList[reportIndex];
 				}
 
@@ -606,62 +486,6 @@ public class LogReader {
 		return rounds;
 	}
 
-	public static void simulateRL() {
-
-		System.out.println("\n\nSimulating Reinforcement Learning");
-
-		double discount = 0.9; // discount factor
-		double lambda = 5; // sensitivity parameter
-		int numSimGames = 10000;
-
-		double highestAvgPayoff = 0;
-		double chosenD = 0;
-		double chosenL = 0;
-
-		for (discount = 0; discount <= 1; discount += 0.1) {
-			for (lambda = 1; lambda <= 10; lambda++) {
-
-				double totalPayoff = 0;
-				int count = 0;
-				List<List<Round>> simulatedGames = new ArrayList<List<Round>>();
-				for (int x = 0; x < numSimGames; x++) {
-
-					List<Round> rounds = simulateRLOneGame(true, discount,
-							lambda);
-					simulatedGames.add(rounds);
-
-					double[] simulatedBonus = getAvgPayoffOneGame(rounds);
-					for (int i = 0; i < simulatedBonus.length; i++) {
-						totalPayoff += simulatedBonus[i];
-						count++;
-					}
-
-				}
-				double avgPayoff = totalPayoff / count;
-				if (avgPayoff > highestAvgPayoff) {
-					highestAvgPayoff = avgPayoff;
-					chosenD = discount;
-					chosenL = lambda;
-					System.out.printf("d=%.2f, l=%.2f, p=%.2f\n", discount,
-							lambda, avgPayoff);
-				}
-			}
-		}
-
-	}
-
-	/**
-	 * Simulate reinforcement learning for one game, given a discount factor and
-	 * a sensitivity parameter
-	 * 
-	 * @param considerSignal
-	 *            if this is true, the algorithm learns given the realized
-	 *            signal
-	 * @param discount
-	 * @param lambda
-	 * 
-	 * @return
-	 */
 	private static List<Round> simulateRLOneGame(boolean considerSignal,
 			double discount, double lambda) {
 
@@ -676,7 +500,7 @@ public class LogReader {
 
 			Round r = new Round();
 			r.roundNum = i;
-			int worldIndex = selectByDist(expSet.priorProbs[0]);
+			int worldIndex = Utils.selectByBinaryDist(expSet.priorProbs[0]);
 			r.chosenWorld = expSet.worlds.get(worldIndex);
 
 			r.result = new HashMap<String, Map<String, Object>>();
@@ -690,7 +514,7 @@ public class LogReader {
 				String currPlayerId = String.format("%d", j);
 
 				// get signal
-				int signalIndex = selectByDist(r.chosenWorld.get("MM"));
+				int signalIndex = Utils.selectByBinaryDist(r.chosenWorld.get("MM"));
 				signals[j] = signalList[signalIndex];
 				System.out.printf("signal=%s,", signals[j]);
 
@@ -698,7 +522,7 @@ public class LogReader {
 				if (i == 0) {
 
 					// first round, choose reports randomly
-					int reportIndex = selectByDist(0.5);
+					int reportIndex = Utils.selectByBinaryDist(0.5);
 					reports[j] = signalList[reportIndex];
 					System.out.printf("report=%s,", reports[j]);
 
@@ -708,7 +532,7 @@ public class LogReader {
 							rounds, playerHitIds, i,
 							currPlayerId, considerSignal, discount, lambda);
 					mmProbs[j] = strategy.get("MM");
-					int reportIndex = selectByDist(strategy.get("MM"));
+					int reportIndex = Utils.selectByBinaryDist(strategy.get("MM"));
 					reports[j] = signalList[reportIndex];
 				}
 
@@ -762,7 +586,7 @@ public class LogReader {
 			for (int j = 0; j < expSet.numPlayers; j++) {
 
 				String myReport = reports[j];
-				refPlayerIndices[j] = chooseRefPlayer(j);
+				refPlayerIndices[j] = Utils.chooseRefPlayer(j);
 				String refReport = reports[refPlayerIndices[j]];
 				payoffs[j] = Utils.getPaymentTreatmentBasic(myReport,
 						refReport);
@@ -774,254 +598,10 @@ public class LogReader {
 			for (int j = 0; j < expSet.numPlayers; j++) {
 
 				String myReport = reports[j];
-				refPlayerIndices[j] = chooseRefPlayer(j);
+				refPlayerIndices[j] = Utils.chooseRefPlayer(j);
 				String refReport = reports[refPlayerIndices[j]];
 				payoffs[j] = Utils.getPaymentTreatmentOutputAgreement(
 						myReport, refReport);
-
-			}
-		}
-	}
-
-	/**
-	 * Choose reference player for treatment 1 or 2
-	 * 
-	 * @param currPlayerIndex
-	 * @return
-	 */
-	public static int chooseRefPlayer(int currPlayerIndex) {
-		int shift = 0;
-		if (rand.nextBoolean())
-			shift = 1;
-
-		if (shift >= currPlayerIndex)
-			return shift + 1;
-		else
-			return shift;
-
-	}
-
-	public static int selectByDist(double firstProb) {
-		int index = 0;
-		double next = rand.nextDouble();
-		if (next >= firstProb)
-			index = 1;
-		return index;
-	}
-
-	private static void learningAnalysis(String type) throws IOException {
-
-		if (treatment.equals("prior2-constant")) {
-			System.out
-					.println("Skipping learning analysis for constant payment treatment");
-			return;
-		}
-
-		BufferedWriter writer = new BufferedWriter(new FileWriter(rootDir
-				+ type + ".csv"));
-		writer.write("hitId, actual payoff, simulated payoff, improvement\n");
-
-		double diffTotal = 0;
-		int count = 0;
-		for (Game game : expSet.games) {
-
-			for (String hitId : game.playerHitIds) {
-
-				double[] myPayoffs = new double[expSet.numRounds];
-				String[] myReports = new String[expSet.numRounds];
-
-				for (int i = 0; i < expSet.numRounds; i++) {
-
-					double[] paymentArray = game.paymentArrayT1N2;
-
-					String myReport = null;
-					if (i == 0) {
-
-						myReport = game.rounds.get(i).getReport(hitId);
-
-					} else {
-
-						Map<String, Double> oppPopStrategy = null;
-						;
-						if (type.equals("BR")) {
-							oppPopStrategy = game.getOppPopStrPrevRound(i,
-									hitId);
-						} else if (type.equals("FP")) {
-							oppPopStrategy = game.getOppPopStrFull(i, hitId);
-						}
-
-						if (treatment.equals("prior2-uniquetruthful")
-								|| treatment.equals("prior2-symmlowpay")) {
-							myReport = game.getBestResponseT3(oppPopStrategy);
-						} else {
-							myReport = game.getBestResponseT1N2(oppPopStrategy,
-									paymentArray);
-						}
-					}
-
-					myReports[i] = myReport;
-
-					if (treatment.equals("prior2-uniquetruthful")
-							|| treatment.equals("prior2-symmlowpay")) {
-						List<String> refReports = game.getRefReports(hitId, i);
-						int numMM = game.getNumMMInRefReports(refReports);
-						myPayoffs[i] = Utils
-								.getPaymentTreatmentUniqueTruthful(myReport,
-										numMM);
-					} else {
-						String refReport = game.getRefReport(hitId, i);
-						myPayoffs[i] = game.getPaymentT1N2(myReport, refReport,
-								paymentArray);
-					}
-				}
-
-				double totalPayoff = 0;
-				for (int i = 0; i < expSet.numRounds; i++) {
-					totalPayoff += myPayoffs[i];
-				}
-				double simulatedAvgPayoff = totalPayoff / expSet.numRounds;
-				game.simulatedFPPayoff.put(hitId, simulatedAvgPayoff);
-
-				// System.out.print(String.format("%s: %s, %.2f\n\n",
-				// hitId, Arrays.toString(myReports), simulatedAvgPayoff));
-
-				double actualAvgPayoff = game.actualPayoff.get(hitId);
-
-				double diff = simulatedAvgPayoff - actualAvgPayoff;
-				diffTotal += diff;
-				count++;
-
-				// Print out information
-				writer.write(String.format("%s, %.2f, %.2f, %.2f\n", hitId,
-						actualAvgPayoff, simulatedAvgPayoff, diff));
-				// System.out.print(String.format("%s: ", hitId));
-				// System.out.print(String.format("%.2f, %.2f\n",
-				// actualAvgPayoff, simulatedAvgPayoff));
-			}
-		}
-
-		writer.flush();
-		writer.close();
-
-		System.out.println("diff average " + diffTotal * 1.0 / count);
-
-		BufferedWriter writerMatlab = new BufferedWriter(new FileWriter(rootDir
-				+ type + "PairedTTest.m"));
-		writerMatlab.write("actual = [");
-		for (Game game : expSet.games) {
-			for (String hitId : game.playerHitIds) {
-				writerMatlab.write(String.format("%.2f ",
-						game.actualPayoff.get(hitId)));
-			}
-		}
-		writerMatlab.write("];\n");
-
-		writerMatlab.write("simulated = [");
-		for (Game game : expSet.games) {
-			for (String hitId : game.playerHitIds) {
-				writerMatlab.write(String.format("%.2f ",
-						game.simulatedFPPayoff.get(hitId)));
-			}
-		}
-		writerMatlab.write("];\n");
-		writerMatlab.write("[h,p] = ttest(actual,simulated)\n");
-		writerMatlab.write("diff = simulated - actual;\n");
-		writerMatlab.write("m = mean(diff);\n" + "v = std(diff);\n"
-				+ "diff2 = (diff - m)/v;\n" + "h2=kstest(diff2)\n"
-				+ "[f,x_values] = ecdf(diff2);\n" + "F = plot(x_values,f);\n"
-				+ "set(F,'LineWidth',2);\n" + "hold on;\n"
-				+ "G = plot(x_values,normcdf(x_values,0,1),'r-');\n"
-				+ "set(G,'LineWidth',2);\n");
-		writerMatlab.flush();
-		writerMatlab.close();
-
-	}
-
-	private static void noRegretLearningAnalysis() {
-
-		List<Map<String, Map<String, Double>>> experts = new ArrayList<Map<String, Map<String, Double>>>();
-		double unit = 0.25;
-		int numUnit = Math.round((int) (1 / unit));
-		for (int i = 0; i <= numUnit; i++) {
-			for (int j = 0; j <= numUnit; j++) {
-				double probMMGivenMM = i * unit;
-				double probMMGivenGB = j * unit;
-
-				Map<String, Map<String, Double>> strategy = new HashMap<String, Map<String, Double>>();
-
-				Map<String, Double> mmStrategy = new HashMap<String, Double>();
-				mmStrategy.put("MM", probMMGivenMM);
-				mmStrategy.put("GB", 1 - probMMGivenMM);
-				Map<String, Double> gbStrategy = new HashMap<String, Double>();
-				gbStrategy.put("MM", probMMGivenGB);
-				gbStrategy.put("GB", 1 - probMMGivenGB);
-
-				strategy.put("MM", mmStrategy);
-				strategy.put("GB", mmStrategy);
-
-				experts.add(strategy);
-			}
-		}
-		System.out.printf("number of experts %d\n", experts.size());
-
-		// Put in initial weights
-		List<List<Double>> weights = new ArrayList<List<Double>>();
-		List<Double> initWeights = new ArrayList<Double>();
-		for (int i = 0; i < experts.size(); i++) {
-			initWeights.add(1.0);
-		}
-		weights.add(initWeights);
-
-		for (Game game : expSet.games) {
-			// Game game = expSet.games.get(10);
-
-			for (String hitId : game.playerHitIds) {
-				// String hitId = game.playerHitIds[0];
-
-				System.out.printf("actual payoff %.2f\n",
-						game.actualPayoff.get(hitId));
-
-				for (int i = 0; i < expSet.numRounds; i++) {
-
-					// Calculate payoffs
-					List<Double> expertPayoffs = new ArrayList<Double>();
-					for (int j = 0; j < experts.size(); j++) {
-
-						if (treatment.equals("prior2-uniquetruthful")) {
-							double currPayoff = getPayoffT3(hitId, game, i,
-									experts.get(j));
-							expertPayoffs.add(currPayoff);
-						} else {
-
-						}
-					}
-
-					// Calculate player payoff
-					double playerPayoff = 0.0;
-					double totalWeight = 0.0;
-					for (int j = 0; j < experts.size(); j++) {
-						totalWeight += weights.get(i).get(j);
-					}
-					for (int j = 0; j < experts.size(); j++) {
-						playerPayoff += weights.get(i).get(j) / totalWeight
-								* expertPayoffs.get(j);
-					}
-					System.out.printf("round %s: my payoff %.2f\n", i,
-							playerPayoff);
-
-					// Update weights
-					List<Double> currWeights = new ArrayList<Double>();
-					for (int j = 0; j < experts.size(); j++) {
-						double weight = weights.get(i).get(j);
-						double newWeight = weight
-								* (1 + 0.1 * expertPayoffs.get(j));
-						currWeights.add(newWeight);
-					}
-					weights.add(currWeights);
-					// System.out.printf("round %s: %s\n", i,
-					// currWeights.toString());
-
-				}
 
 			}
 		}
@@ -1208,78 +788,7 @@ public class LogReader {
 		System.out.printf("Average reward: %.2f\n", avgReward);
 	}
 
-	private static void mixedStrategyPayoff(String rule) {
-		if (!treatment.equals("prior2-uniquetruthful"))
-			return;
-
-		// double truthfulPayoffT3 = AnalysisUtils.getTruthfulPayoff(rule,
-		// priorProbs, prior);
-		// System.out.printf("Payoff at truthful equilibrium: %.6f\n",
-		// truthfulPayoffT3);
-		//
-		// double mixedPayoffT3 = AnalysisUtils.getMixedPayoff(rule, priorProbs,
-		// prior, strategyMMGivenMM, strategyMMGivenGB);
-	}
-
-	private static void strategyChangeT1() {
-		if (!treatment.equals("prior2-basic"))
-			return;
-
-		int numMMEq = 0;
-		int numMixedToMM = 0;
-		int numTruthfulToMM = 0;
-		for (Game game : expSet.games) {
-
-			boolean convergedToMM = true;
-			for (String hitId : game.playerHitIds) {
-				if (game.stateSeq.get(hitId)[expSet.numRounds - 1] != mmState) {
-					convergedToMM = false;
-					break;
-				}
-			}
-
-			if (!convergedToMM)
-				continue;
-
-			numMMEq++;
-			for (String hitId : game.playerHitIds) {
-				int[] stateSeq = game.stateSeq.get(hitId);
-				if (hasMixedAndMM(stateSeq))
-					numMixedToMM++;
-				else if (hasTruthfulAndMM(stateSeq))
-					numTruthfulToMM++;
-			}
-		}
-		System.out.printf("MM eq : %d, mixed to MM: %d, truthful to MM: %d\n",
-				numMMEq, numMixedToMM, numTruthfulToMM);
-
-	}
-
-	private static boolean hasTruthfulAndMM(int[] stateSeq) {
-		boolean hasTruthful = false;
-		for (int i = 0; i < stateSeq.length; i++) {
-			if (stateSeq[i] == truthfulState) {
-				hasTruthful = true;
-			} else if (stateSeq[i] == mmState) {
-			} else {
-				return false;
-			}
-		}
-		return hasTruthful;
-	}
-
-	private static boolean hasMixedAndMM(int[] stateSeq) {
-		boolean hasMixed = false;
-		for (int i = 0; i < stateSeq.length; i++) {
-			if (stateSeq[i] == mixedState) {
-				hasMixed = true;
-			} else if (stateSeq[i] == mmState) {
-			} else {
-				return false;
-			}
-		}
-		return hasMixed;
-	}
+	
 
 	// private static void strategyPayoffAnalysis(String rule) {
 	//
@@ -1315,119 +824,6 @@ public class LogReader {
 	// strategy[0], strategy[1], mixedPayoff);
 	// }
 
-	private static void strategyPayoffAnalysis(String treatment) {
-
-		System.out.println("\n" + "Strategy payoff analysis");
-
-		double truthfulPayoffT3 = Utils.getTruthfulPayoff(treatment,
-				expSet.priorProbs, expSet.worlds);
-		System.out.printf("Payoff at truthful equilibrium: %.6f\n",
-				truthfulPayoffT3);
-
-		// Payoff of mixed strategies
-		if (mixedState == -1) {
-			System.out
-					.printf("HMM did not learn a mixed strategy.  Do not analyze its payoff");
-		} else {
-			Opdf<SigActObservation<CandySignal, CandyReport>> opdfMixed = learntHmm
-					.getOpdf(mixedState);
-			System.out.printf("Mixed strategy: %s", opdfMixed.toString());
-			double probMMGivenMM = opdfMixed
-					.probability(new SigActObservation<CandySignal, CandyReport>(
-							CandySignal.MM, CandyReport.MM));
-			double probMMGivenGB = opdfMixed
-					.probability(new SigActObservation<CandySignal, CandyReport>(
-							CandySignal.GB, CandyReport.MM));
-			double mixedPayoffT3 = Utils.getMixedPayoff(treatment,
-					expSet.priorProbs, expSet.worlds, probMMGivenMM,
-					probMMGivenGB);
-			System.out.printf(
-					"Payoff with symmetric mixed strategies:  %.6f\n",
-					mixedPayoffT3);
-
-			// Average of payoffs for players using mixed strategy by the end
-			int count = 0;
-			double totalPayoff = 0.0;
-			for (Game game : expSet.games) {
-				for (String hitId : game.playerHitIds) {
-					if (game.stateSeq.get(hitId)[expSet.numRounds - 1] == mixedState) {
-						count++;
-						totalPayoff += game.actualPayoff.get(hitId);
-					}
-				}
-			}
-			double avgPayoff = totalPayoff / count;
-			System.out.printf("Average of payoffs for mixed strategy:  %.6f\n",
-					avgPayoff);
-		}
-
-		if (mixed2State == -1) {
-			System.out
-					.printf("HMM did not learn a mixed 2 strategy.  Do not analyze its payoff");
-		} else {
-			Opdf<SigActObservation<CandySignal, CandyReport>> opdfMixed = learntHmm
-					.getOpdf(mixed2State);
-			System.out.printf("Mixed strategy: %s", opdfMixed.toString());
-			double probMMGivenMM = opdfMixed
-					.probability(new SigActObservation<CandySignal, CandyReport>(
-							CandySignal.MM, CandyReport.MM));
-			double probMMGivenGB = opdfMixed
-					.probability(new SigActObservation<CandySignal, CandyReport>(
-							CandySignal.GB, CandyReport.MM));
-			double mixedPayoffT3 = Utils.getMixedPayoff(treatment,
-					expSet.priorProbs, expSet.worlds, probMMGivenMM,
-					probMMGivenGB);
-			System.out.printf(
-					"Payoff with symmetric mixed strategies:  %.6f\n",
-					mixedPayoffT3);
-
-			// Average of payoffs for players using mixed strategy by the end
-			int count = 0;
-			double totalPayoff = 0.0;
-			for (Game game : expSet.games) {
-				for (String hitId : game.playerHitIds) {
-					if (game.stateSeq.get(hitId)[expSet.numRounds - 1] == mixed2State) {
-						count++;
-						totalPayoff += game.actualPayoff.get(hitId);
-					}
-				}
-			}
-			double avgPayoff = totalPayoff / count;
-			System.out.printf(
-					"Average of payoffs for mixed 2 strategy:  %.6f\n",
-					avgPayoff);
-		}
-
-	}
-
-	private static double getPayoffT3(String hitId, Game game, int i,
-			Map<String, Map<String, Double>> expert) {
-
-		Round currRound = game.rounds.get(i);
-		String signal = currRound.getSignal(hitId);
-		Map<String, Double> strategyForSignal = expert.get(signal);
-		List<String> otherReports = game.getOtherReportList(currRound, hitId);
-
-		int numMMInOtherReports = game.getNumMMInRefReports(otherReports);
-
-		return strategyForSignal.get("MM")
-				* Utils.getPaymentTreatmentUniqueTruthful("MM",
-						numMMInOtherReports)
-				+ strategyForSignal.get("GB")
-				* Utils.getPaymentTreatmentUniqueTruthful("GB",
-						numMMInOtherReports);
-	}
-
-	private static double getPayoffT3(Map<String, Double> strategyForSignal,
-			int numMMInOtherReports) {
-		return strategyForSignal.get("MM")
-				* Utils.getPaymentTreatmentUniqueTruthful("MM",
-						numMMInOtherReports)
-				+ strategyForSignal.get("GB")
-				* Utils.getPaymentTreatmentUniqueTruthful("GB",
-						numMMInOtherReports);
-	}
-
 	public static void learnHMM() throws IOException {
 
 		System.out.println("\n\nLearning HMM");
@@ -1447,7 +843,7 @@ public class LogReader {
 		System.out.printf("numStrategies: %d\n", numStrategies);
 
 		// list of signal and report observations
-		List<List<SigActObservation<CandySignal, CandyReport>>> seq = getActObsSequence();
+		List<List<SigActObservation<CandySignal, CandyReport>>> seq = LogReader.getActObsSequence();
 		BWToleranceLearner bwl = new BWToleranceLearner();
 
 		double loglk = Double.NEGATIVE_INFINITY;
@@ -1463,7 +859,7 @@ public class LogReader {
 
 		for (int i = 0; i < numRestarts; i++) {
 
-			Hmm<SigActObservation<CandySignal, CandyReport>> origHmmTemp = getRandomHmm(numStrategies);
+			Hmm<SigActObservation<CandySignal, CandyReport>> origHmmTemp = Utils.getRandomHmm(numStrategies);
 
 			Hmm<SigActObservation<CandySignal, CandyReport>> learntHmmTemp = bwl
 					.learn(origHmmTemp, seq);
@@ -1515,33 +911,43 @@ public class LogReader {
 			Opdf<SigActObservation<CandySignal, CandyReport>> opdf = learntHmm
 					.getOpdf(i);
 
-			if (isMMStrategy(opdf)) {
+			
+			Opdf<SigActObservation<CandySignal, CandyReport>> opdf1 = learntHmm
+					.getOpdf(i);
+			Opdf<SigActObservation<CandySignal, CandyReport>> opdf2 = learntHmm
+					.getOpdf(mmState);
+			Opdf<SigActObservation<CandySignal, CandyReport>> opdf3 = learntHmm
+					.getOpdf(truthfulState);
+			Opdf<SigActObservation<CandySignal, CandyReport>> opdf4 = learntHmm
+					.getOpdf(gbState);
+			
+			if (Utils.isMMStrategy(opdf)) {
 				if (mmState == -1) {
 					strategyNames[i] = "MM";
 					mmState = i;
-				} else if (isBetterMMStrategy(i, mmState)) {
+				} else if (Utils.isBetterMMStrategy(opdf1, opdf2)) {
 					strategyNames[mmState] = "Mixed";
 					mixedState = mmState;
 
 					strategyNames[i] = "MM";
 					mmState = i;
 				}
-			} else if (isGBStrategy(opdf)) {
+			} else if (Utils.isGBStrategy(opdf)) {
 				if (gbState == -1) {
 					strategyNames[i] = "GB";
 					gbState = i;
-				} else if (isBetterGBStrategy(i, gbState)) {
+				} else if (Utils.isBetterGBStrategy(opdf1, opdf4)) {
 					strategyNames[gbState] = "Mixed";
 					mixedState = gbState;
 
 					strategyNames[i] = "GB";
 					gbState = i;
 				}
-			} else if (isTruthfulStrategy(opdf)) {
+			} else if (Utils.isTruthfulStrategy(opdf)) {
 				if (truthfulState == -1) {
 					strategyNames[i] = "Truthful";
 					truthfulState = i;
-				} else if (isBetterTruthfulStrategy(i, truthfulState)) {
+				} else if (Utils.isBetterTruthfulStrategy(opdf1, opdf3)) {
 					strategyNames[truthfulState] = "Mixed";
 					mixedState = truthfulState;
 
@@ -2159,7 +1565,7 @@ public class LogReader {
 
 		System.out.println("Graph log likelihood");
 
-		List<List<SigActObservation<CandySignal, CandyReport>>> seq = getActObsSequence();
+		List<List<SigActObservation<CandySignal, CandyReport>>> seq = LogReader.getActObsSequence();
 		double loglk;
 
 		BufferedWriter writerMatlab = new BufferedWriter(new FileWriter(rootDir
@@ -2222,22 +1628,6 @@ public class LogReader {
 		writerMatlab.flush();
 		writerMatlab.close();
 
-	}
-
-	// Use an even prior to fit shit
-	static double[] signalPrior = new double[] { 0.5, 0.5 };
-
-	// helper
-	private static List<List<SigActObservation<CandySignal, CandyReport>>> getActObsSequence() {
-		List<List<SigActObservation<CandySignal, CandyReport>>> seq = new ArrayList<List<SigActObservation<CandySignal, CandyReport>>>();
-		for (Game game : expSet.games) {
-			for (String hitId : game.playerHitIds) {
-				List<SigActObservation<CandySignal, CandyReport>> list = game.signalReportObjList
-						.get(hitId);
-				seq.add(list);
-			}
-		}
-		return seq;
 	}
 
 	private static double[] calcSteadyStateProb(
@@ -2335,7 +1725,7 @@ public class LogReader {
 				probs[1][0] = Double.parseDouble(matcher.group(3));
 				probs[1][1] = 1 - probs[1][0];
 				OpdfStrategy<CandySignal, CandyReport> opdf = new OpdfStrategy<CandySignal, CandyReport>(
-						CandySignal.class, CandyReport.class, signalPrior,
+						CandySignal.class, CandyReport.class, Utils.signalPrior,
 						probs);
 				// System.out.printf("opdf,%d:%s", i, opdf.toString());
 				opdfs.add(opdf);
@@ -2374,105 +1764,20 @@ public class LogReader {
 		return hmm;
 	}
 
-	/**
-	 * A random 3-state HMM
-	 * 
-	 * @param numStates
-	 * 
-	 * @return
-	 */
-	private static Hmm<SigActObservation<CandySignal, CandyReport>> getRandomHmm(
-			int numStates) {
-
-		double[] pi = Utils.getRandomVec(numStates);
-
-		double[][] a = new double[numStates][numStates];
-		for (int i = 0; i < a.length; i++) {
-			a[i] = Utils.getRandomVec(numStates);
+	public static void eqConvergenceSimpleMethod() throws IOException {
+	
+		System.out
+				.println("Equilibrium Convergence Analysis Using Simple Method");
+	
+		if (treatment.equals("prior2-basic")
+				|| treatment.equals("prior2-outputagreement")
+				|| treatment.equals("prior2-symmlowpay")) {
+			gameSymmetricConvergenceType();
+			// gameSymmetricConvergenceTypeRelaxed(3);
+		} else if (treatment.equals("prior2-uniquetruthful")) {
+			gameConvergenceTypeT3();
+			// gameAsymmetricConvergenceTypeRelaxed(3);
 		}
-
-		List<OpdfStrategy<CandySignal, CandyReport>> opdfs = new ArrayList<OpdfStrategy<CandySignal, CandyReport>>();
-
-		for (int i = 0; i < numStates; i++) {
-			double[][] probs = new double[][] { Utils.getRandomVec(2),
-					Utils.getRandomVec(2) };
-			opdfs.add(getOpdf(probs));
-		}
-
-		return new Hmm<SigActObservation<CandySignal, CandyReport>>(pi, a,
-				opdfs);
-	}
-
-	private static OpdfStrategy<CandySignal, CandyReport> getOpdf(
-			double[][] probs) {
-		return new OpdfStrategy<CandySignal, CandyReport>(CandySignal.class,
-				CandyReport.class, signalPrior, probs);
-	}
-
-	private static boolean isGBStrategy(
-			Opdf<SigActObservation<CandySignal, CandyReport>> opdf) {
-		SigActObservation<CandySignal, CandyReport> mmGB = new SigActObservation<CandySignal, CandyReport>(
-				CandySignal.MM, CandyReport.GB);
-		SigActObservation<CandySignal, CandyReport> gbGB = new SigActObservation<CandySignal, CandyReport>(
-				CandySignal.GB, CandyReport.GB);
-		return opdf.probability(mmGB) > 0.8 && opdf.probability(gbGB) > 0.8;
-	}
-
-	private static boolean isBetterGBStrategy(int i, int gbStrIndex) {
-		Opdf<SigActObservation<CandySignal, CandyReport>> opdf1 = learntHmm
-				.getOpdf(i);
-		Opdf<SigActObservation<CandySignal, CandyReport>> opdf2 = learntHmm
-				.getOpdf(gbStrIndex);
-		SigActObservation<CandySignal, CandyReport> mmGB = new SigActObservation<CandySignal, CandyReport>(
-				CandySignal.MM, CandyReport.GB);
-		SigActObservation<CandySignal, CandyReport> gbGB = new SigActObservation<CandySignal, CandyReport>(
-				CandySignal.GB, CandyReport.GB);
-		return opdf1.probability(mmGB) > opdf2.probability(mmGB)
-				&& opdf1.probability(gbGB) > opdf2.probability(gbGB);
-	}
-
-	private static boolean isMMStrategy(
-			Opdf<SigActObservation<CandySignal, CandyReport>> opdf) {
-		SigActObservation<CandySignal, CandyReport> mmMM = new SigActObservation<CandySignal, CandyReport>(
-				CandySignal.MM, CandyReport.MM);
-		SigActObservation<CandySignal, CandyReport> gbMM = new SigActObservation<CandySignal, CandyReport>(
-				CandySignal.GB, CandyReport.MM);
-		return opdf.probability(mmMM) > 0.8 && opdf.probability(gbMM) > 0.8;
-	}
-
-	private static boolean isBetterMMStrategy(int i, int mmStrIndex) {
-		Opdf<SigActObservation<CandySignal, CandyReport>> opdf1 = learntHmm
-				.getOpdf(i);
-		Opdf<SigActObservation<CandySignal, CandyReport>> opdf2 = learntHmm
-				.getOpdf(mmStrIndex);
-		SigActObservation<CandySignal, CandyReport> mmMM = new SigActObservation<CandySignal, CandyReport>(
-				CandySignal.MM, CandyReport.MM);
-		SigActObservation<CandySignal, CandyReport> gbMM = new SigActObservation<CandySignal, CandyReport>(
-				CandySignal.GB, CandyReport.MM);
-		return opdf1.probability(mmMM) > opdf2.probability(mmMM)
-				&& opdf1.probability(gbMM) > opdf2.probability(gbMM);
-	}
-
-	private static boolean isTruthfulStrategy(
-			Opdf<SigActObservation<CandySignal, CandyReport>> opdf) {
-		SigActObservation<CandySignal, CandyReport> mmMM = new SigActObservation<CandySignal, CandyReport>(
-				CandySignal.MM, CandyReport.MM);
-		SigActObservation<CandySignal, CandyReport> gbGB = new SigActObservation<CandySignal, CandyReport>(
-				CandySignal.GB, CandyReport.GB);
-		return opdf.probability(mmMM) > 0.8 && opdf.probability(gbGB) > 0.8;
-	}
-
-	private static boolean isBetterTruthfulStrategy(int i, int truthfulState2) {
-		Opdf<SigActObservation<CandySignal, CandyReport>> opdf1 = learntHmm
-				.getOpdf(i);
-		Opdf<SigActObservation<CandySignal, CandyReport>> opdf2 = learntHmm
-				.getOpdf(truthfulState2);
-		SigActObservation<CandySignal, CandyReport> mmMM = new SigActObservation<CandySignal, CandyReport>(
-				CandySignal.MM, CandyReport.MM);
-		SigActObservation<CandySignal, CandyReport> gbGB = new SigActObservation<CandySignal, CandyReport>(
-				CandySignal.GB, CandyReport.GB);
-		return opdf1.probability(mmMM) > opdf2.probability(mmMM)
-				&& opdf1.probability(gbGB) > opdf2.probability(gbGB);
 	}
 
 	private static void gameSymmetricConvergenceType() throws IOException {
@@ -2587,22 +1892,6 @@ public class LogReader {
 		System.out.println(String.format(
 				"i=%d, 3GB: %d, 3MM: %d, HO: %d, Unclassified: %d", i, num3GB,
 				num3MM, numHO, numUnclassified));
-	}
-
-	public static void eqConvergenceSimpleMethod() throws IOException {
-
-		System.out
-				.println("Equilibrium Convergence Analysis Using Simple Method");
-
-		if (treatment.equals("prior2-basic")
-				|| treatment.equals("prior2-outputagreement")
-				|| treatment.equals("prior2-symmlowpay")) {
-			gameSymmetricConvergenceType();
-			// gameSymmetricConvergenceTypeRelaxed(3);
-		} else if (treatment.equals("prior2-uniquetruthful")) {
-			gameConvergenceTypeT3();
-			// gameAsymmetricConvergenceTypeRelaxed(3);
-		}
 	}
 
 	private static void parseLog() {
@@ -3069,6 +2358,453 @@ public class LogReader {
 				expSet.numGames, Arrays.toString(expSet.priorProbs),
 				expSet.worlds, expSet.numPlayers, expSet.numRounds);
 
+	}
+
+	private static void learningAnalysis(String type) throws IOException {
+	
+		if (treatment.equals("prior2-constant")) {
+			System.out
+					.println("Skipping learning analysis for constant payment treatment");
+			return;
+		}
+	
+		BufferedWriter writer = new BufferedWriter(new FileWriter(rootDir
+				+ type + ".csv"));
+		writer.write("hitId, actual payoff, simulated payoff, improvement\n");
+	
+		double diffTotal = 0;
+		int count = 0;
+		for (Game game : expSet.games) {
+	
+			for (String hitId : game.playerHitIds) {
+	
+				double[] myPayoffs = new double[expSet.numRounds];
+				String[] myReports = new String[expSet.numRounds];
+	
+				for (int i = 0; i < expSet.numRounds; i++) {
+	
+					String myReport = null;
+					if (i == 0) {
+	
+						myReport = game.rounds.get(i).getReport(hitId);
+	
+					} else {
+	
+						Map<String, Double> oppPopStrategy = null;
+						
+						if (type.equals("BR")) {
+							oppPopStrategy = game.getOppPopStrPrevRound(i,
+									hitId);
+						} else if (type.equals("FP")) {
+							oppPopStrategy = game.getOppPopStrFull(i, hitId);
+						}
+	
+						if (treatment.equals("prior2-uniquetruthful")
+								|| treatment.equals("prior2-symmlowpay")) {
+							myReport = Utils.getBestResponse(treatment, oppPopStrategy);
+						} else {
+							myReport = Utils.getBestResponse(treatment, oppPopStrategy);
+						}
+					}
+	
+					myReports[i] = myReport;
+	
+					if (treatment.equals("prior2-uniquetruthful")
+							|| treatment.equals("prior2-symmlowpay")) {
+						List<String> refReports = game.getRefReports(hitId, i);
+						int numMM = Utils.getNumMMInRefReports(refReports);
+						myPayoffs[i] = Utils
+								.getPaymentTreatmentUniqueTruthful(myReport,
+										numMM);
+					} else {
+						String refReport = game.getRefReport(i, hitId);
+						myPayoffs[i] = Utils.getPayment(treatment, myReport, refReport);
+					}
+				}
+	
+				double totalPayoff = 0;
+				for (int i = 0; i < expSet.numRounds; i++) {
+					totalPayoff += myPayoffs[i];
+				}
+				double simulatedAvgPayoff = totalPayoff / expSet.numRounds;
+				game.simulatedFPPayoff.put(hitId, simulatedAvgPayoff);
+	
+				// System.out.print(String.format("%s: %s, %.2f\n\n",
+				// hitId, Arrays.toString(myReports), simulatedAvgPayoff));
+	
+				double actualAvgPayoff = game.actualPayoff.get(hitId);
+	
+				double diff = simulatedAvgPayoff - actualAvgPayoff;
+				diffTotal += diff;
+				count++;
+	
+				// Print out information
+				writer.write(String.format("%s, %.2f, %.2f, %.2f\n", hitId,
+						actualAvgPayoff, simulatedAvgPayoff, diff));
+				// System.out.print(String.format("%s: ", hitId));
+				// System.out.print(String.format("%.2f, %.2f\n",
+				// actualAvgPayoff, simulatedAvgPayoff));
+			}
+		}
+	
+		writer.flush();
+		writer.close();
+	
+		System.out.println("diff average " + diffTotal * 1.0 / count);
+	
+		BufferedWriter writerMatlab = new BufferedWriter(new FileWriter(rootDir
+				+ type + "PairedTTest.m"));
+		writerMatlab.write("actual = [");
+		for (Game game : expSet.games) {
+			for (String hitId : game.playerHitIds) {
+				writerMatlab.write(String.format("%.2f ",
+						game.actualPayoff.get(hitId)));
+			}
+		}
+		writerMatlab.write("];\n");
+	
+		writerMatlab.write("simulated = [");
+		for (Game game : expSet.games) {
+			for (String hitId : game.playerHitIds) {
+				writerMatlab.write(String.format("%.2f ",
+						game.simulatedFPPayoff.get(hitId)));
+			}
+		}
+		writerMatlab.write("];\n");
+		writerMatlab.write("[h,p] = ttest(actual,simulated)\n");
+		writerMatlab.write("diff = simulated - actual;\n");
+		writerMatlab.write("m = mean(diff);\n" + "v = std(diff);\n"
+				+ "diff2 = (diff - m)/v;\n" + "h2=kstest(diff2)\n"
+				+ "[f,x_values] = ecdf(diff2);\n" + "F = plot(x_values,f);\n"
+				+ "set(F,'LineWidth',2);\n" + "hold on;\n"
+				+ "G = plot(x_values,normcdf(x_values,0,1),'r-');\n"
+				+ "set(G,'LineWidth',2);\n");
+		writerMatlab.flush();
+		writerMatlab.close();
+	
+	}
+
+	private static void noRegretLearningAnalysis() {
+	
+		List<Map<String, Map<String, Double>>> experts = new ArrayList<Map<String, Map<String, Double>>>();
+		double unit = 0.25;
+		int numUnit = Math.round((int) (1 / unit));
+		for (int i = 0; i <= numUnit; i++) {
+			for (int j = 0; j <= numUnit; j++) {
+				double probMMGivenMM = i * unit;
+				double probMMGivenGB = j * unit;
+	
+				Map<String, Map<String, Double>> strategy = new HashMap<String, Map<String, Double>>();
+	
+				Map<String, Double> mmStrategy = new HashMap<String, Double>();
+				mmStrategy.put("MM", probMMGivenMM);
+				mmStrategy.put("GB", 1 - probMMGivenMM);
+				Map<String, Double> gbStrategy = new HashMap<String, Double>();
+				gbStrategy.put("MM", probMMGivenGB);
+				gbStrategy.put("GB", 1 - probMMGivenGB);
+	
+				strategy.put("MM", mmStrategy);
+				strategy.put("GB", mmStrategy);
+	
+				experts.add(strategy);
+			}
+		}
+		System.out.printf("number of experts %d\n", experts.size());
+	
+		// Put in initial weights
+		List<List<Double>> weights = new ArrayList<List<Double>>();
+		List<Double> initWeights = new ArrayList<Double>();
+		for (int i = 0; i < experts.size(); i++) {
+			initWeights.add(1.0);
+		}
+		weights.add(initWeights);
+	
+		for (Game game : expSet.games) {
+			// Game game = expSet.games.get(10);
+	
+			for (String hitId : game.playerHitIds) {
+				// String hitId = game.playerHitIds[0];
+	
+				System.out.printf("actual payoff %.2f\n",
+						game.actualPayoff.get(hitId));
+	
+				for (int i = 0; i < expSet.numRounds; i++) {
+	
+					// Calculate payoffs
+					List<Double> expertPayoffs = new ArrayList<Double>();
+					for (int j = 0; j < experts.size(); j++) {
+	
+						if (treatment.equals("prior2-uniquetruthful")) {
+							double currPayoff = getPayoffT3(hitId, game, i,
+									experts.get(j));
+							expertPayoffs.add(currPayoff);
+						} else {
+	
+						}
+					}
+	
+					// Calculate player payoff
+					double playerPayoff = 0.0;
+					double totalWeight = 0.0;
+					for (int j = 0; j < experts.size(); j++) {
+						totalWeight += weights.get(i).get(j);
+					}
+					for (int j = 0; j < experts.size(); j++) {
+						playerPayoff += weights.get(i).get(j) / totalWeight
+								* expertPayoffs.get(j);
+					}
+					System.out.printf("round %s: my payoff %.2f\n", i,
+							playerPayoff);
+	
+					// Update weights
+					List<Double> currWeights = new ArrayList<Double>();
+					for (int j = 0; j < experts.size(); j++) {
+						double weight = weights.get(i).get(j);
+						double newWeight = weight
+								* (1 + 0.1 * expertPayoffs.get(j));
+						currWeights.add(newWeight);
+					}
+					weights.add(currWeights);
+					// System.out.printf("round %s: %s\n", i,
+					// currWeights.toString());
+	
+				}
+	
+			}
+		}
+	}
+
+	private static void mixedStrategyPayoff(String rule) {
+		if (!treatment.equals("prior2-uniquetruthful"))
+			return;
+	
+		// double truthfulPayoffT3 = AnalysisUtils.getTruthfulPayoff(rule,
+		// priorProbs, prior);
+		// System.out.printf("Payoff at truthful equilibrium: %.6f\n",
+		// truthfulPayoffT3);
+		//
+		// double mixedPayoffT3 = AnalysisUtils.getMixedPayoff(rule, priorProbs,
+		// prior, strategyMMGivenMM, strategyMMGivenGB);
+	}
+
+	private static void strategyChangeT1() {
+		if (!treatment.equals("prior2-basic"))
+			return;
+	
+		int numMMEq = 0;
+		int numMixedToMM = 0;
+		int numTruthfulToMM = 0;
+		for (Game game : expSet.games) {
+	
+			boolean convergedToMM = true;
+			for (String hitId : game.playerHitIds) {
+				if (game.stateSeq.get(hitId)[expSet.numRounds - 1] != mmState) {
+					convergedToMM = false;
+					break;
+				}
+			}
+	
+			if (!convergedToMM)
+				continue;
+	
+			numMMEq++;
+			for (String hitId : game.playerHitIds) {
+				int[] stateSeq = game.stateSeq.get(hitId);
+				if (hasMixedAndMM(stateSeq))
+					numMixedToMM++;
+				else if (hasTruthfulAndMM(stateSeq))
+					numTruthfulToMM++;
+			}
+		}
+		System.out.printf("MM eq : %d, mixed to MM: %d, truthful to MM: %d\n",
+				numMMEq, numMixedToMM, numTruthfulToMM);
+	
+	}
+
+	private static boolean hasTruthfulAndMM(int[] stateSeq) {
+		boolean hasTruthful = false;
+		for (int i = 0; i < stateSeq.length; i++) {
+			if (stateSeq[i] == truthfulState) {
+				hasTruthful = true;
+			} else if (stateSeq[i] == mmState) {
+			} else {
+				return false;
+			}
+		}
+		return hasTruthful;
+	}
+
+	private static boolean hasMixedAndMM(int[] stateSeq) {
+		boolean hasMixed = false;
+		for (int i = 0; i < stateSeq.length; i++) {
+			if (stateSeq[i] == mixedState) {
+				hasMixed = true;
+			} else if (stateSeq[i] == mmState) {
+			} else {
+				return false;
+			}
+		}
+		return hasMixed;
+	}
+
+	// private static void strategyPayoffAnalysis(String rule) {
+	//
+	// System.out.println("\n" + "Strategy payoff analysis -- " + rule);
+	//
+	// double truthfulPayoffT3 = AnalysisUtils.getTruthfulPayoff(rule,
+	// priorProbs, prior);
+	// System.out.printf("Payoff at truthful equilibrium: %.6f\n",
+	// truthfulPayoffT3);
+	//
+	// double mixedPayoff = 0.0;
+	// double[] strategy = new double[2];
+	//
+	// double unit = 0.1;
+	// int numUnit = Math.round((int)(1 / unit));
+	//
+	// for (int i = 0; i <= numUnit; i++) {
+	// for (int j = 0; j <= numUnit; j++) {
+	// double strategyMMGivenMM = unit * i;
+	// double strategyMMGivenGB = unit * j;
+	// double mixedPayoffT5 = AnalysisUtils.getMixedPayoff(rule,
+	// priorProbs, prior, strategyMMGivenMM, strategyMMGivenGB);
+	// // System.out.printf("mixed strategy is (%.2f, %.2f), payoff is %.6f\n",
+	// // strategyMMGivenMM, strategyMMGivenGB, mixedPayoffT5);
+	// if (mixedPayoffT5 > mixedPayoff) {
+	// mixedPayoff = mixedPayoffT5;
+	// strategy[0] = strategyMMGivenMM;
+	// strategy[1] = strategyMMGivenGB;
+	// }
+	// }
+	// }
+	// System.out.printf("best mixed strategy; (%.2f, %.2f), best payoff; %.6f",
+	// strategy[0], strategy[1], mixedPayoff);
+	// }
+	
+	private static void strategyPayoffAnalysis(String treatment) {
+	
+		System.out.println("\n" + "Strategy payoff analysis");
+	
+		double truthfulPayoffT3 = Utils.getTruthfulPayoff(treatment,
+				expSet.priorProbs, expSet.worlds);
+		System.out.printf("Payoff at truthful equilibrium: %.6f\n",
+				truthfulPayoffT3);
+	
+		// Payoff of mixed strategies
+		if (mixedState == -1) {
+			System.out
+					.printf("HMM did not learn a mixed strategy.  Do not analyze its payoff");
+		} else {
+			Opdf<SigActObservation<CandySignal, CandyReport>> opdfMixed = learntHmm
+					.getOpdf(mixedState);
+			System.out.printf("Mixed strategy: %s", opdfMixed.toString());
+			double probMMGivenMM = opdfMixed
+					.probability(new SigActObservation<CandySignal, CandyReport>(
+							CandySignal.MM, CandyReport.MM));
+			double probMMGivenGB = opdfMixed
+					.probability(new SigActObservation<CandySignal, CandyReport>(
+							CandySignal.GB, CandyReport.MM));
+			double mixedPayoffT3 = Utils.getMixedPayoff(treatment,
+					expSet.priorProbs, expSet.worlds, probMMGivenMM,
+					probMMGivenGB);
+			System.out.printf(
+					"Payoff with symmetric mixed strategies:  %.6f\n",
+					mixedPayoffT3);
+	
+			// Average of payoffs for players using mixed strategy by the end
+			int count = 0;
+			double totalPayoff = 0.0;
+			for (Game game : expSet.games) {
+				for (String hitId : game.playerHitIds) {
+					if (game.stateSeq.get(hitId)[expSet.numRounds - 1] == mixedState) {
+						count++;
+						totalPayoff += game.actualPayoff.get(hitId);
+					}
+				}
+			}
+			double avgPayoff = totalPayoff / count;
+			System.out.printf("Average of payoffs for mixed strategy:  %.6f\n",
+					avgPayoff);
+		}
+	
+		if (mixed2State == -1) {
+			System.out
+					.printf("HMM did not learn a mixed 2 strategy.  Do not analyze its payoff");
+		} else {
+			Opdf<SigActObservation<CandySignal, CandyReport>> opdfMixed = learntHmm
+					.getOpdf(mixed2State);
+			System.out.printf("Mixed strategy: %s", opdfMixed.toString());
+			double probMMGivenMM = opdfMixed
+					.probability(new SigActObservation<CandySignal, CandyReport>(
+							CandySignal.MM, CandyReport.MM));
+			double probMMGivenGB = opdfMixed
+					.probability(new SigActObservation<CandySignal, CandyReport>(
+							CandySignal.GB, CandyReport.MM));
+			double mixedPayoffT3 = Utils.getMixedPayoff(treatment,
+					expSet.priorProbs, expSet.worlds, probMMGivenMM,
+					probMMGivenGB);
+			System.out.printf(
+					"Payoff with symmetric mixed strategies:  %.6f\n",
+					mixedPayoffT3);
+	
+			// Average of payoffs for players using mixed strategy by the end
+			int count = 0;
+			double totalPayoff = 0.0;
+			for (Game game : expSet.games) {
+				for (String hitId : game.playerHitIds) {
+					if (game.stateSeq.get(hitId)[expSet.numRounds - 1] == mixed2State) {
+						count++;
+						totalPayoff += game.actualPayoff.get(hitId);
+					}
+				}
+			}
+			double avgPayoff = totalPayoff / count;
+			System.out.printf(
+					"Average of payoffs for mixed 2 strategy:  %.6f\n",
+					avgPayoff);
+		}
+	
+	}
+
+	private static double getPayoffT3(String hitId, Game game, int i,
+			Map<String, Map<String, Double>> expert) {
+	
+		Round currRound = game.rounds.get(i);
+		String signal = currRound.getSignal(hitId);
+		Map<String, Double> strategyForSignal = expert.get(signal);
+		List<String> otherReports = game.getOtherReportList(currRound, hitId);
+	
+		int numMMInOtherReports = Utils.getNumMMInRefReports(otherReports);
+	
+		return strategyForSignal.get("MM")
+				* Utils.getPaymentTreatmentUniqueTruthful("MM",
+						numMMInOtherReports)
+				+ strategyForSignal.get("GB")
+				* Utils.getPaymentTreatmentUniqueTruthful("GB",
+						numMMInOtherReports);
+	}
+
+	private static double getPayoffT3(Map<String, Double> strategyForSignal,
+			int numMMInOtherReports) {
+		return strategyForSignal.get("MM")
+				* Utils.getPaymentTreatmentUniqueTruthful("MM",
+						numMMInOtherReports)
+				+ strategyForSignal.get("GB")
+				* Utils.getPaymentTreatmentUniqueTruthful("GB",
+						numMMInOtherReports);
+	}
+
+	// helper
+	static List<List<SigActObservation<CandySignal, CandyReport>>> getActObsSequence() {
+		List<List<SigActObservation<CandySignal, CandyReport>>> seq = new ArrayList<List<SigActObservation<CandySignal, CandyReport>>>();
+		for (Game game : expSet.games) {
+			for (String hitId : game.playerHitIds) {
+				List<SigActObservation<CandySignal, CandyReport>> list = game.signalReportObjList
+						.get(hitId);
+				seq.add(list);
+			}
+		}
+		return seq;
 	}
 
 }

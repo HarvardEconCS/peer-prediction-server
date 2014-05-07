@@ -19,7 +19,7 @@ public class LogReaderTest {
 		double firstProb = 0.6;
 		int[] count = new int[]{0,0};
 		for (int i = 0; i < limit; i++) {
-			int chosen = LogReader.selectByDist(firstProb);
+			int chosen = Utils.selectByBinaryDist(firstProb);
 			count[chosen]++;
 		}
 		double expected = limit * firstProb;
@@ -36,37 +36,37 @@ public class LogReaderTest {
 		int count = 10000;
 		
 		currPlayer = 0;
-		chosen = LogReader.chooseRefPlayer(currPlayer);
+		chosen = Utils.chooseRefPlayer(currPlayer);
 		assertNotSame(currPlayer, chosen);
 		assertTrue(chosen == 2 || chosen == 1);
 		
 		int countOne = 0;
 		for (int i = 0; i < count; i++) {
-			chosen = LogReader.chooseRefPlayer(currPlayer);
+			chosen = Utils.chooseRefPlayer(currPlayer);
 			if (chosen == 1)
 				countOne++;
 		}
 		assertEquals(count / 2, countOne, 50);
 		
 		currPlayer = 1;
-		chosen = LogReader.chooseRefPlayer(currPlayer);
+		chosen = Utils.chooseRefPlayer(currPlayer);
 		assertNotSame(currPlayer, chosen);
 		assertTrue(chosen == 2 || chosen == 0);
 		int countZero = 0;
 		for (int i = 0; i < count; i++) {
-			chosen = LogReader.chooseRefPlayer(currPlayer);
+			chosen = Utils.chooseRefPlayer(currPlayer);
 			if (chosen == 0)
 				countZero++;
 		}
 		assertEquals(count / 2, countZero, 50);
 
 		currPlayer = 2;
-		chosen = LogReader.chooseRefPlayer(currPlayer);
+		chosen = Utils.chooseRefPlayer(currPlayer);
 		assertNotSame(currPlayer, chosen);
 		assertTrue(chosen == 1 || chosen == 0);
 		countOne = 0;
 		for (int i = 0; i < count; i++) {
-			chosen = LogReader.chooseRefPlayer(currPlayer);
+			chosen = Utils.chooseRefPlayer(currPlayer);
 			if (chosen == 0)
 				countOne++;
 		}
@@ -75,16 +75,7 @@ public class LogReaderTest {
 
 	}
 
-	
-	@Test
-	public void testNormalizeDist() {
-		double[] dist = new double[]{1,2,3};
-		LogReader.normalizeDist(dist);
-		assertEquals(1.0/6, dist[0], Utils.eps);
-		assertEquals(2.0/6, dist[1], Utils.eps);
-		assertEquals(3.0/6, dist[2], Utils.eps);
-		
-	}
+
 
 	
 	@Test
@@ -92,22 +83,22 @@ public class LogReaderTest {
 		
 		LogReader.treatment = "prior2-basic";
 		
-		double pay = LogReader.getExpectedPayoffT12("MM", 2);
+		double pay = LogReader.getExpectedPayoff("MM", 2);
 		assertEquals(1.5, pay, Utils.eps);
 		
-		pay = LogReader.getExpectedPayoffT12("MM", 0);
+		pay = LogReader.getExpectedPayoff("MM", 0);
 		assertEquals(0.1, pay, Utils.eps);
 		
-		pay = LogReader.getExpectedPayoffT12("MM", 1);
+		pay = LogReader.getExpectedPayoff("MM", 1);
 		assertEquals(0.8, pay, Utils.eps);
 		
-		pay = LogReader.getExpectedPayoffT12("GB", 2);
+		pay = LogReader.getExpectedPayoff("GB", 2);
 		assertEquals(0.3, pay, Utils.eps);
 		
-		pay = LogReader.getExpectedPayoffT12("GB", 0);
+		pay = LogReader.getExpectedPayoff("GB", 0);
 		assertEquals(1.2, pay, Utils.eps);
 		
-		pay = LogReader.getExpectedPayoffT12("GB", 1);
+		pay = LogReader.getExpectedPayoff("GB", 1);
 		assertEquals(0.75, pay, Utils.eps);
 	}
 	
@@ -131,16 +122,16 @@ public class LogReaderTest {
 			}
 			result.put(id, r);
 		}
-		int numMM = LogReader.getNumGivenReports("MM", playerIds, playerIds[excludeIndex], result);
+		int numMM = Utils.getNumOfGivenReport("MM", playerIds, playerIds[excludeIndex], result);
 		assertEquals(expectedNumMM, numMM);
 	} 
 	
 	@Test
 	public void testGetMMProb() {
-		double mmProb = LogReader.getMMProb(10, 1, 1);
+		double mmProb = Utils.calcMMProb(10, 1, 1);
 		assertEquals(0.5, mmProb, Utils.eps);
 		
-		mmProb = LogReader.getMMProb(4, 20, 20);
+		mmProb = Utils.calcMMProb(4, 20, 20);
 		assertEquals(0.5, mmProb, Utils.eps);
 	}
 	

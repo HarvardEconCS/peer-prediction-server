@@ -28,6 +28,17 @@ public class UtilsTest {
 	public void tearDown() throws Exception {
 	}
 
+	@Test
+	public void testNormalizeDist() {
+		double[] dist = new double[]{1,2,3};
+		Utils.normalizeDist(dist);
+		assertEquals(1.0/6, dist[0], Utils.eps);
+		assertEquals(2.0/6, dist[1], Utils.eps);
+		assertEquals(3.0/6, dist[2], Utils.eps);
+		
+	}
+	
+	@Test
 	public void testProbRefReportGivenSignalAndStrategy() {
 		double prob1 = Utils.getProbRefReportGivenSignalAndStrategy(
 				"MM", "MM", 1.0, 1.0, priorProbs, prior);
@@ -302,5 +313,15 @@ public class UtilsTest {
 		assertEquals(0, strategy.get("GB"), 0.00000001);
 
 	}
+	
+	@Test
+	public void testCountRefReports() {
+		List<String> refReports = new ArrayList<String>();
+		refReports.add("MM");refReports.add("GB");refReports.add("GB");
+		refReports.add("MM");refReports.add("MM");
+		int numMM = Utils.getNumMMInRefReports(refReports);
+		assertEquals(numMM, 3);
+	}
+	
 
 }

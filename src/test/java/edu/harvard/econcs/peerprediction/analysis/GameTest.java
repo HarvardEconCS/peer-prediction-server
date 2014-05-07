@@ -1,10 +1,8 @@
 package edu.harvard.econcs.peerprediction.analysis;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
 
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 import org.junit.After;
@@ -28,7 +26,7 @@ public class GameTest {
 	public void testT1() {
 		System.out.println("Testing T1");
 		
-		double[] paymentArray = new double[] {1.5, 0.1, 0.3, 1.2};
+		String treatment = "prior2-basic";
 		
 		Map<String, Double> oppStrategy = new HashMap<String, Double>();
 		String myReport;
@@ -39,7 +37,7 @@ public class GameTest {
 			oppStrategy.clear();
 			oppStrategy.put("MM", percentMM);
 			oppStrategy.put("GB", 1 - percentMM);
-			myReport = game.getBestResponseT1N2(oppStrategy, paymentArray);
+			myReport = Utils.getBestResponse(treatment, oppStrategy);
 			System.out.println(String.format("%.1f, %s", percentMM, myReport));
 			
 			if (percentMM > 0.4)
@@ -55,7 +53,7 @@ public class GameTest {
 	@Test
 	public void testT2() {
 		System.out.println("Testing T2");
-		double[] paymentArray = new double[] {1.5, 0.1, 0.1, 1.5};
+		String treatment = "prior2-outputagreement";
 		
 		Map<String, Double> oppStrategy = new HashMap<String, Double>();
 		String myReport;
@@ -66,7 +64,7 @@ public class GameTest {
 			oppStrategy.clear();
 			oppStrategy.put("MM", percentMM);
 			oppStrategy.put("GB", 1 - percentMM);
-			myReport = game.getBestResponseT1N2(oppStrategy, paymentArray);
+			myReport = Utils.getBestResponse(treatment, oppStrategy);
 			System.out.println(String.format("%.1f, %s", percentMM, myReport));
 			
 			if (percentMM > 0.5)
@@ -82,17 +80,17 @@ public class GameTest {
 	@Test
 	public void testT3() {
 		System.out.println("Testing T3");
-		
+		String treatment = "prior2-uniquetruthful";
 		Map<String, Double> oppStrategy = new HashMap<String, Double>();
 		oppStrategy.put("MM", 1.0);
 		oppStrategy.put("GB", 0.0);
-		String myReport = game.getBestResponseT3(oppStrategy);
+		String myReport = Utils.getBestResponse(treatment, oppStrategy);
 		assertEquals(myReport, "GB");
 		
 		oppStrategy.clear();
 		oppStrategy.put("MM", 0.0);
 		oppStrategy.put("GB", 1.0);
-		myReport = game.getBestResponseT3(oppStrategy);
+		myReport = Utils.getBestResponse(treatment, oppStrategy);
 		assertEquals(myReport, "MM");
 		
 		double percentMM = 0.1;
@@ -100,7 +98,7 @@ public class GameTest {
 			oppStrategy.clear();
 			oppStrategy.put("MM", percentMM);
 			oppStrategy.put("GB", 1 - percentMM);
-			myReport = game.getBestResponseT3(oppStrategy);
+			myReport = Utils.getBestResponse(treatment, oppStrategy);
 			System.out.println(String.format("%.1f, %s", percentMM, myReport));
 			
 			if (percentMM > 0.5) 
@@ -113,33 +111,8 @@ public class GameTest {
 		
 	}
 	
-	@Test
-	public void testGetPaymentT1N2() {
-		double[] paymentArray = new double[]{0.3, 0.4, 0.5, 0.6};
-
-		double pay = game.getPaymentT1N2("MM", "MM", paymentArray);
-		assertEquals(paymentArray[0], pay, Utils.eps);
-		
-		pay = game.getPaymentT1N2("MM", "GB", paymentArray);
-		assertEquals(paymentArray[1], pay, Utils.eps);
-		
-		pay = game.getPaymentT1N2("GB", "MM", paymentArray);
-		assertEquals(paymentArray[2], pay, Utils.eps);
-		
-		pay = game.getPaymentT1N2("GB", "GB", paymentArray);
-		assertEquals(paymentArray[3], pay, Utils.eps);
-
-	}
 	
-	@Test
-	public void testCountRefReports() {
-		List<String> refReports = new ArrayList<String>();
-		refReports.add("MM");refReports.add("GB");refReports.add("GB");
-		refReports.add("MM");refReports.add("MM");
-		int numMM = game.getNumMMInRefReports(refReports);
-		assertEquals(numMM, 3);
-	}
-	
+
 
 
 }

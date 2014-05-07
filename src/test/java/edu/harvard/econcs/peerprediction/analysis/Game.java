@@ -22,7 +22,7 @@ public class Game {
 	String[] playerHitIds;
 	List<Round> rounds;
 	
-	double[] paymentArrayT1N2;
+	double[] paymentArrayT12;
 
 	Map<String, ExitSurvey> exitSurvey;
 	
@@ -80,7 +80,7 @@ public class Game {
 
 	public void savePaymentRule(String paymentRuleString) {
 		if (numPlayers == 3)
-			paymentArrayT1N2 = gson.fromJson(paymentRuleString, double[].class);	
+			paymentArrayT12 = gson.fromJson(paymentRuleString, double[].class);	
 	}
 	
 	public int getCandyStart(String hitId, String candy) {
@@ -427,18 +427,6 @@ public class Game {
 		return reportArray;
 	}
 
-	public double getPaymentT1N2(String myReport, String refReport, double[] paymentArray) {
-		if (myReport.equals("MM") && refReport.equals("MM"))
-			return paymentArray[0];
-		else if (myReport.equals("MM") && refReport.equals("GB"))
-			return paymentArray[1];
-		else if (myReport.equals("GB") && refReport.equals("MM"))
-			return paymentArray[2];
-		else if (myReport.equals("GB") && refReport.equals("GB"))
-			return paymentArray[3];
-		return -1;
-	}
-
 	public List<String> getOtherHitIds(String hitId) {
 
 		List<String> otherHitIds = new ArrayList<String>();
@@ -461,16 +449,7 @@ public class Game {
 		return refReports;
 	}
 
-	public int getNumMMInRefReports(List<String> refReports) {
-		int numMM = 0;
-		for (String report : refReports) {
-			if (report.equals("MM"))
-				numMM++;
-		}
-		return numMM;
-	}
-
-	public String getRefReport(String hitId, int i) {
+	public String getRefReport(int i, String hitId) {
 		Round currRound = this.rounds.get(i);
 
 		Map<String, Map<String, Object>> roundResult = currRound.result;
@@ -482,76 +461,6 @@ public class Game {
 		String refReport = (String) refPlayerResult.get("report");
 
 		return refReport;
-	}
-
-	public double getPayoffT3(String myReport,
-			Map<String, Double> oppPopStrategy) {
-		return 
-				Utils.getPaymentTreatmentUniqueTruthful(myReport, 0) 
-					* oppPopStrategy.get("GB") 
-					* oppPopStrategy.get("GB") 
-					* oppPopStrategy.get("GB")
-				
-				+ Utils.getPaymentTreatmentUniqueTruthful(myReport, 1) * 
-					(3 * oppPopStrategy.get("MM")  
-					   * oppPopStrategy.get("GB") 
-					   * oppPopStrategy.get("GB")
-					)
-						
-				+ Utils.getPaymentTreatmentUniqueTruthful(myReport, 2) * 
-					(3 * oppPopStrategy.get("MM")  
-					   * oppPopStrategy.get("MM") 
-					   * oppPopStrategy.get("GB")
-						)
-						
-				+ Utils.getPaymentTreatmentUniqueTruthful(myReport, 3) 
-					* oppPopStrategy.get("MM") 
-					* oppPopStrategy.get("MM") 
-					* oppPopStrategy.get("MM")
-				;
-	}
-
-	public double getPayoffT1N2(String myReport, 
-			Map<String, Double> oppPopStrategy, double[] paymentArray) {
-		
-		return this.getPaymentT1N2(myReport, "MM", paymentArray) 
-				* oppPopStrategy.get("MM") 
-				* oppPopStrategy.get("MM")
-				
-				+  (this.getPaymentT1N2(myReport, "MM", paymentArray) * 0.5 
-						+ this.getPaymentT1N2(myReport, "GB", paymentArray) * 0.5)
-					* 2 * oppPopStrategy.get("MM") 
-					    * oppPopStrategy.get("GB")
-				
-				+ this.getPaymentT1N2(myReport, "GB", paymentArray) 
-					* oppPopStrategy.get("GB") 
-					* oppPopStrategy.get("GB");
-	}
-
-	public String getBestResponseT3(Map<String, Double> oppPopStrategy) {
-		String myReport;
-
-		double payoffMM = this.getPayoffT3("MM", oppPopStrategy);
-		double payoffGB = this.getPayoffT3("GB", oppPopStrategy);
-		
-		if ((payoffMM - payoffGB) > Utils.eps) 
-			myReport = "MM";
-		else
-			myReport = "GB";
-		return myReport;
-	}
-	
-	public String getBestResponseT1N2(Map<String, Double> oppPopStrategy, double[] paymentArray) {
-		String myReport;
-
-		double payoffMM = this.getPayoffT1N2("MM", oppPopStrategy, paymentArray);
-		double payoffGB = this.getPayoffT1N2("GB", oppPopStrategy, paymentArray);
-		
-		if ((payoffMM - payoffGB) > Utils.eps) 
-			myReport = "MM";
-		else
-			myReport = "GB";
-		return myReport;
 	}
 	
 }
