@@ -52,10 +52,10 @@ public class Strategy {
 	public static Strategy getRandomStrategy() {
 		Random rnd = new Random();
 		double first = rnd.nextDouble();
-		if (first < AnalysisUtils.eps || (1 - first) < AnalysisUtils.eps)
+		if (first < Utils.eps || (1 - first) < Utils.eps)
 			first = rnd.nextDouble();
 		double second = rnd.nextDouble();
-		if (second < AnalysisUtils.eps || (1 - second) < AnalysisUtils.eps)
+		if (second < Utils.eps || (1 - second) < Utils.eps)
 			second = rnd.nextDouble();
 		return new Strategy(first, second);
 	}

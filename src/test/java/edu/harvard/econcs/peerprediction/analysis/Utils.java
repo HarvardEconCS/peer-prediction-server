@@ -15,7 +15,7 @@ import org.apache.commons.math3.util.ArithmeticUtils;
 import com.google.common.collect.ImmutableMap;
 import com.google.gson.Gson;
 
-public class AnalysisUtils {
+public class Utils {
 
 	static final double epsConstruct = 0.01;
 	static final double eps = 0.0000001;
@@ -70,18 +70,18 @@ public class AnalysisUtils {
 				double strategyMMGivenGB = unit * j;
 				
 				double payoffMMSignalMMReport = 
-						AnalysisUtils.getMixedPayoffForSignalAndReport3Players(rule, priorProbs, prior, 
+						Utils.getMixedPayoffForSignalAndReport3Players(rule, priorProbs, prior, 
 								strategyMMGivenMM, strategyMMGivenGB, "MM", "MM");
 				double payoffMMSignalGBReport = 
-						AnalysisUtils.getMixedPayoffForSignalAndReport3Players(rule, priorProbs, prior, 
+						Utils.getMixedPayoffForSignalAndReport3Players(rule, priorProbs, prior, 
 								strategyMMGivenMM, strategyMMGivenGB, "MM", "GB");
 				double diffMMSignal = Math.abs(payoffMMSignalMMReport - payoffMMSignalGBReport);
 				
 				double payoffForGBSignalMMReport = 
-						AnalysisUtils.getMixedPayoffForSignalAndReport3Players(rule, priorProbs, prior, 
+						Utils.getMixedPayoffForSignalAndReport3Players(rule, priorProbs, prior, 
 								strategyMMGivenMM, strategyMMGivenGB, "GB", "MM");
 				double payoffForGBSignalGBReport = 
-						AnalysisUtils.getMixedPayoffForSignalAndReport3Players(rule, priorProbs, prior, 
+						Utils.getMixedPayoffForSignalAndReport3Players(rule, priorProbs, prior, 
 								strategyMMGivenMM, strategyMMGivenGB, "GB", "GB");
 				double diffGBSignal = Math.abs(payoffForGBSignalMMReport - payoffForGBSignalGBReport);
 				
@@ -119,18 +119,18 @@ public class AnalysisUtils {
 				double strategyMMGivenGB = unit * j;
 				
 				double payoffMMSignalMMReport = 
-						AnalysisUtils.getMixedPayoffForSignalAndReport4Players(treatment, priorProbs, prior, 
+						Utils.getMixedPayoffForSignalAndReport4Players(treatment, priorProbs, prior, 
 								strategyMMGivenMM, strategyMMGivenGB, "MM", "MM");
 				double payoffMMSignalGBReport = 
-						AnalysisUtils.getMixedPayoffForSignalAndReport4Players(treatment, priorProbs, prior, 
+						Utils.getMixedPayoffForSignalAndReport4Players(treatment, priorProbs, prior, 
 								strategyMMGivenMM, strategyMMGivenGB, "MM", "GB");
 				double diffMMSignal = Math.abs(payoffMMSignalMMReport - payoffMMSignalGBReport);
 				
 				double payoffForGBSignalMMReport = 
-						AnalysisUtils.getMixedPayoffForSignalAndReport4Players(treatment, priorProbs, prior, 
+						Utils.getMixedPayoffForSignalAndReport4Players(treatment, priorProbs, prior, 
 								strategyMMGivenMM, strategyMMGivenGB, "GB", "MM");
 				double payoffForGBSignalGBReport = 
-						AnalysisUtils.getMixedPayoffForSignalAndReport4Players(treatment, priorProbs, prior, 
+						Utils.getMixedPayoffForSignalAndReport4Players(treatment, priorProbs, prior, 
 								strategyMMGivenMM, strategyMMGivenGB, "GB", "GB");
 				double diffGBSignal = Math.abs(payoffForGBSignalMMReport - payoffForGBSignalGBReport);
 				
@@ -157,23 +157,23 @@ public class AnalysisUtils {
 
 		int N = signalReportPairs.size();
 
-		int K = AnalysisUtils.em_K;
+		int K = Utils.em_K;
 
-		if (AnalysisUtils.em_pi == null) {
+		if (Utils.em_pi == null) {
 			em_pi = new double[K];
 			for (int k = 0; k < K; k++) {
 				em_pi[k] = 1.0 / K;
 			}
 		}
 
-		if (AnalysisUtils.em_strategies == null) {
+		if (Utils.em_strategies == null) {
 			em_strategies = new Strategy[K];
 			for (int k = 0; k < K; k++) {
 				em_strategies[k] = Strategy.getRandomStrategy();
 			}
 		}
 
-		em_likelihood = AnalysisUtils.getLogLikelihood(signalReportPairs,
+		em_likelihood = Utils.getLogLikelihood(signalReportPairs,
 				em_pi, em_strategies);
 
 		while (true) {
@@ -259,7 +259,7 @@ public class AnalysisUtils {
 				strategies_temp[k].setPercent("GB", "GB", 1 - (n_GB / d_GB));
 			}
 
-			double likelihood_temp = AnalysisUtils.getLogLikelihood(
+			double likelihood_temp = Utils.getLogLikelihood(
 					signalReportPairs, pi_temp, strategies_temp);
 
 			// System.out.println("loglk: " + logLikelihood);
@@ -350,12 +350,12 @@ public class AnalysisUtils {
 	public static double getProbSignalsGivenSignal(int numMM, int numGB,
 			String signal, double[] priorProbs, List<Map<String, Double>> prior) {
 
-		double total0 = AnalysisUtils.getProbWorldGivenSignal(priorProbs,
+		double total0 = Utils.getProbWorldGivenSignal(priorProbs,
 				prior, 0, signal)
 				* Math.pow(prior.get(0).get("MM"), numMM)
 				* Math.pow(prior.get(0).get("GB"), numGB)
 				* ArithmeticUtils.binomialCoefficient(3, numMM);
-		double total1 = AnalysisUtils.getProbWorldGivenSignal(priorProbs,
+		double total1 = Utils.getProbWorldGivenSignal(priorProbs,
 				prior, 1, signal)
 				* Math.pow(prior.get(1).get("MM"), numMM)
 				* Math.pow(prior.get(1).get("GB"), numGB)
@@ -365,9 +365,9 @@ public class AnalysisUtils {
 
 	public static double getProbSignalGivenSignal(String resultSignal,
 			String givenSignal, double[] priorProbs, List<Map<String, Double>> prior) {
-		double total0 = AnalysisUtils.getProbWorldGivenSignal(priorProbs, prior, 0, givenSignal)
+		double total0 = Utils.getProbWorldGivenSignal(priorProbs, prior, 0, givenSignal)
 				* prior.get(0).get(resultSignal);
-		double total1 = AnalysisUtils.getProbWorldGivenSignal(priorProbs, prior, 1, givenSignal)
+		double total1 = Utils.getProbWorldGivenSignal(priorProbs, prior, 1, givenSignal)
 				* prior.get(1).get(resultSignal);
 		return total0 + total1;
 	}
@@ -383,35 +383,35 @@ public class AnalysisUtils {
 	public static double getTruthfulPayoff(String treatment, double[] priorProbs,
 			List<Map<String, Double>> prior) {
 		
-		double probMM = AnalysisUtils.getProbMM(priorProbs, prior);
+		double probMM = Utils.getProbMM(priorProbs, prior);
 		double probGB = 1 - probMM;
 
-		double prob3MMGivenMM = AnalysisUtils.getProbSignalsGivenSignal(3, 0,
+		double prob3MMGivenMM = Utils.getProbSignalsGivenSignal(3, 0,
 				"MM", priorProbs, prior);
-		double prob2MMGivenMM = AnalysisUtils.getProbSignalsGivenSignal(2, 1,
+		double prob2MMGivenMM = Utils.getProbSignalsGivenSignal(2, 1,
 				"MM", priorProbs, prior);
-		double prob1MMGivenMM = AnalysisUtils.getProbSignalsGivenSignal(1, 2,
+		double prob1MMGivenMM = Utils.getProbSignalsGivenSignal(1, 2,
 				"MM", priorProbs, prior);
-		double prob0MMGivenMM = AnalysisUtils.getProbSignalsGivenSignal(0, 3,
+		double prob0MMGivenMM = Utils.getProbSignalsGivenSignal(0, 3,
 				"MM", priorProbs, prior);
 
-		double prob3MMGivenGB = AnalysisUtils.getProbSignalsGivenSignal(3, 0,
+		double prob3MMGivenGB = Utils.getProbSignalsGivenSignal(3, 0,
 				"GB", priorProbs, prior);
-		double prob2MMGivenGB = AnalysisUtils.getProbSignalsGivenSignal(2, 1,
+		double prob2MMGivenGB = Utils.getProbSignalsGivenSignal(2, 1,
 				"GB", priorProbs, prior);
-		double prob1MMGivenGB = AnalysisUtils.getProbSignalsGivenSignal(1, 2,
+		double prob1MMGivenGB = Utils.getProbSignalsGivenSignal(1, 2,
 				"GB", priorProbs, prior);
-		double prob0MMGivenGB = AnalysisUtils.getProbSignalsGivenSignal(0, 3,
+		double prob0MMGivenGB = Utils.getProbSignalsGivenSignal(0, 3,
 				"GB", priorProbs, prior);
 
-		return probMM * ( prob3MMGivenMM * AnalysisUtils.getPayment(treatment, "MM", 3)
-						+ prob2MMGivenMM * AnalysisUtils.getPayment(treatment, "MM", 2)
-						+ prob1MMGivenMM * AnalysisUtils.getPayment(treatment, "MM", 1) 
-						+ prob0MMGivenMM * AnalysisUtils.getPayment(treatment, "MM", 0))
-			+ probGB * (  prob3MMGivenGB * AnalysisUtils.getPayment(treatment, "GB", 3)
-						+ prob2MMGivenGB * AnalysisUtils.getPayment(treatment, "GB", 2)
-						+ prob1MMGivenGB * AnalysisUtils.getPayment(treatment, "GB", 1) 
-						+ prob0MMGivenGB * AnalysisUtils.getPayment(treatment, "GB", 0));
+		return probMM * ( prob3MMGivenMM * Utils.getPayment(treatment, "MM", 3)
+						+ prob2MMGivenMM * Utils.getPayment(treatment, "MM", 2)
+						+ prob1MMGivenMM * Utils.getPayment(treatment, "MM", 1) 
+						+ prob0MMGivenMM * Utils.getPayment(treatment, "MM", 0))
+			+ probGB * (  prob3MMGivenGB * Utils.getPayment(treatment, "GB", 3)
+						+ prob2MMGivenGB * Utils.getPayment(treatment, "GB", 2)
+						+ prob1MMGivenGB * Utils.getPayment(treatment, "GB", 1) 
+						+ prob0MMGivenGB * Utils.getPayment(treatment, "GB", 0));
 
 	}
 
@@ -422,31 +422,31 @@ public class AnalysisUtils {
 			String report) {
 
 		double probMMRefReportGivenMM = 
-				AnalysisUtils.getProbRefReportGivenSignalAndStrategy("MM", "MM", 
+				Utils.getProbRefReportGivenSignalAndStrategy("MM", "MM", 
 						strategyMMGivenMM, strategyMMGivenGB, priorProbs, prior);
 		double probGBRefReportGivenMM = 
-				AnalysisUtils.getProbRefReportGivenSignalAndStrategy("GB", "MM", 
+				Utils.getProbRefReportGivenSignalAndStrategy("GB", "MM", 
 						strategyMMGivenMM, strategyMMGivenGB, priorProbs, prior);
 		
 		double probMMRefReportGivenGB = 
-				AnalysisUtils.getProbRefReportGivenSignalAndStrategy("MM", "GB", 
+				Utils.getProbRefReportGivenSignalAndStrategy("MM", "GB", 
 						strategyMMGivenMM, strategyMMGivenGB, priorProbs, prior);
 		double probGBRefReportGivenGB = 
-				AnalysisUtils.getProbRefReportGivenSignalAndStrategy("GB", "GB", 
+				Utils.getProbRefReportGivenSignalAndStrategy("GB", "GB", 
 						strategyMMGivenMM, strategyMMGivenGB, priorProbs, prior);
 		
 		if (signal.equals("MM") && report.equals("MM")) {
-			return probMMRefReportGivenMM * AnalysisUtils.getPayment(treatment, "MM", "MM")
-				 + probGBRefReportGivenMM * AnalysisUtils.getPayment(treatment, "MM", "GB");
+			return probMMRefReportGivenMM * Utils.getPayment(treatment, "MM", "MM")
+				 + probGBRefReportGivenMM * Utils.getPayment(treatment, "MM", "GB");
 		} else if (signal.equals("MM") && report.equals("GB")) {
-			return probMMRefReportGivenMM * AnalysisUtils.getPayment(treatment, "GB", "MM")
-				 + probGBRefReportGivenMM * AnalysisUtils.getPayment(treatment, "GB", "GB");			
+			return probMMRefReportGivenMM * Utils.getPayment(treatment, "GB", "MM")
+				 + probGBRefReportGivenMM * Utils.getPayment(treatment, "GB", "GB");			
 		} else if (signal.equals("GB") && report.equals("MM")) {
-			return probMMRefReportGivenGB * AnalysisUtils.getPayment(treatment, "MM", "MM")
-				 + probGBRefReportGivenGB * AnalysisUtils.getPayment(treatment, "MM", "GB");			
+			return probMMRefReportGivenGB * Utils.getPayment(treatment, "MM", "MM")
+				 + probGBRefReportGivenGB * Utils.getPayment(treatment, "MM", "GB");			
 		} else if (signal.equals("GB") && report.equals("GB")) {
-			return probMMRefReportGivenGB * AnalysisUtils.getPayment(treatment, "GB", "MM")
-				 + probGBRefReportGivenGB * AnalysisUtils.getPayment(treatment, "GB", "GB");
+			return probMMRefReportGivenGB * Utils.getPayment(treatment, "GB", "MM")
+				 + probGBRefReportGivenGB * Utils.getPayment(treatment, "GB", "GB");
 			
 		}
 		return -1;
@@ -458,51 +458,51 @@ public class AnalysisUtils {
 			String signal, String report) {
 		
 		double prob3MM0GBRefReportsGivenMM = 
-				AnalysisUtils.getProbRefReportsGivenSignalAndStrategy(3, 0, "MM", 
+				Utils.getProbRefReportsGivenSignalAndStrategy(3, 0, "MM", 
 						strategyMMGivenMM, strategyMMGivenGB, priorProbs, prior);
 		double prob2MM1GBRefReportsGivenMM = 
-				AnalysisUtils.getProbRefReportsGivenSignalAndStrategy(2, 1, "MM", 
+				Utils.getProbRefReportsGivenSignalAndStrategy(2, 1, "MM", 
 						strategyMMGivenMM, strategyMMGivenGB, priorProbs, prior);
 		double prob1MM2GBRefReportsGivenMM = 
-				AnalysisUtils.getProbRefReportsGivenSignalAndStrategy(1, 2, "MM", 
+				Utils.getProbRefReportsGivenSignalAndStrategy(1, 2, "MM", 
 						strategyMMGivenMM, strategyMMGivenGB, priorProbs, prior);
 		double prob0MM3GBRefReportsGivenMM = 	
-				AnalysisUtils.getProbRefReportsGivenSignalAndStrategy(0, 3, "MM", 
+				Utils.getProbRefReportsGivenSignalAndStrategy(0, 3, "MM", 
 						strategyMMGivenMM, strategyMMGivenGB, priorProbs, prior);
 
 		double prob3MM0GBRefReportsGivenGB = 
-				AnalysisUtils.getProbRefReportsGivenSignalAndStrategy(3, 0, "GB", 
+				Utils.getProbRefReportsGivenSignalAndStrategy(3, 0, "GB", 
 						strategyMMGivenMM, strategyMMGivenGB, priorProbs, prior);
 		double prob2MM1GBRefReportsGivenGB = 
-				AnalysisUtils.getProbRefReportsGivenSignalAndStrategy(2, 1, "GB", 
+				Utils.getProbRefReportsGivenSignalAndStrategy(2, 1, "GB", 
 						strategyMMGivenMM, strategyMMGivenGB, priorProbs, prior);
 		double prob1MM2GBRefReportsGivenGB =  
-				AnalysisUtils.getProbRefReportsGivenSignalAndStrategy(1, 2, "GB", 
+				Utils.getProbRefReportsGivenSignalAndStrategy(1, 2, "GB", 
 						strategyMMGivenMM, strategyMMGivenGB, priorProbs, prior);
 		double prob0MM3GBRefReportsGivenGB = 	
-				AnalysisUtils.getProbRefReportsGivenSignalAndStrategy(0, 3, "GB", 
+				Utils.getProbRefReportsGivenSignalAndStrategy(0, 3, "GB", 
 						strategyMMGivenMM, strategyMMGivenGB, priorProbs, prior);
 		
 		if (signal.equals("MM") && report.equals("MM")) {
-			return prob3MM0GBRefReportsGivenMM * AnalysisUtils.getPayment(treatment, "MM", 3) 
-				 + prob2MM1GBRefReportsGivenMM * AnalysisUtils.getPayment(treatment, "MM", 2)
-			 	 + prob1MM2GBRefReportsGivenMM * AnalysisUtils.getPayment(treatment, "MM", 1) 
-			 	 + prob0MM3GBRefReportsGivenMM * AnalysisUtils.getPayment(treatment, "MM", 0);
+			return prob3MM0GBRefReportsGivenMM * Utils.getPayment(treatment, "MM", 3) 
+				 + prob2MM1GBRefReportsGivenMM * Utils.getPayment(treatment, "MM", 2)
+			 	 + prob1MM2GBRefReportsGivenMM * Utils.getPayment(treatment, "MM", 1) 
+			 	 + prob0MM3GBRefReportsGivenMM * Utils.getPayment(treatment, "MM", 0);
 		} else if (signal.equals("MM") && report.equals("GB")) {
-			return prob3MM0GBRefReportsGivenMM * AnalysisUtils.getPayment(treatment, "GB", 3)
-				 + prob2MM1GBRefReportsGivenMM * AnalysisUtils.getPayment(treatment, "GB", 2)
-				 + prob1MM2GBRefReportsGivenMM * AnalysisUtils.getPayment(treatment, "GB", 1) 
-				 + prob0MM3GBRefReportsGivenMM * AnalysisUtils.getPayment(treatment, "GB", 0);
+			return prob3MM0GBRefReportsGivenMM * Utils.getPayment(treatment, "GB", 3)
+				 + prob2MM1GBRefReportsGivenMM * Utils.getPayment(treatment, "GB", 2)
+				 + prob1MM2GBRefReportsGivenMM * Utils.getPayment(treatment, "GB", 1) 
+				 + prob0MM3GBRefReportsGivenMM * Utils.getPayment(treatment, "GB", 0);
 		} else if (signal.equals("GB") && report.equals("MM")){
-			return prob3MM0GBRefReportsGivenGB * AnalysisUtils.getPayment(treatment, "MM", 3) 
-				 + prob2MM1GBRefReportsGivenGB * AnalysisUtils.getPayment(treatment, "MM", 2)
-				 + prob1MM2GBRefReportsGivenGB * AnalysisUtils.getPayment(treatment, "MM", 1) 
-				 + prob0MM3GBRefReportsGivenGB * AnalysisUtils.getPayment(treatment, "MM", 0);
+			return prob3MM0GBRefReportsGivenGB * Utils.getPayment(treatment, "MM", 3) 
+				 + prob2MM1GBRefReportsGivenGB * Utils.getPayment(treatment, "MM", 2)
+				 + prob1MM2GBRefReportsGivenGB * Utils.getPayment(treatment, "MM", 1) 
+				 + prob0MM3GBRefReportsGivenGB * Utils.getPayment(treatment, "MM", 0);
 		} else if (signal.equals("GB") && report.equals("GB")) {
-			return prob3MM0GBRefReportsGivenGB * AnalysisUtils.getPayment(treatment, "GB", 3)
-				 + prob2MM1GBRefReportsGivenGB * AnalysisUtils.getPayment(treatment, "GB", 2)
-				 + prob1MM2GBRefReportsGivenGB * AnalysisUtils.getPayment(treatment, "GB", 1) 
-				 + prob0MM3GBRefReportsGivenGB * AnalysisUtils.getPayment(treatment, "GB", 0);
+			return prob3MM0GBRefReportsGivenGB * Utils.getPayment(treatment, "GB", 3)
+				 + prob2MM1GBRefReportsGivenGB * Utils.getPayment(treatment, "GB", 2)
+				 + prob1MM2GBRefReportsGivenGB * Utils.getPayment(treatment, "GB", 1) 
+				 + prob0MM3GBRefReportsGivenGB * Utils.getPayment(treatment, "GB", 0);
 		}
 		return -1;
 	}
@@ -516,58 +516,58 @@ public class AnalysisUtils {
 //		System.out.printf("%.2f, %.2f", strategyMMGivenMM, strategyMMGivenGB);
 		
 		double prob3MM0GBRefReportsGivenMM = 
-				AnalysisUtils.getProbRefReportsGivenSignalAndStrategy(3, 0, "MM", 
+				Utils.getProbRefReportsGivenSignalAndStrategy(3, 0, "MM", 
 						strategyMMGivenMM, strategyMMGivenGB, priorProbs, prior);
 		double prob2MM1GBRefReportsGivenMM = 
-				AnalysisUtils.getProbRefReportsGivenSignalAndStrategy(2, 1, "MM", 
+				Utils.getProbRefReportsGivenSignalAndStrategy(2, 1, "MM", 
 						strategyMMGivenMM, strategyMMGivenGB, priorProbs, prior);
 		double prob1MM2GBRefReportsGivenMM = 
-				AnalysisUtils.getProbRefReportsGivenSignalAndStrategy(1, 2, "MM", 
+				Utils.getProbRefReportsGivenSignalAndStrategy(1, 2, "MM", 
 						strategyMMGivenMM, strategyMMGivenGB, priorProbs, prior);
 		double prob0MM3GBRefReportsGivenMM = 	
-				AnalysisUtils.getProbRefReportsGivenSignalAndStrategy(0, 3, "MM", 
+				Utils.getProbRefReportsGivenSignalAndStrategy(0, 3, "MM", 
 						strategyMMGivenMM, strategyMMGivenGB, priorProbs, prior);
 
 		double prob3MM0GBRefReportsGivenGB = 
-				AnalysisUtils.getProbRefReportsGivenSignalAndStrategy(3, 0, "GB", 
+				Utils.getProbRefReportsGivenSignalAndStrategy(3, 0, "GB", 
 						strategyMMGivenMM, strategyMMGivenGB, priorProbs, prior);
 		double prob2MM1GBRefReportsGivenGB = 
-				AnalysisUtils.getProbRefReportsGivenSignalAndStrategy(2, 1, "GB", 
+				Utils.getProbRefReportsGivenSignalAndStrategy(2, 1, "GB", 
 						strategyMMGivenMM, strategyMMGivenGB, priorProbs, prior);
 		double prob1MM2GBRefReportsGivenGB =  
-				AnalysisUtils.getProbRefReportsGivenSignalAndStrategy(1, 2, "GB", 
+				Utils.getProbRefReportsGivenSignalAndStrategy(1, 2, "GB", 
 						strategyMMGivenMM, strategyMMGivenGB, priorProbs, prior);
 		double prob0MM3GBRefReportsGivenGB = 	
-				AnalysisUtils.getProbRefReportsGivenSignalAndStrategy(0, 3, "GB", 
+				Utils.getProbRefReportsGivenSignalAndStrategy(0, 3, "GB", 
 						strategyMMGivenMM, strategyMMGivenGB, priorProbs, prior);
 
 //		System.out.printf("%.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f", 
 //				prob3MM0GBRefReportsGivenMM, prob2MM1GBRefReportsGivenMM, prob1MM2GBRefReportsGivenMM, prob0MM3GBRefReportsGivenMM, 
 //				prob3MM0GBRefReportsGivenGB, prob2MM1GBRefReportsGivenGB, prob1MM2GBRefReportsGivenGB, prob0MM3GBRefReportsGivenGB);
 
-		double probMM = AnalysisUtils.getProbMM(priorProbs, prior);
+		double probMM = Utils.getProbMM(priorProbs, prior);
 		double probGB = 1 - probMM;
 		
 		return probMM * strategyMMGivenMM
-				* (prob3MM0GBRefReportsGivenMM * AnalysisUtils.getPayment(treatment, "MM", 3) 
-				 + prob2MM1GBRefReportsGivenMM * AnalysisUtils.getPayment(treatment, "MM", 2)
-				 + prob1MM2GBRefReportsGivenMM * AnalysisUtils.getPayment(treatment, "MM", 1) 
-				 + prob0MM3GBRefReportsGivenMM * AnalysisUtils.getPayment(treatment, "MM", 0))
+				* (prob3MM0GBRefReportsGivenMM * Utils.getPayment(treatment, "MM", 3) 
+				 + prob2MM1GBRefReportsGivenMM * Utils.getPayment(treatment, "MM", 2)
+				 + prob1MM2GBRefReportsGivenMM * Utils.getPayment(treatment, "MM", 1) 
+				 + prob0MM3GBRefReportsGivenMM * Utils.getPayment(treatment, "MM", 0))
 			+ probGB * strategyMMGivenGB
-			 	* (prob3MM0GBRefReportsGivenGB * AnalysisUtils.getPayment(treatment, "MM", 3)
-				 + prob2MM1GBRefReportsGivenGB * AnalysisUtils.getPayment(treatment, "MM", 2)
-				 + prob1MM2GBRefReportsGivenGB * AnalysisUtils.getPayment(treatment, "MM", 1) 
-				 + prob0MM3GBRefReportsGivenGB * AnalysisUtils.getPayment(treatment, "MM", 0))
+			 	* (prob3MM0GBRefReportsGivenGB * Utils.getPayment(treatment, "MM", 3)
+				 + prob2MM1GBRefReportsGivenGB * Utils.getPayment(treatment, "MM", 2)
+				 + prob1MM2GBRefReportsGivenGB * Utils.getPayment(treatment, "MM", 1) 
+				 + prob0MM3GBRefReportsGivenGB * Utils.getPayment(treatment, "MM", 0))
 			+ probMM * (1 - strategyMMGivenMM) 
-				* (prob3MM0GBRefReportsGivenMM * AnalysisUtils.getPayment(treatment, "GB", 3)
-				 + prob2MM1GBRefReportsGivenMM * AnalysisUtils.getPayment(treatment, "GB", 2)
-				 + prob1MM2GBRefReportsGivenMM * AnalysisUtils.getPayment(treatment, "GB", 1) 
-				 + prob0MM3GBRefReportsGivenMM * AnalysisUtils.getPayment(treatment, "GB", 0))
+				* (prob3MM0GBRefReportsGivenMM * Utils.getPayment(treatment, "GB", 3)
+				 + prob2MM1GBRefReportsGivenMM * Utils.getPayment(treatment, "GB", 2)
+				 + prob1MM2GBRefReportsGivenMM * Utils.getPayment(treatment, "GB", 1) 
+				 + prob0MM3GBRefReportsGivenMM * Utils.getPayment(treatment, "GB", 0))
 			+ probGB * (1 - strategyMMGivenGB)
-				* (prob3MM0GBRefReportsGivenGB * AnalysisUtils.getPayment(treatment, "GB", 3)
-				 + prob2MM1GBRefReportsGivenGB * AnalysisUtils.getPayment(treatment, "GB", 2)
-				 + prob1MM2GBRefReportsGivenGB * AnalysisUtils.getPayment(treatment, "GB", 1) 
-				 + prob0MM3GBRefReportsGivenGB * AnalysisUtils.getPayment(treatment, "GB", 0))
+				* (prob3MM0GBRefReportsGivenGB * Utils.getPayment(treatment, "GB", 3)
+				 + prob2MM1GBRefReportsGivenGB * Utils.getPayment(treatment, "GB", 2)
+				 + prob1MM2GBRefReportsGivenGB * Utils.getPayment(treatment, "GB", 1) 
+				 + prob0MM3GBRefReportsGivenGB * Utils.getPayment(treatment, "GB", 0))
 			;
 	}
 
@@ -576,9 +576,9 @@ public class AnalysisUtils {
 			double strategyMMGivenMM, double strategyMMGivenGB,
 			double[] priorProbs, List<Map<String, Double>> prior) {
 		
-		double probMMGivenMM = AnalysisUtils.getProbSignalGivenSignal("MM", "MM", priorProbs, prior);
+		double probMMGivenMM = Utils.getProbSignalGivenSignal("MM", "MM", priorProbs, prior);
 		double probGBGivenMM = 1 - probMMGivenMM;
-		double probMMGivenGB = AnalysisUtils.getProbSignalGivenSignal("MM", "GB", priorProbs, prior);
+		double probMMGivenGB = Utils.getProbSignalGivenSignal("MM", "GB", priorProbs, prior);
 		double probGBGivenGB = 1 - probMMGivenGB;
 		
 		double strategyGBGivenMM = 1 - strategyMMGivenMM;
@@ -605,9 +605,9 @@ public class AnalysisUtils {
 			double strategyMMGivenMM, double strategyMMGivenGB, 
 			double[] priorProbs, List<Map<String, Double>> prior) {
 		
-		double probMMGivenMM = AnalysisUtils.getProbSignalGivenSignal("MM", "MM", priorProbs, prior);
+		double probMMGivenMM = Utils.getProbSignalGivenSignal("MM", "MM", priorProbs, prior);
 		double probGBGivenMM = 1 - probMMGivenMM;
-		double probMMGivenGB = AnalysisUtils.getProbSignalGivenSignal("MM", "GB", priorProbs, prior);
+		double probMMGivenGB = Utils.getProbSignalGivenSignal("MM", "GB", priorProbs, prior);
 		double probGBGivenGB = 1 - probMMGivenGB;
 		
 		double strategyGBGivenMM = 1 - strategyMMGivenMM;
@@ -627,16 +627,16 @@ public class AnalysisUtils {
 
 	public static double getPayment(String treatment, String myReport, Object refInfo) {
 		if (treatment.equals("prior2-basic"))
-			return AnalysisUtils.getPaymentTreatmentBasic(myReport, (String) refInfo);
+			return Utils.getPaymentTreatmentBasic(myReport, (String) refInfo);
 		else if (treatment.equals("prior2-outputagreement"))
-			return AnalysisUtils.getPaymentTreatmentOutputAgreement(myReport,
+			return Utils.getPaymentTreatmentOutputAgreement(myReport,
 					(String) refInfo);
 		else if (treatment.equals("prior2-uniquetruthful") || treatment.equals("prior2-symmlowpay")) {
 			int numMMInRefReports = (int) refInfo;
 			if (treatment.equals("prior2-uniquetruthful"))
-				return AnalysisUtils.getPaymentTreatmentUniqueTruthful(myReport, numMMInRefReports);
+				return Utils.getPaymentTreatmentUniqueTruthful(myReport, numMMInRefReports);
 			else if (treatment.equals("prior2-symmlowpay"))
-				return AnalysisUtils.getPaymentTreatmentSymmLowPay(myReport, numMMInRefReports);
+				return Utils.getPaymentTreatmentSymmLowPay(myReport, numMMInRefReports);
 		}
 
 		return -1;

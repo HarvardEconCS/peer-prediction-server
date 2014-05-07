@@ -118,16 +118,16 @@ public class GameTest {
 		double[] paymentArray = new double[]{0.3, 0.4, 0.5, 0.6};
 
 		double pay = game.getPaymentT1N2("MM", "MM", paymentArray);
-		assertEquals(paymentArray[0], pay, AnalysisUtils.eps);
+		assertEquals(paymentArray[0], pay, Utils.eps);
 		
 		pay = game.getPaymentT1N2("MM", "GB", paymentArray);
-		assertEquals(paymentArray[1], pay, AnalysisUtils.eps);
+		assertEquals(paymentArray[1], pay, Utils.eps);
 		
 		pay = game.getPaymentT1N2("GB", "MM", paymentArray);
-		assertEquals(paymentArray[2], pay, AnalysisUtils.eps);
+		assertEquals(paymentArray[2], pay, Utils.eps);
 		
 		pay = game.getPaymentT1N2("GB", "GB", paymentArray);
-		assertEquals(paymentArray[3], pay, AnalysisUtils.eps);
+		assertEquals(paymentArray[3], pay, Utils.eps);
 
 	}
 	

@@ -388,14 +388,14 @@ public class LogReader {
 		if (treatment.equals("prior2-basic")) {
 
 			if (numOtherMMReports == 2) {
-				return AnalysisUtils.getPaymentTreatmentBasic(report, "MM");
+				return Utils.getPaymentTreatmentBasic(report, "MM");
 			} else if (numOtherMMReports == 0) {
-				return AnalysisUtils.getPaymentTreatmentBasic(report, "GB");
+				return Utils.getPaymentTreatmentBasic(report, "GB");
 			} else if (numOtherMMReports == 1) {
 				return 0.5
-						* AnalysisUtils.getPaymentTreatmentBasic(report, "MM")
+						* Utils.getPaymentTreatmentBasic(report, "MM")
 						+ 0.5
-						* AnalysisUtils.getPaymentTreatmentBasic(report, "GB");
+						* Utils.getPaymentTreatmentBasic(report, "GB");
 			}
 
 		}
@@ -764,7 +764,7 @@ public class LogReader {
 				String myReport = reports[j];
 				refPlayerIndices[j] = chooseRefPlayer(j);
 				String refReport = reports[refPlayerIndices[j]];
-				payoffs[j] = AnalysisUtils.getPaymentTreatmentBasic(myReport,
+				payoffs[j] = Utils.getPaymentTreatmentBasic(myReport,
 						refReport);
 
 			}
@@ -776,7 +776,7 @@ public class LogReader {
 				String myReport = reports[j];
 				refPlayerIndices[j] = chooseRefPlayer(j);
 				String refReport = reports[refPlayerIndices[j]];
-				payoffs[j] = AnalysisUtils.getPaymentTreatmentOutputAgreement(
+				payoffs[j] = Utils.getPaymentTreatmentOutputAgreement(
 						myReport, refReport);
 
 			}
@@ -865,7 +865,7 @@ public class LogReader {
 							|| treatment.equals("prior2-symmlowpay")) {
 						List<String> refReports = game.getRefReports(hitId, i);
 						int numMM = game.getNumMMInRefReports(refReports);
-						myPayoffs[i] = AnalysisUtils
+						myPayoffs[i] = Utils
 								.getPaymentTreatmentUniqueTruthful(myReport,
 										numMM);
 					} else {
@@ -1319,7 +1319,7 @@ public class LogReader {
 
 		System.out.println("\n" + "Strategy payoff analysis");
 
-		double truthfulPayoffT3 = AnalysisUtils.getTruthfulPayoff(treatment,
+		double truthfulPayoffT3 = Utils.getTruthfulPayoff(treatment,
 				expSet.priorProbs, expSet.worlds);
 		System.out.printf("Payoff at truthful equilibrium: %.6f\n",
 				truthfulPayoffT3);
@@ -1338,7 +1338,7 @@ public class LogReader {
 			double probMMGivenGB = opdfMixed
 					.probability(new SigActObservation<CandySignal, CandyReport>(
 							CandySignal.GB, CandyReport.MM));
-			double mixedPayoffT3 = AnalysisUtils.getMixedPayoff(treatment,
+			double mixedPayoffT3 = Utils.getMixedPayoff(treatment,
 					expSet.priorProbs, expSet.worlds, probMMGivenMM,
 					probMMGivenGB);
 			System.out.printf(
@@ -1374,7 +1374,7 @@ public class LogReader {
 			double probMMGivenGB = opdfMixed
 					.probability(new SigActObservation<CandySignal, CandyReport>(
 							CandySignal.GB, CandyReport.MM));
-			double mixedPayoffT3 = AnalysisUtils.getMixedPayoff(treatment,
+			double mixedPayoffT3 = Utils.getMixedPayoff(treatment,
 					expSet.priorProbs, expSet.worlds, probMMGivenMM,
 					probMMGivenGB);
 			System.out.printf(
@@ -1411,20 +1411,20 @@ public class LogReader {
 		int numMMInOtherReports = game.getNumMMInRefReports(otherReports);
 
 		return strategyForSignal.get("MM")
-				* AnalysisUtils.getPaymentTreatmentUniqueTruthful("MM",
+				* Utils.getPaymentTreatmentUniqueTruthful("MM",
 						numMMInOtherReports)
 				+ strategyForSignal.get("GB")
-				* AnalysisUtils.getPaymentTreatmentUniqueTruthful("GB",
+				* Utils.getPaymentTreatmentUniqueTruthful("GB",
 						numMMInOtherReports);
 	}
 
 	private static double getPayoffT3(Map<String, Double> strategyForSignal,
 			int numMMInOtherReports) {
 		return strategyForSignal.get("MM")
-				* AnalysisUtils.getPaymentTreatmentUniqueTruthful("MM",
+				* Utils.getPaymentTreatmentUniqueTruthful("MM",
 						numMMInOtherReports)
 				+ strategyForSignal.get("GB")
-				* AnalysisUtils.getPaymentTreatmentUniqueTruthful("GB",
+				* Utils.getPaymentTreatmentUniqueTruthful("GB",
 						numMMInOtherReports);
 	}
 
@@ -2384,18 +2384,18 @@ public class LogReader {
 	private static Hmm<SigActObservation<CandySignal, CandyReport>> getRandomHmm(
 			int numStates) {
 
-		double[] pi = AnalysisUtils.getRandomVec(numStates);
+		double[] pi = Utils.getRandomVec(numStates);
 
 		double[][] a = new double[numStates][numStates];
 		for (int i = 0; i < a.length; i++) {
-			a[i] = AnalysisUtils.getRandomVec(numStates);
+			a[i] = Utils.getRandomVec(numStates);
 		}
 
 		List<OpdfStrategy<CandySignal, CandyReport>> opdfs = new ArrayList<OpdfStrategy<CandySignal, CandyReport>>();
 
 		for (int i = 0; i < numStates; i++) {
-			double[][] probs = new double[][] { AnalysisUtils.getRandomVec(2),
-					AnalysisUtils.getRandomVec(2) };
+			double[][] probs = new double[][] { Utils.getRandomVec(2),
+					Utils.getRandomVec(2) };
 			opdfs.add(getOpdf(probs));
 		}
 

@@ -21,18 +21,18 @@ public class Round {
 	}
 
 	public void saveChosenWorld(String chosenWorldString) {
-		chosenWorld = AnalysisUtils.gson.fromJson(chosenWorldString,
+		chosenWorld = Utils.gson.fromJson(chosenWorldString,
 				new TypeToken<Map<String, Double>>() {
 				}.getType());
 	}
 
 	public void saveResult(String resultString) throws Exception {
-		Map<String, Object> parsedMap = AnalysisUtils.gson.fromJson(resultString,
+		Map<String, Object> parsedMap = Utils.gson.fromJson(resultString,
 				new TypeToken<Map<String, Object>>() {
 				}.getType());
 		for (String hitId : parsedMap.keySet()) {
 			String valueString = parsedMap.get(hitId).toString();
-			Map<String, Object> parsedValue = AnalysisUtils.gson.fromJson(valueString,
+			Map<String, Object> parsedValue = Utils.gson.fromJson(valueString,
 					new TypeToken<Map<String, Object>>() {
 					}.getType());
 			result.put(hitId, parsedValue);

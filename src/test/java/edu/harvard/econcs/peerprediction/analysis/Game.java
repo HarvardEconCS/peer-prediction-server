@@ -406,7 +406,7 @@ public class Game {
 			otherReports.addAll(reports);
 		}
 		
-		return AnalysisUtils.getOppPopStr(otherReports);
+		return Utils.getOppPopStr(otherReports);
 	}
 
 	public Map<String, Double> getOppPopStrPrevRound(int i, String excludeHitId) {
@@ -414,7 +414,7 @@ public class Game {
 		Round prevRound = rounds.get(i - 1);
 		List<String> otherReports = this.getOtherReportList(prevRound, excludeHitId);
 		
-		return AnalysisUtils.getOppPopStr(otherReports);
+		return Utils.getOppPopStr(otherReports);
 	}
 
 	public List<String> getOtherReportList(Round round, String excludeHitId) {
@@ -487,24 +487,24 @@ public class Game {
 	public double getPayoffT3(String myReport,
 			Map<String, Double> oppPopStrategy) {
 		return 
-				AnalysisUtils.getPaymentTreatmentUniqueTruthful(myReport, 0) 
+				Utils.getPaymentTreatmentUniqueTruthful(myReport, 0) 
 					* oppPopStrategy.get("GB") 
 					* oppPopStrategy.get("GB") 
 					* oppPopStrategy.get("GB")
 				
-				+ AnalysisUtils.getPaymentTreatmentUniqueTruthful(myReport, 1) * 
+				+ Utils.getPaymentTreatmentUniqueTruthful(myReport, 1) * 
 					(3 * oppPopStrategy.get("MM")  
 					   * oppPopStrategy.get("GB") 
 					   * oppPopStrategy.get("GB")
 					)
 						
-				+ AnalysisUtils.getPaymentTreatmentUniqueTruthful(myReport, 2) * 
+				+ Utils.getPaymentTreatmentUniqueTruthful(myReport, 2) * 
 					(3 * oppPopStrategy.get("MM")  
 					   * oppPopStrategy.get("MM") 
 					   * oppPopStrategy.get("GB")
 						)
 						
-				+ AnalysisUtils.getPaymentTreatmentUniqueTruthful(myReport, 3) 
+				+ Utils.getPaymentTreatmentUniqueTruthful(myReport, 3) 
 					* oppPopStrategy.get("MM") 
 					* oppPopStrategy.get("MM") 
 					* oppPopStrategy.get("MM")
@@ -534,7 +534,7 @@ public class Game {
 		double payoffMM = this.getPayoffT3("MM", oppPopStrategy);
 		double payoffGB = this.getPayoffT3("GB", oppPopStrategy);
 		
-		if ((payoffMM - payoffGB) > AnalysisUtils.eps) 
+		if ((payoffMM - payoffGB) > Utils.eps) 
 			myReport = "MM";
 		else
 			myReport = "GB";
@@ -547,7 +547,7 @@ public class Game {
 		double payoffMM = this.getPayoffT1N2("MM", oppPopStrategy, paymentArray);
 		double payoffGB = this.getPayoffT1N2("GB", oppPopStrategy, paymentArray);
 		
-		if ((payoffMM - payoffGB) > AnalysisUtils.eps) 
+		if ((payoffMM - payoffGB) > Utils.eps) 
 			myReport = "MM";
 		else
 			myReport = "GB";

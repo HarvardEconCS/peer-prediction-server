@@ -80,9 +80,9 @@ public class LogReaderTest {
 	public void testNormalizeDist() {
 		double[] dist = new double[]{1,2,3};
 		LogReader.normalizeDist(dist);
-		assertEquals(1.0/6, dist[0], AnalysisUtils.eps);
-		assertEquals(2.0/6, dist[1], AnalysisUtils.eps);
-		assertEquals(3.0/6, dist[2], AnalysisUtils.eps);
+		assertEquals(1.0/6, dist[0], Utils.eps);
+		assertEquals(2.0/6, dist[1], Utils.eps);
+		assertEquals(3.0/6, dist[2], Utils.eps);
 		
 	}
 
@@ -93,22 +93,22 @@ public class LogReaderTest {
 		LogReader.treatment = "prior2-basic";
 		
 		double pay = LogReader.getExpectedPayoffT12("MM", 2);
-		assertEquals(1.5, pay, AnalysisUtils.eps);
+		assertEquals(1.5, pay, Utils.eps);
 		
 		pay = LogReader.getExpectedPayoffT12("MM", 0);
-		assertEquals(0.1, pay, AnalysisUtils.eps);
+		assertEquals(0.1, pay, Utils.eps);
 		
 		pay = LogReader.getExpectedPayoffT12("MM", 1);
-		assertEquals(0.8, pay, AnalysisUtils.eps);
+		assertEquals(0.8, pay, Utils.eps);
 		
 		pay = LogReader.getExpectedPayoffT12("GB", 2);
-		assertEquals(0.3, pay, AnalysisUtils.eps);
+		assertEquals(0.3, pay, Utils.eps);
 		
 		pay = LogReader.getExpectedPayoffT12("GB", 0);
-		assertEquals(1.2, pay, AnalysisUtils.eps);
+		assertEquals(1.2, pay, Utils.eps);
 		
 		pay = LogReader.getExpectedPayoffT12("GB", 1);
-		assertEquals(0.75, pay, AnalysisUtils.eps);
+		assertEquals(0.75, pay, Utils.eps);
 	}
 	
 	@Test
@@ -138,10 +138,10 @@ public class LogReaderTest {
 	@Test
 	public void testGetMMProb() {
 		double mmProb = LogReader.getMMProb(10, 1, 1);
-		assertEquals(0.5, mmProb, AnalysisUtils.eps);
+		assertEquals(0.5, mmProb, Utils.eps);
 		
 		mmProb = LogReader.getMMProb(4, 20, 20);
-		assertEquals(0.5, mmProb, AnalysisUtils.eps);
+		assertEquals(0.5, mmProb, Utils.eps);
 	}
 	
 }

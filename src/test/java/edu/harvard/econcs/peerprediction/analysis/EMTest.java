@@ -80,10 +80,10 @@ public class EMTest {
 			count++;
 		}
 		
-		AnalysisUtils.em_K = strategies.length;
-		AnalysisUtils.runEMAlgorithm(signalReportPairs);
-		System.out.printf("strategies: %s\n", Arrays.toString(AnalysisUtils.em_strategies));
-		System.out.printf("probs: %s\n", Arrays.toString(AnalysisUtils.em_pi));
+		Utils.em_K = strategies.length;
+		Utils.runEMAlgorithm(signalReportPairs);
+		System.out.printf("strategies: %s\n", Arrays.toString(Utils.em_strategies));
+		System.out.printf("probs: %s\n", Arrays.toString(Utils.em_pi));
 		
 	}
 
