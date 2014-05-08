@@ -904,27 +904,25 @@ public class Utils {
 		return mmProb;
 	}
 
-	public static int getNumOfGivenReport(String givenReport,
-			String[] playerHitIds, String excludePlayerId,
-			Map<String, Map<String, Object>> roundResult) {
-		
+	public static int getNumOfGivenReport(
+			Map<String, Map<String, Object>> roundResult, String givenReport,
+			String excludePlayerId) {
+
 		int num = 0;
-		for (String playerId : playerHitIds) {
-			if (excludePlayerId != playerId) {
+		for (String playerId : roundResult.keySet()) {
+			if (!excludePlayerId.equals(playerId)) {
 				String report = (String) roundResult.get(playerId)
 						.get("report");
-				if (report.equals(givenReport))
+				if (report.equals(givenReport)) {
 					num++;
+				}
 			}
 		}
 		return num;
 	}
 
 	public static int chooseRefPlayer(int currPlayerIndex) {
-		int shift = 0;
-		if (Utils.rand.nextBoolean())
-			shift = 1;
-
+		int shift = Utils.rand.nextInt(2);
 		if (shift >= currPlayerIndex)
 			return shift + 1;
 		else
@@ -933,11 +931,10 @@ public class Utils {
 	}
 
 	public static int selectByBinaryDist(double firstProb) {
-		int index = 0;
 		double next = Utils.rand.nextDouble();
 		if (next >= firstProb)
-			index = 1;
-		return index;
+			return 1;
+		return 0;
 	}
 
 	public static Hmm<SigActObservation<CandySignal, CandyReport>> getRandomHmm(
