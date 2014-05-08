@@ -2,9 +2,13 @@ package edu.harvard.econcs.peerprediction.analysis;
 
 import static org.junit.Assert.*;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Random;
+
+import net.andrewmao.misc.Pair;
 
 import org.junit.Test;
 
@@ -46,7 +50,7 @@ public class LogReaderTest {
 			if (chosen == 1)
 				countOne++;
 		}
-		assertEquals(count / 2, countOne, 50);
+		assertEquals(count / 2, countOne, 120);
 		
 		currPlayer = 1;
 		chosen = Utils.chooseRefPlayer(currPlayer);
@@ -58,7 +62,7 @@ public class LogReaderTest {
 			if (chosen == 0)
 				countZero++;
 		}
-		assertEquals(count / 2, countZero, 50);
+		assertEquals(count / 2, countZero, 100);
 
 		currPlayer = 2;
 		chosen = Utils.chooseRefPlayer(currPlayer);
@@ -70,13 +74,8 @@ public class LogReaderTest {
 			if (chosen == 0)
 				countOne++;
 		}
-		assertEquals(count / 2, countOne, 50);
-
-
+		assertEquals(count / 2, countOne, 120);
 	}
-
-
-
 	
 	@Test
 	public void testGetExpectedPayoff() {
@@ -103,9 +102,15 @@ public class LogReaderTest {
 	}
 	
 	@Test
-	public void testGetNumMMReports() {
-		String[] playerIds = new String[]{"0", "1", "2"};
-		Map<String, Map<String, Object>> result = new HashMap<String, Map<String, Object>>();
+	public void testGetNumOfGivenReport() {
+		int numPlayers = 3;
+		String[] playerIds = new String[numPlayers];
+		for (int i = 0; i < numPlayers; i++) {
+			playerIds[i] = String.format("%d", i);
+		}
+		
+		Map<String, Map<String, Object>> result = 
+				new HashMap<String, Map<String, Object>>();
 		
 		int expectedNumMM = 0;
 		int excludeIndex = rand.nextInt(playerIds.length);
@@ -122,7 +127,8 @@ public class LogReaderTest {
 			}
 			result.put(id, r);
 		}
-		int numMM = Utils.getNumOfGivenReport("MM", playerIds, playerIds[excludeIndex], result);
+		int numMM = Utils.getNumOfGivenReport(
+				"MM", playerIds, playerIds[excludeIndex], result);
 		assertEquals(expectedNumMM, numMM);
 	} 
 	
@@ -133,6 +139,98 @@ public class LogReaderTest {
 		
 		mmProb = Utils.calcMMProb(4, 20, 20);
 		assertEquals(0.5, mmProb, Utils.eps);
+	}
+	
+	@Test
+	public void testEstimateRL() {
+
+		LogReader.parseLog();
+		
+		// test 1
+		System.out.println();
+		System.out.println("Test 1");
+		boolean considerSignal = true;
+		double discount = 0.5;
+		double lambda = 5;
+		System.out.printf(
+				"Expected parameters for RL; l=%.2f, d=%.2f, s=%b\n",
+				lambda, discount, considerSignal);
+		
+		List<Game> games = new ArrayList<Game>();
+		for (int i = 0; i < 100; i++) {
+			List<Round> rounds = LogReader.simulateRLOneGame(considerSignal, discount, lambda);
+			Game game = new Game();
+			game.rounds = rounds;
+			game.playerHitIds = new String[LogReader.expSet.numPlayers];
+			for (int j = 0; j < LogReader.expSet.numPlayers; j++) {
+				game.playerHitIds[j] = String.format("%d", j);
+			}		
+			games.add(game);
+		}
+		
+		Map<String, Object> bestParam = LogReader.estimateRL(games);
+		assertEquals(considerSignal, (boolean) bestParam.get("considerSignal"));
+		assertEquals(discount, (double) bestParam.get("discount"), 0.05);
+		assertEquals(lambda, (double) bestParam.get("lambda"), 1);
+		
+
+		// test 2
+		System.out.println();
+		System.out.println("Test 2");
+		considerSignal = false;
+		discount = 0.8;
+		lambda = 10;
+		System.out.printf(
+				"Expected parameters for RL; l=%.2f, d=%.2f, s=%b\n",
+				lambda, discount, considerSignal);
+		
+		games = new ArrayList<Game>();
+		for (int i = 0; i < 100; i++) {
+			List<Round> rounds = LogReader.simulateRLOneGame(considerSignal, discount, lambda);
+			Game game = new Game();
+			game.rounds = rounds;
+			game.playerHitIds = new String[LogReader.expSet.numPlayers];
+			for (int j = 0; j < LogReader.expSet.numPlayers; j++) {
+				game.playerHitIds[j] = String.format("%d", j);
+			}		
+			games.add(game);
+		}
+		
+		bestParam = new HashMap<String, Object>();
+		bestParam = LogReader.estimateRL(games);
+		assertEquals(considerSignal, (boolean) bestParam.get("considerSignal"));
+		assertEquals(discount, (double) bestParam.get("discount"), 0.05);
+		assertEquals(lambda, (double) bestParam.get("lambda"), 1);
+
+	}
+	
+	@Test
+	public void testDiscountAll() {
+		int numPlayers = 3;
+		String[] playerHitIds = new String[numPlayers];
+		for (int i = 0; i < numPlayers; i++) {
+			playerHitIds[i] = String.format("%d", i);
+		}
+		
+		Map<String, Map<Pair<String, String>, Double>> map = 
+				new HashMap<String, Map<Pair<String, String>, Double>>();
+		for (String player : playerHitIds) {
+			Map<Pair<String, String>, Double> payoffs = new HashMap<Pair<String, String>, Double>();
+			payoffs.put(new Pair<String, String>("MM", "MM"), 2.0);
+			payoffs.put(new Pair<String, String>("MM", "GB"), 4.0);
+			payoffs.put(new Pair<String, String>("GB", "MM"), 1.0);
+			payoffs.put(new Pair<String, String>("GB", "GB"), 5.0);
+			map.put(player, payoffs);
+		}
+		
+		LogReader.discountAll(0.3, map);
+		
+		for (String player: playerHitIds) {
+			assertEquals(0.3 * 2.0, map.get(player).get(new Pair<String, String>("MM", "MM")), Utils.eps);
+			assertEquals(0.3 * 4.0, map.get(player).get(new Pair<String, String>("MM", "GB")), Utils.eps);
+			assertEquals(0.3 * 1.0, map.get(player).get(new Pair<String, String>("GB", "MM")), Utils.eps);
+			assertEquals(0.3 * 5.0, map.get(player).get(new Pair<String, String>("GB", "GB")), Utils.eps);
+		}
 	}
 	
 }

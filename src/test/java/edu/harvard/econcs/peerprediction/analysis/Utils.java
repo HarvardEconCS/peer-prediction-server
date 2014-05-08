@@ -907,16 +907,17 @@ public class Utils {
 	public static int getNumOfGivenReport(String givenReport,
 			String[] playerHitIds, String excludePlayerId,
 			Map<String, Map<String, Object>> roundResult) {
-		int numMM = 0;
+		
+		int num = 0;
 		for (String playerId : playerHitIds) {
 			if (excludePlayerId != playerId) {
 				String report = (String) roundResult.get(playerId)
 						.get("report");
 				if (report.equals(givenReport))
-					numMM++;
+					num++;
 			}
 		}
-		return numMM;
+		return num;
 	}
 
 	public static int chooseRefPlayer(int currPlayerIndex) {
