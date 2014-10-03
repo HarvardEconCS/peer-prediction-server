@@ -14,6 +14,7 @@ public class Round {
 	
 	int duration; // in milliseconds
 	String endTime;
+	int radio;
 	
 	public Round() {
 		chosenWorld = new HashMap<String, Double>();
@@ -38,6 +39,10 @@ public class Round {
 			result.put(hitId, parsedValue);
 		}
 
+	}
+
+	public void saveRadio(String r) {
+		this.radio = Integer.parseInt(r);
 	}
 
 	public String getReport(String hitId) {

@@ -20,6 +20,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 import java.util.Scanner;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -29,24 +30,35 @@ import net.andrewmao.models.games.BWToleranceLearner;
 import net.andrewmao.models.games.OpdfStrategy;
 import net.andrewmao.models.games.SigActObservation;
 
+import org.apache.commons.math3.analysis.MultivariateFunction;
 import org.apache.commons.math3.linear.Array2DRowRealMatrix;
 import org.apache.commons.math3.linear.RealMatrix;
-
-import com.google.common.collect.ImmutableMap;
+import org.apache.commons.math3.optim.InitialGuess;
+import org.apache.commons.math3.optim.MaxEval;
+import org.apache.commons.math3.optim.PointValuePair;
+import org.apache.commons.math3.optim.SimpleBounds;
+import org.apache.commons.math3.optim.nonlinear.scalar.GoalType;
+import org.apache.commons.math3.optim.nonlinear.scalar.ObjectiveFunction;
+import org.apache.commons.math3.optim.nonlinear.scalar.noderiv.BOBYQAOptimizer;
+import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
 
 import be.ac.ulg.montefiore.run.jahmm.Hmm;
 import be.ac.ulg.montefiore.run.jahmm.Opdf;
 import be.ac.ulg.montefiore.run.jahmm.ViterbiCalculator;
+
+import com.cureos.numerics.Calcfc;
+import com.cureos.numerics.Cobyla;
+import com.google.common.collect.ImmutableMap;
 
 public class LogReader {
 
 	static String dbUrl = "jdbc:mysql://localhost/peerprediction";
 	static String dbClass = "com.mysql.jdbc.Driver";
 	static String setId = "vary-payment";
-	static String treatment = "prior2-basic";
-//	static String treatment = "prior2-outputagreement";
-//	static String treatment = "prior2-uniquetruthful";
-//	static String treatment = "prior2-symmlowpay";
+	 static String treatment = "prior2-basic";
+//	 static String treatment = "prior2-outputagreement";
+//	 static String treatment = "prior2-uniquetruthful";
+//	 static String treatment = "prior2-symmlowpay";
 	// static String treatment = "prior2-constant";
 
 	static final String rootDir = "/Users/alicexigao/Dropbox/peer-prediction/data/"
@@ -57,7 +69,8 @@ public class LogReader {
 	// For HMM estimation
 	static int numStrategies = -1;
 	static String[] strategyNames = null;
-	static int numRestarts = 100;
+	static int numRestarts = 1;
+	static int numHmmStates = 4;
 	static double tol = 0.02;
 	static Hmm<SigActObservation<CandySignal, CandyReport>> learntHmm = null;
 	static int mmState = -1;
@@ -67,6 +80,18 @@ public class LogReader {
 	static int mixed2State = -1;
 
 	static String[] signalList = new String[] { "MM", "GB" };
+
+	static double[] meanloglk = new double[4];
+	static double[] uppers = new double[4];
+	static double[] lowers = new double[4];
+
+	static Map<String, double[]> avgLogLks;
+	static double randomLogLk;
+
+	static int numRoundsCV = 10;
+	static int numFolds = 10;
+
+	static Random rand = new Random();
 
 	public static void main(String[] args) throws Exception {
 
@@ -78,10 +103,13 @@ public class LogReader {
 		writePlayerComments();
 		printInfo();
 
+		// lazyStrategy(); // check whether player always chooses left or right
+		// choice
+
 		// Statistics of raw data
-		writeRawDataToFile();
-		graphRawData();
-		calcAvgBonus();
+		// writeRawDataToFile();
+		// graphRawData();
+		// calcAvgBonus();
 
 		// HMM analysis
 		// learnHMM();
@@ -98,338 +126,410 @@ public class LogReader {
 		// eqConvergenceSimpleMethod();
 
 		// Learning analysis
-		getPredictiveLogLkRL();
-//		getPredictiveLogLkHMM();
-//		getPredictiveLogLkSFP();
-
-		// estimateSFP();
-		// simulateSFPOneGame(1, 5, false);
-
-	}
-
-	public static void getPredictiveLogLkHMM() throws IOException {
-		System.out.println("Get predictive likelihood for HMM model");
-
-		BufferedWriter writer = new BufferedWriter(new FileWriter(rootDir
-				+ "predictiveLogLkHMM.csv"));
-		writer.write("test set start, trained loglk, test loglk\n");
-
-		int numFolds = 10;
-		String msg;
-
-		Collections.shuffle(expSet.games);
-		int groupSize = expSet.games.size() / numFolds;
-
-		double[] loglks = new double[numFolds];
-		for (int i = 0; i < numFolds; i++) {
-
-			List<Game> testSet = new ArrayList<Game>();
-			int testStart = i * groupSize;
-			for (int j = testStart; j < testStart + groupSize; j++) {
-				testSet.add(expSet.games.get(j));
-			}
-
-			List<Game> trainingSet = new ArrayList<Game>();
-			for (int j = 0; j < numFolds * groupSize; j++) {
-				if (j >= testStart && j < testStart + groupSize)
-					continue;
-				trainingSet.add(expSet.games.get(j));
-			}
-			msg = String
-					.format("Test set, %d -> %d, training set: %d -> %d excluding %d -> %d\n",
-							testStart, testStart + groupSize - 1, 0, numFolds
-									* groupSize - 1, testStart, testStart
-									+ groupSize - 1);
-			System.out.print(msg);
-			writer.write(String.format("%d,", testStart));
-
-			Hmm<SigActObservation<CandySignal, CandyReport>> bestHmm = LogReader
-					.learnHMM(trainingSet, 4, numRestarts,
-							String.format("%d", i));
-			List<List<SigActObservation<CandySignal, CandyReport>>> seq = LogReader
-					.getActObsSequence(trainingSet);
-			double trainingLogLk = BWToleranceLearner
-					.computeLogLk(bestHmm, seq);
-			msg = String
-					.format("Loglk on training set = %.2f\n", trainingLogLk);
-			System.out.print(msg);
-			writer.write(String.format("%.2f,", trainingLogLk));
-
-			seq = LogReader.getActObsSequence(testSet);
-			loglks[i] = BWToleranceLearner.computeLogLk(bestHmm, seq);
-			msg = String.format("Loglk on test set = %.2f\n", loglks[i]);
-			System.out.print(msg);
-			writer.write(String.format("%.2f\n", loglks[i]));
-		}
-
-		double sum = 0;
-		for (int i = 0; i < numFolds; i++) {
-			sum += loglks[i];
-		}
-		double avgLoglk = sum / numFolds;
-		msg = String.format(
-				"predictive log likelihood for reinforcement learning: %.2f\n",
-				avgLoglk);
-		System.out.print(msg);
-		writer.write(String.format("%.2f\n", avgLoglk));
-
-		writer.flush();
-		writer.close();
-	}
-
-	public static void getPredictiveLogLkRL() throws IOException {
-		System.out
-				.println("Get predictive likelihood for reinforcement learning");
-
-		BufferedWriter writer = new BufferedWriter(new FileWriter(rootDir
-				+ "predictiveLogLkRL.csv"));
-		writer.write("test set start, consider signal, discount, lambda, trained loglk, test loglk\n");
-
-		String msg;
-		int numFolds = 10;
-		int groupSize = expSet.games.size() / numFolds;
-		double[] loglks = new double[numFolds];
-
-		Collections.shuffle(expSet.games);
-		for (int i = 0; i < numFolds; i++) {
-
-			List<Game> testSet = new ArrayList<Game>();
-			int testStart = i * groupSize;
-			for (int j = testStart; j < testStart + groupSize; j++) {
-				testSet.add(expSet.games.get(j));
-			}
-
-			List<Game> trainingSet = new ArrayList<Game>();
-			for (int j = 0; j < numFolds * groupSize; j++) {
-				if (j >= testStart && j < testStart + groupSize)
-					continue;
-				trainingSet.add(expSet.games.get(j));
-			}
-			msg = String
-					.format("Test set, %d -> %d, training set: %d -> %d excluding %d -> %d\n",
-							testStart, testStart + groupSize - 1, 0, numFolds
-									* groupSize - 1, testStart, testStart
-									+ groupSize - 1);
-			System.out.print(msg);
-			writer.write(String.format("%d,", testStart));
-
-			Map<String, Object> bestParam = estimateRL(trainingSet);
-			boolean considerSignal = (boolean) bestParam.get("considerSignal");
-			double discount = (double) bestParam.get("discount");
-			double lambda = (double) bestParam.get("lambda");
-			double loglk = (double) bestParam.get("loglk");
-			msg = String.format(
-					"Best params: s=%b, d=%.2f, l=%.2f, loglk=%.2f\n",
-					considerSignal, discount, lambda, loglk);
-			System.out.print(msg);
-			writer.write(String.format("%b, %.2f, %.2f, %.2f,", considerSignal,
-					discount, lambda, loglk));
-
-			loglks[i] = computeLogLkRL(considerSignal, discount, lambda,
-					testSet);
-			msg = String.format("Loglk on test set = %.2f\n", loglks[i]);
-			System.out.print(msg);
-			writer.write(String.format("%.2f\n", loglks[i]));
-
-		}
-
-		double sum = 0;
-		for (int i = 0; i < numFolds; i++) {
-			sum += loglks[i];
-		}
-		double avgLoglk = sum / numFolds;
-		msg = String.format(
-				"predictive log likelihood for reinforcement learning: %.2f\n",
-				avgLoglk);
-		System.out.print(msg);
-		writer.write(String.format("%.2f\n", avgLoglk));
-
-		writer.flush();
-		writer.close();
-	}
-
-	public static void getPredictiveLogLkSFP() throws IOException {
-		System.out
-				.println("Get predictive likelihood for stochastic fictitious play");
-	
-		BufferedWriter writer = new BufferedWriter(new FileWriter(rootDir
-				+ "predictiveLogLkSFP.csv"));
-		writer.write("test set start, consider signal, discount, lambda, trained loglk, test loglk\n");
-	
-		String msg;
-		int numFolds = 10;
-		int groupSize = expSet.games.size() / numFolds;
-		double[] loglks = new double[numFolds];
-	
-		Collections.shuffle(expSet.games);
-		for (int i = 0; i < numFolds; i++) {
-	
-			List<Game> testSet = new ArrayList<Game>();
-			int testStart = i * groupSize;
-			for (int j = testStart; j < testStart + groupSize; j++) {
-				testSet.add(expSet.games.get(j));
-			}
-	
-			List<Game> trainingSet = new ArrayList<Game>();
-			for (int j = 0; j < numFolds * groupSize; j++) {
-				if (j >= testStart && j < testStart + groupSize)
-					continue;
-				trainingSet.add(expSet.games.get(j));
-			}
-			msg = String
-					.format("Test set, %d -> %d, training set: %d -> %d excluding %d -> %d\n",
-							testStart, testStart + groupSize - 1, 0, numFolds
-									* groupSize - 1, testStart, testStart
-									+ groupSize - 1);
-			System.out.print(msg);
-			writer.write(String.format("%d,", testStart));
-	
-			Map<String, Object> bestParam = estimateSFP(trainingSet);
-			boolean considerSignal = (boolean) bestParam.get("considerSignal");
-			double discount = (double) bestParam.get("discount");
-			double lambda = (double) bestParam.get("lambda");
-			double loglk = (double) bestParam.get("loglk");
-			msg = String.format(
-					"Best params: s=%b, d=%.2f, l=%.2f, loglk=%.2f\n",
-					considerSignal, discount, lambda, loglk);
-			System.out.print(msg);
-			writer.write(String.format("%b, %.2f, %.2f, %.2f,", considerSignal,
-					discount, lambda, loglk));
-	
-			loglks[i] = computeLogLkSFP(considerSignal, discount, lambda,
-					testSet);
-			msg = String.format("Loglk on test set = %.2f\n", loglks[i]);
-			System.out.print(msg);
-			writer.write(String.format("%.2f\n", loglks[i]));
-	
-		}
-	
-		double sum = 0;
-		for (int i = 0; i < numFolds; i++) {
-			sum += loglks[i];
-		}
-		double avgLoglk = sum / numFolds;
-		msg = String.format(
-				"predictive log likelihood for stochastic fictitious play: %.2f\n",
-				avgLoglk);
-		System.out.print(msg);
-		writer.write(String.format("%.2f\n", avgLoglk));
-	
-		writer.flush();
-		writer.close();
-	}
-
-	public static Map<String, Object> estimateRL(List<Game> games) {
-		System.out.println("Estimating parameters for reinforcement learning");
-
-		boolean[] signalOpt = new boolean[] { true, false };
-
-		double discount; // discount factor
-		double discountStart = 0;
-		double discountEnd = 1;
-		double discountUnit = 0.05;
-
-		double lambda; // sensitivity parameter
-		double lambdaStart = 1;
-		double lambdaEnd = 10;
-		double lambdaUnit = 1;
-
-		boolean bestSignalOpt = true;
-		double bestDiscount = 0;
-		double bestLambda = 0;
-		double bestLogLk = Double.NEGATIVE_INFINITY;
-
-		for (discount = discountStart; discount <= discountEnd; discount += discountUnit) {
-			for (lambda = lambdaStart; lambda <= lambdaEnd; lambda += lambdaUnit) {
-				for (int i = 0; i < signalOpt.length; i++) {
-
-					boolean considerSignal = signalOpt[i];
-
-					double loglk = computeLogLkRL(considerSignal, discount,
-							lambda, games);
-
-					if (loglk > bestLogLk) {
-						bestSignalOpt = considerSignal;
-						bestDiscount = discount;
-						bestLambda = lambda;
-						bestLogLk = loglk;
-						// System.out.printf(
-						// "l: %.2f, d: %.2f, s: %b, loglk=%.2f\n",
-						// lambda, discount, considerSignal, loglk);
-					}
-
-				}
-			}
-		}
-
-		System.out.printf(
-				"Best parameters for RL; l=%.2f, d=%.2f, s=%b, loglk=%.2f\n",
-				bestLambda, bestDiscount, bestSignalOpt, bestLogLk);
-
-		Map<String, Object> bestParameters = new HashMap<String, Object>();
-		bestParameters.put("considerSignal", bestSignalOpt);
-		bestParameters.put("discount", bestDiscount);
-		bestParameters.put("lambda", bestLambda);
-		bestParameters.put("loglk", bestLogLk);
-		return bestParameters;
-	}
-
-	public static Map<String, Object> estimateSFP(List<Game> games) {
-		System.out
-				.println("Estimating parameters for stochastic fictitious play");
-	
-		boolean[] signalOpt = new boolean[] { true, false };
-	
-		double discount; // discount factor
-		double discountStart = 0;
-		double discountEnd = 1;
-		double discountUnit = 0.05;
-	
-		double lambda; // sensitivity parameter
-		double lambdaStart = 1;
-		double lambdaEnd = 10;
-		double lambdaUnit = 1;
-	
-		boolean bestSignalOpt = true;
-		double bestDiscount = 0;
-		double bestLambda = 0;
-		double bestLogLk = Double.NEGATIVE_INFINITY;
-	
-		for (discount = discountStart; discount <= discountEnd; discount += discountUnit) {
-			for (lambda = lambdaStart; lambda <= lambdaEnd; lambda += lambdaUnit) {
-				for (int i = 0; i < signalOpt.length; i++) {
-	
-					boolean considerSignal = signalOpt[i];
-	
-					double loglk = computeLogLkSFP(considerSignal, discount,
-							lambda, games);
-	
-					if (loglk > bestLogLk) {
-						bestDiscount = discount;
-						bestLambda = lambda;
-						bestSignalOpt = considerSignal;
-						bestLogLk = loglk;
-						// System.out.printf("l: %.2f, d: %.2f, s: %b, loglk=%.2f\n",
-						// lambda, discount, considerSignal, loglk);
-					}
-				}
-			}
-		}
-	
-		System.out.printf(
-				"Best parameters for SFP; l=%.2f, d=%.2f, s=%b, loglk=%.2f\n",
-				bestLambda, bestDiscount, bestSignalOpt, bestLogLk);
+		avgLogLks = new HashMap<String, double[]>();
+		randomLogLk = getLogLkRandomModel();
+//		getPredictiveLogLk("HMM");
+//		getPredictiveLogLk("RLS");
+//		getPredictiveLogLk("SFPS");
+//		getPredictiveLogLk("S1");
+		getPredictiveLogLk("S2");
+		// getPredictiveLogLk("EWAS");
 		
-		Map<String, Object> bestParameters = new HashMap<String, Object>();
-		bestParameters.put("considerSignal", bestSignalOpt);
-		bestParameters.put("discount", bestDiscount);
-		bestParameters.put("lambda", bestLambda);
-		bestParameters.put("loglk", bestLogLk);
-		return bestParameters;
+		// getPredictiveLogLk("EWANS");
+		// getPredictiveLogLk("SFPNS"); // not best in all treatments
+		// getPredictiveLogLk("RLNS"); // definitely worse for all treatments
+		graphPredictiveLogLk();
+
 	}
 
-	private static double computeLogLkRL(boolean considerSignal,
-			double discount, double lambda, List<Game> games) {
+	public static void getPredictiveLogLk(String model) throws IOException {
+		System.out.println("Get predictive likelihood for " + model);
+
+		int groupSize = expSet.games.size() / numFolds;
+		double[] loglks = new double[numRoundsCV];
+		DescriptiveStatistics stats = new DescriptiveStatistics();
+
+		for (int l = 0; l < numRoundsCV; l++) {
+
+			System.out.printf("Round %d: ", l);
+			stats.clear();
+
+			Collections.shuffle(expSet.games);
+
+			System.out.print("Folds ");
+			for (int i = 0; i < numFolds; i++) {
+
+				System.out.printf("%d ", i);
+				 System.out.println();
+
+				// Divide up data into test and training sets
+				List<Game> testSet = new ArrayList<Game>();
+				List<Game> trainingSet = new ArrayList<Game>();
+				int testStart = i * groupSize;
+				for (int j = 0; j < numFolds * groupSize; j++) {
+					if (j >= testStart && j < testStart + groupSize) {
+						testSet.add(expSet.games.get(j));
+					} else {
+						trainingSet.add(expSet.games.get(j));
+					}
+				}
+
+				// Estimate best parameters on training set
+				Map<String, Object> bestParam = estimateParameters(model, trainingSet);
+				 System.out.println(bestParam.toString());
+
+				// Compute loglk on test set
+				double testLoglk = getTestLogLk(model, bestParam, testSet);
+				stats.addValue(testLoglk);
+			}
+
+			loglks[l] = stats.getMean() - randomLogLk;
+
+			System.out.printf(" avgloglk = %.2f", loglks[l]);
+			System.out.println();
+			
+			System.exit(0);
+		}
+
+		stats.clear();
+		for (int i = 0; i < loglks.length; i++) {
+			stats.addValue(loglks[i]);
+		}
+		double stdev = stats.getStandardDeviation();
+		double stdError = stdev / Math.sqrt(numRoundsCV);
+		System.out.printf("avgloglk in [%.2f, %.2f]\n", stats.getMean() - 1.96
+				* stdError, stats.getMean() + 1.96 * stdError);
+		avgLogLks.put(model, loglks);
+	}
+
+	public static void graphPredictiveLogLk() throws IOException {
+	
+		System.out.println("Graphing distributions of log likelihoods");
+		BufferedWriter writer = new BufferedWriter(new FileWriter(rootDir
+				+ "predictiveLogLk.m"));
+	
+		int numModels = avgLogLks.keySet().size();
+		List<String> modelNames = new ArrayList<String>();
+		double[] displayMeans = new double[numModels];
+		double[] displayErrors = new double[numModels];
+		int index = 0;
+	
+		DescriptiveStatistics stats = new DescriptiveStatistics();
+	
+		modelNames.addAll(avgLogLks.keySet());
+		Collections.sort(modelNames);
+		for (int i = 0; i < modelNames.size(); i++) {
+			String model = modelNames.get(i);
+			stats.clear();
+			double[] ll = avgLogLks.get(model);
+			for (int j = 0; j < ll.length; j++) {
+				stats.addValue(ll[j]);
+			}
+			displayMeans[index] = stats.getMean();
+			double stdev = stats.getStandardDeviation();
+			double stdError = stdev / Math.sqrt(numRoundsCV);
+			displayErrors[index] = 1.96 * stdError;
+			index++;
+		}
+	
+		StringBuilder sb = new StringBuilder();
+		sb.append(treatment);
+		sb.append("\n");
+		for (int i = 0; i < numModels; i++) {
+			sb.append(String.format("'%s',", modelNames.get(i)));
+		}
+		sb.append("\n");
+		sb.append(String.format("mean = ["));
+		for (int i = 0; i < numModels; i++) {
+			sb.append(String.format("%.2f ", displayMeans[i]));
+		}
+		sb.append(String.format("];\n" + "error = ["));
+		for (int i = 0; i < numModels; i++) {
+			sb.append(String.format("%.2f ", displayErrors[i]));
+		}
+		sb.append(String.format("];\n"));
+		writer.write(sb.toString());
+	
+		// writer.write("figure(1);\n"
+		// + "clf;\n"
+		// + "hold('on');\n"
+		// + "bar( x, t1 );\n"
+		// + "errorbar( x, t1, ci );\n"
+		// + "xlh = xlabel('Learning Model');\n"
+		// + "ylh = ylabel('Log Likelihood');\n"
+		// + "set(xlh, 'FontSize', 26);\n"
+		// + "set(ylh, 'FontSize', 26);\n"
+		// + "axes = findobj(gcf,'type','axes');\n"
+		// + "set(axes, 'FontSize', 20);\n"
+		// + "set(gca, 'XLim', [0.5 3.5]);\n"
+		// + "set(gca, 'XTick', 1:3);\n"
+		// + "set(gca,'XTickLabel',{'HMM', 'RL', 'SFP'});");
+	
+		writer.flush();
+		writer.close();
+	
+	}
+
+	private static double getLogLkRandomModel() {
+		int groupSize = expSet.games.size() / 10;
+		double randomLogLk = Math.log(0.5) * groupSize * expSet.numRounds
+				* expSet.numPlayers;
+		return randomLogLk;
+	}
+
+	private static Map<String, Object> estimateParameters(String model,
+			List<Game> trainingSet) {
+
+		if (model.equals("HMM")) {
+
+			return estimateHMM(trainingSet);
+
+		} else if (model.equals("RLS")) {
+
+			double[] point = estimateUsingApacheOptimizer(trainingSet, getBoundsRLorSFP(), "RLS");
+
+			Map<String, Object> params = new HashMap<String, Object>();
+			params.put("phi", point[0]);
+			params.put("lambda", point[1]);
+			params.put("considerSignal", true);
+			return params;
+
+		} else if (model.equals("RLNS")) {
+
+			double[] point = estimateUsingApacheOptimizer(trainingSet, getBoundsRLorSFP(), "RLNS");
+
+			Map<String, Object> params = new HashMap<String, Object>();
+			params.put("phi", point[0]);
+			params.put("lambda", point[1]);
+			params.put("considerSignal", false);
+			return params;
+
+		} else if (model.equals("SFPS")) {
+
+			double[] point = estimateUsingApacheOptimizer(trainingSet, getBoundsRLorSFP(), "SFPS");
+
+			Map<String, Object> params = new HashMap<String, Object>();
+			params.put("rho", point[0]);
+			params.put("lambda", point[1]);
+			params.put("considerSignal", true);
+			return params;
+
+		} else if (model.equals("SFPNS")) {
+
+			double[] point = estimateUsingApacheOptimizer(trainingSet, getBoundsRLorSFP(), "SFPNS");
+
+			Map<String, Object> params = new HashMap<String, Object>();
+			params.put("rho", point[0]);
+			params.put("lambda", point[1]);
+			params.put("considerSignal", false);
+			return params;
+
+		} else if (model.equals("EWAS")) {
+
+			double[] point = estimateUsingApacheOptimizer(trainingSet, getBoundsEWA(), "EWAS");
+
+			Map<String, Object> params = new HashMap<String, Object>();
+			params.put("rho", point[0]);
+			params.put("phi", point[1]);
+			params.put("delta", point[2]);
+			params.put("lambda", point[3]);
+			params.put("considerSignal", true);
+			return params;
+
+		} else if (model.equals("EWANS")) {
+
+			double[] point = estimateUsingApacheOptimizer(trainingSet, getBoundsEWA(), "EWANS");
+
+			Map<String, Object> params = new HashMap<String, Object>();
+			params.put("rho", point[0]);
+			params.put("phi", point[1]);
+			params.put("delta", point[2]);
+			params.put("lambda", point[3]);
+			params.put("considerSignal", false);
+			return params;
+
+		} else if (model.startsWith("S1")) {
+
+			double bestSwitchRound = -1.0;
+			double[] bestPoint = null;
+			double bestLogLk = Double.NEGATIVE_INFINITY;
+			
+			for (int k = 0; k < expSet.numRounds + 1; k++) {
+				
+				String subModel = String.format("S1-%d", k);
+				double[] tempPoint = estimateUsingCobyla(trainingSet, subModel);
+				
+				Map<String, Object> params = new HashMap<String, Object>();
+				params.put("diffThreshold", tempPoint[0]);
+				params.put("probTruthful", 	tempPoint[1]);
+				params.put("probMM", 		tempPoint[2]);
+				params.put("probGB", 		tempPoint[3]);
+				params.put("switchRound", k * 1.0);
+				
+				double loglk = LogReader.computeLogLkS1(params, trainingSet);
+				
+				if (loglk > bestLogLk) {
+					bestPoint = tempPoint;
+					bestSwitchRound = k;
+				}
+			}
+			
+			Map<String, Object> params = new HashMap<String, Object>();
+			params.put("diffThreshold", bestPoint[0]);
+			params.put("probTruthful", 	bestPoint[1]);
+			params.put("probMM", 		bestPoint[2]);
+			params.put("probGB", 		bestPoint[3]);
+			params.put("switchRound", 	bestSwitchRound);
+			return params;
+			
+		} else if (model.equals("S2")) {
+			
+			double[] point = estimateUsingCobyla(trainingSet, "S2");
+			
+			Map<String, Object> params = new HashMap<String, Object>();
+			params.put("probTruthful", 	point[0]);
+			params.put("probMM", 		point[1]);
+			params.put("probGB", 		point[2]);
+			return params;
+		}
+
+		return null;
+	}
+
+	private static double getTestLogLk(String model,
+			Map<String, Object> bestParam, List<Game> testSet) {
+	
+		if (model.equals("HMM")) {
+	
+			@SuppressWarnings("unchecked")
+			Hmm<SigActObservation<CandySignal, CandyReport>> bestHmm = 
+				(Hmm<SigActObservation<CandySignal, CandyReport>>) bestParam.get("HMM");
+			List<List<SigActObservation<CandySignal, CandyReport>>> seq = 
+					LogReader.getActObsSequence(testSet);
+			return BWToleranceLearner.computeLogLk(bestHmm, seq);
+	
+		} else if (model.startsWith("RL")) {
+	
+			return computeLogLkRL(bestParam, testSet);
+	
+		} else if (model.startsWith("SFP")) {
+	
+			return computeLogLkSFP(bestParam, testSet);
+	
+		} else if (model.startsWith("EWA")) {
+	
+			return computeLogLkEWA(bestParam, testSet);
+	
+		} else if (model.startsWith("S1")) {
+	
+			return computeLogLkS1(bestParam, testSet);
+	
+		} else if (model.startsWith("S2")) {
+		
+			return computeLogLkS2(bestParam, testSet);
+
+		}
+		
+		return 0;
+	}
+
+	static double[] estimateUsingCobyla(List<Game> trainingSet, String model) {
+
+		double rhobeg = 0.5;
+		double rhoend = Utils.eps;
+		int iprint = 0;
+		int maxfun = 3500;
+		int numVariables = 0;
+		int numConstraints = 0;
+		double[] point = null;
+
+		if (model.startsWith("SFP") || model.startsWith("RL")) {
+			
+			numVariables = 2;
+			numConstraints = 4;
+			point = new double[]{0.0, 1.0};
+			
+		} else if (model.startsWith("S1")) {
+			
+			numVariables = 4;
+			numConstraints = 9;
+			point = getRandomStartPointS1();
+			
+		} else if (model.startsWith("S2")) {
+			
+			numVariables = 3;
+			numConstraints = 7;
+			point = getRandomStartPointS2();
+			
+		}
+
+		Calcfc function = new LogLkFunctionCobyla(trainingSet, model);
+		Cobyla.FindMinimum(function, numVariables, numConstraints, point,
+				rhobeg, rhoend, iprint, maxfun);
+		return point;
+	}
+
+	static double[] estimateUsingApacheOptimizer(List<Game> games,
+			Map<String, Object> bounds, String model) {
+
+		MultivariateFunction function = new LogLkFunctionApache(games, model);
+		double[] lb = (double[]) bounds.get("lb");
+		double[] ub = (double[]) bounds.get("ub");
+
+		BOBYQAOptimizer optimizer = new BOBYQAOptimizer(lb.length + 2);
+		double[] startPoint = (double[]) bounds.get("lb");
+
+		PointValuePair optimum = optimizer.optimize(new MaxEval(10000000),
+				new ObjectiveFunction(function), GoalType.MAXIMIZE,
+				new InitialGuess(startPoint), new SimpleBounds(lb, ub));
+
+		double[] point = optimum.getPoint();
+		return point;
+	}
+
+	public static Map<String, Object> estimateHMM(List<Game> trainingSet) {
+		Hmm<SigActObservation<CandySignal, CandyReport>> bestHmm = null;
+		try {
+			bestHmm = LogReader.learnHMM(trainingSet, numHmmStates, numRestarts);
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		Map<String, Object> bestParam = new HashMap<String, Object>();
+		bestParam.put("HMM", bestHmm);
+		return bestParam;
+	}
+
+	private static Map<String, Object> getBoundsRLorSFP() {
+		Map<String, Object> bounds = new HashMap<String, Object>();
+		bounds.put("lb", new double[] { 0, 1 });
+		bounds.put("ub", new double[] { 1, 10 });
+		return bounds;
+	}
+
+	private static Map<String, Object> getBoundsEWA() {
+		Map<String, Object> bounds = new HashMap<String, Object>();
+		bounds.put("lb", new double[] { 0, 0, 0, 1 });
+		bounds.put("ub", new double[] { 1, 1, 1, 10 });
+		return bounds;
+	}
+
+	private static double[] getRandomStartPointS1() {
+		double diffThresholdStart = rand.nextDouble();
+		double[] randomVec = Utils.getRandomVec(4);
+		return new double[] { diffThresholdStart, randomVec[0], randomVec[1], randomVec[2]};
+	}
+	
+	private static double[] getRandomStartPointS2() {
+		double[] randomVec = Utils.getRandomVec(4);
+		return new double[] {randomVec[0], randomVec[1], randomVec[2]};
+	}
+
+	public static double computeLogLkRL(Map<String, Object> bestParam,
+			List<Game> games) {
+
+		boolean considerSignal = (boolean) bestParam.get("considerSignal");
+		double phi = (double) bestParam.get("phi");
+		double lambda = (double) bestParam.get("lambda");
 
 		double firstRoundMMProb = 0.5;
 		double loglk = 0;
@@ -437,40 +537,28 @@ public class LogReader {
 
 			double logLkGame = 0;
 
-			Map<String, Map<Pair<String, String>, Double>> discountedTotalPayoff = new HashMap<String, Map<Pair<String, String>, Double>>();
-			for (String player : game.playerHitIds) {
-				Map<Pair<String, String>, Double> payoffs = new HashMap<Pair<String, String>, Double>();
-				payoffs.put(new Pair<String, String>("MM", "MM"), 0.0);
-				payoffs.put(new Pair<String, String>("MM", "GB"), 0.0);
-				payoffs.put(new Pair<String, String>("GB", "MM"), 0.0);
-				payoffs.put(new Pair<String, String>("GB", "GB"), 0.0);
-				discountedTotalPayoff.put(player, payoffs);
-			}
+			// initialize attraction
+			Map<String, Map<Pair<String, String>, Double>> attraction = 
+					initAttraction(game.playerHitIds);
 
 			for (int i = 0; i < expSet.numRounds; i++) {
 
 				Map<String, Map<String, Object>> resultCurrRound = game.rounds
 						.get(i).result;
 
+				// if first two treatments, add LogLk for reward except last
+				// round
 				if (treatment.equals("prior2-basic")
 						|| treatment.equals("prior2-outputagreement")) {
 
-					// add LogLk for reward except last round
 					if (i != expSet.numRounds - 1) {
 
 						for (String currPlayerId : game.playerHitIds) {
 
-							String refPlayer = (String) resultCurrRound.get(
-									currPlayerId).get("refPlayer");
-							String refReport = (String) resultCurrRound.get(
-									refPlayer).get("report");
-							int numRefReport = Utils.getNumOfGivenReport(
-									resultCurrRound, refReport, currPlayerId);
+							int numRefReport = getNumPossibleRefPlayers(
+									resultCurrRound, currPlayerId);
 							double logLkReward = Math.log(numRefReport * 1.0
 									/ (expSet.numPlayers - 1));
-							// System.out.println(logLkReward);
-							if (logLkReward== Double.NEGATIVE_INFINITY)
-								System.out.println();
 							logLkGame += logLkReward;
 						}
 
@@ -486,25 +574,35 @@ public class LogReader {
 
 				} else {
 
-					discountAllPayoffs(discount, discountedTotalPayoff);
 					Map<String, Map<String, Object>> resultPrevRound = game.rounds
 							.get(i - 1).result;
+
 					for (String playerId : game.playerHitIds) {
 
 						String signalCurrRound = (String) resultCurrRound.get(
 								playerId).get("signal");
-						Map<String, Double> strategy = getStrategyRL(
-								considerSignal, lambda, discountedTotalPayoff,
-								signalCurrRound, resultPrevRound, playerId);
-						
-						
 						String reportCurrRound = (String) resultCurrRound.get(
 								playerId).get("report");
-						double logLkReport = Math.log(strategy
-								.get(reportCurrRound));
-						if (logLkReport== Double.NEGATIVE_INFINITY)
-							System.out.println();
-						logLkGame += logLkReport;
+						String signalPrevRound = (String) resultPrevRound.get(
+								playerId).get("signal");
+						String reportPrevRound = (String) resultPrevRound.get(
+								playerId).get("report");
+						double rewardPrevRound = (double) resultPrevRound.get(
+								playerId).get("reward");
+
+						// update attractions
+						updateAttractionsRL(attraction, playerId, phi,
+								signalPrevRound, reportPrevRound,
+								rewardPrevRound);
+
+						// determine strategy
+						Map<String, Double> strategy = getStrategy(attraction,
+								playerId, considerSignal, lambda,
+								signalCurrRound, signalPrevRound);
+
+						// get loglk for report
+						logLkGame += getLogLkForReport(strategy,
+								reportCurrRound, playerId);
 
 					}
 				}
@@ -514,370 +612,460 @@ public class LogReader {
 		return loglk;
 	}
 
-	private static double computeLogLkSFP(boolean considerSignal, double discount,
-			double lambda, List<Game> games) {
-	
+	public static double computeLogLkSFP(Map<String, Object> bestParam,
+			List<Game> games) {
+
+		boolean considerSignal = (boolean) bestParam.get("considerSignal");
+		double rho = (double) bestParam.get("rho");
+		double lambda = (double) bestParam.get("lambda");
+
 		double loglk = 0;
 		double firstRoundMMProb = 0.5;
 		for (Game game : games) {
-	
-			double gameLogLk = 0;
-	
-			double[] oppStrategyCount = new double[expSet.numPlayers];
-			for (int i = 0; i < oppStrategyCount.length; i++) {
-				oppStrategyCount[i] = 0;
-			}
-	
+
+			double logLkGame = 0;
+
+			// initialize
+			double experiences = Utils.eps;
+			Map<String, Map<Pair<String, String>, Double>> attractions = initAttraction(game.playerHitIds);
+
 			for (int i = 0; i < expSet.numRounds; i++) {
-	
+
+				Map<String, Map<String, Object>> resultCurrRound = game.rounds
+						.get(i).result;
+
+				if (treatment.equals("prior2-basic")
+						|| treatment.equals("prior2-outputagreement")) {
+
+					// add LogLk for reward except last round
+					if (i != expSet.numRounds - 1) {
+
+						for (String currPlayerId : game.playerHitIds) {
+
+							/**
+							 * Given the reward of the current player, get
+							 * number of other players that could possibly have
+							 * been the reference player.
+							 */
+							int numPossibleRefPlayers = getNumPossibleRefPlayers(
+									resultCurrRound, currPlayerId);
+							double logLkReward = Math.log(numPossibleRefPlayers
+									* 1.0 / (expSet.numPlayers - 1));
+							logLkGame += logLkReward;
+						}
+
+					}
+
+				}
+
 				if (i == 0) {
-	
-					gameLogLk += Math.log(Math.pow(firstRoundMMProb,
+
+					logLkGame += Math.log(Math.pow(firstRoundMMProb,
 							expSet.numPlayers));
-	
+
 				} else {
-	
+
 					Map<String, Map<String, Object>> resultPrevRound = game.rounds
 							.get(i - 1).result;
-	
-					discountAllCounts(discount, oppStrategyCount);
-					for (String currPlayerId : game.playerHitIds) {
-	
-						Map<String, Map<String, Object>> resultCurrRound = game.rounds.get(i).result;
-						String signalCurrRound = (String) resultCurrRound.get(currPlayerId).get("signal");
-						Map<String, Double> strategy = getStrategySFP(
-								considerSignal, lambda, oppStrategyCount,
-								resultPrevRound, signalCurrRound, currPlayerId);
-	
-						String reportCurrRound = (String) resultCurrRound.get(currPlayerId).get("report");
-						gameLogLk += Math.log(strategy.get(reportCurrRound));
-	
+
+					for (String playerId : game.playerHitIds) {
+
+						String signalPrev = (String) resultPrevRound.get(
+								playerId).get("signal");
+						String reportPrev = (String) resultPrevRound.get(
+								playerId).get("report");
+						double rewardPrev = (double) resultPrevRound.get(
+								playerId).get("reward");
+						String signalCurr = (String) resultCurrRound.get(
+								playerId).get("signal");
+						String reportCurr = (String) resultCurrRound.get(
+								playerId).get("report");
+						int numOtherMMReportsPrev = Utils.getNumOfGivenReport(
+								resultPrevRound, "MM", playerId);
+
+						// update attractions
+						updateAttractionsSFP(attractions, experiences,
+								playerId, rho, reportPrev, rewardPrev,
+								numOtherMMReportsPrev);
+
+						// update experiences
+						experiences = updateExperience(experiences, rho);
+
+						// get strategy
+						Map<String, Double> strategy = getStrategy(attractions,
+								playerId, considerSignal, lambda, signalCurr,
+								signalPrev);
+
+						// add loglk for report
+						logLkGame += getLogLkForReport(strategy, reportCurr,
+								playerId);
+
 					}
 				}
 			}
-			loglk += gameLogLk;
+			loglk += logLkGame;
 		}
 		return loglk;
 	}
 
-	public static List<Round> simulateOneGameRL(boolean considerSignal,
-			double discount, double lambda) {
+	public static double computeLogLkEWA(Map<String, Object> bestParam,
+			List<Game> games) {
+
+		boolean considerSignal = (boolean) bestParam.get("considerSignal");
+		double rho = (double) bestParam.get("rho"); // experience discount
+													// factor
+		double phi = (double) bestParam.get("phi"); // attraction discount
+													// factor
+		double delta = (double) bestParam.get("delta"); // weight for
+														// hypothetical payoffs
+		double lambda = (double) bestParam.get("lambda"); // sensitivity
+															// parameter
 
 		double firstRoundMMProb = 0.5;
-		List<Round> rounds = new ArrayList<Round>();
+		double loglk = 0;
+		for (Game game : games) {
 
-		String[] playerHitIds = new String[expSet.numPlayers];
-		for (int index = 0; index < expSet.numPlayers; index++) {
-			playerHitIds[index] = String.format("%d", index);
+			double logLkGame = 0;
+
+			// initialize experience and attractions
+			double experience = Utils.eps;
+			Map<String, Map<Pair<String, String>, Double>> attractions = initAttraction(game.playerHitIds);
+
+			for (int i = 0; i < expSet.numRounds; i++) {
+
+				Map<String, Map<String, Object>> resultCurrRound = game.rounds
+						.get(i).result;
+
+				if (treatment.equals("prior2-basic")
+						|| treatment.equals("prior2-outputagreement")) {
+
+					// add LogLk for reward except last round
+					if (i != expSet.numRounds - 1) {
+
+						for (String currPlayerId : game.playerHitIds) {
+
+							/**
+							 * Given the reward of the current player, get
+							 * number of other players that could possibly have
+							 * been the reference player.
+							 */
+							int numPossibleRefPlayers = getNumPossibleRefPlayers(
+									resultCurrRound, currPlayerId);
+							double logLkReward = Math.log(numPossibleRefPlayers
+									* 1.0 / (expSet.numPlayers - 1));
+							logLkGame += logLkReward;
+						}
+
+					}
+
+				}
+
+				// add LogLk for report
+				if (i == 0) {
+
+					logLkGame += Math.log(Math.pow(firstRoundMMProb,
+							expSet.numPlayers));
+
+				} else {
+
+					Map<String, Map<String, Object>> resultPrevRound = game.rounds
+							.get(i - 1).result;
+
+					for (String playerId : game.playerHitIds) {
+
+						String reportCurrRound = (String) resultCurrRound.get(
+								playerId).get("report");
+						String signalCurrRound = (String) resultCurrRound.get(
+								playerId).get("signal");
+						String signalPrevRound = (String) resultPrevRound.get(
+								playerId).get("signal");
+						String reportPrevRound = (String) resultPrevRound.get(
+								playerId).get("report");
+						double rewardPrevRound = (double) resultPrevRound.get(
+								playerId).get("reward");
+						int numOtherMMReportsPrev = Utils.getNumOfGivenReport(
+								resultPrevRound, "MM", playerId);
+
+						// update attractions
+						updateAttractionsEWA(attractions, experience, playerId,
+								rho, delta, phi, signalPrevRound,
+								reportPrevRound, rewardPrevRound,
+								reportCurrRound, numOtherMMReportsPrev);
+
+						// update experiences
+						experience = updateExperience(experience, rho);
+
+						// get strategy
+						Map<String, Double> strategy = getStrategy(attractions,
+								playerId, considerSignal, lambda,
+								signalCurrRound, signalPrevRound);
+
+						// add loglk for report
+						logLkGame += getLogLkForReport(strategy,
+								reportCurrRound, playerId);
+					}
+				}
+			}
+			loglk += logLkGame;
+		}
+		return loglk;
+	}
+
+	public static double computeLogLkS1(Map<String, Object> params,
+			List<Game> games) {
+
+		int k = (int) Math.round((double) params.get("switchRound"));
+		double diffThreshold = (double) params.get("diffThreshold");
+		double probTruthful = (double) params.get("probTruthful");
+		double probMM = (double) params.get("probMM");
+		double probGB = (double) params.get("probGB");
+		double probRandom = 1 - probTruthful - probMM - probGB;
+
+		double loglk = 0;
+
+		for (Game game : games) {
+
+			for (String playerId : game.playerHitIds) {
+
+				double lkPlayer = 0;
+
+				// Before switch, may use Truthful or Random strategies
+				double lkTruthful = probTruthful * getLkTruthful(0, k, game, playerId);
+				double lkMMStart = probMM * getLkReport(0, k, game, playerId, "MM");
+				double lkGBStart = probGB * getLkReport(0, k, game, playerId, "GB");
+				double lkRandom = probRandom * Math.pow(0.5, k);
+
+				double countTotal = k * expSet.numPlayers;
+				double countMM = Utils.getNumMMReports(0, k - 1, game, playerId);
+				double percentMM = countMM / countTotal;
+				double percentGB = 1 - percentMM;
+
+				if (percentMM - percentGB >= diffThreshold) {
+
+					// Switch to MM strategy
+					lkPlayer = (lkTruthful + lkMMStart + lkGBStart + lkRandom)
+							* getLkReport(k, expSet.numRounds, game, playerId, "MM");
+					
+
+				} else if (percentGB - percentMM >= diffThreshold) {
+
+					// Switch to GB strategy
+					lkPlayer = (lkTruthful + lkMMStart + lkGBStart + lkRandom)
+							* getLkReport(k, expSet.numRounds, game, playerId, "GB");
+
+				} else {
+
+					// Stay with original strategy
+					lkPlayer = probTruthful * getLkTruthful(0, expSet.numRounds, game, playerId)
+							+ probMM * getLkReport(0, expSet.numRounds, game, playerId, "MM")
+							+ probGB * getLkReport(0, expSet.numRounds, game, playerId, "GB") 
+							+ probRandom * Math.pow(0.5, expSet.numRounds);
+
+				}
+
+				loglk += Math.log(lkPlayer);
+			}
 		}
 
-		Map<String, Map<Pair<String, String>, Double>> discountedTotalPayoff = new HashMap<String, Map<Pair<String, String>, Double>>();
+		return loglk;
+	}
+
+	public static double computeLogLkS2(Map<String, Object> params,
+			List<Game> games) {
+
+		double probTruthful = (double) params.get("probTruthful");
+		double probMM = (double) params.get("probMM");
+		double probGB = (double) params.get("probGB");
+		double probRandom = 1 - probTruthful - probMM - probGB;
+
+		double loglk = 0;
+
+		for (Game game : games) {
+
+			for (String playerId : game.playerHitIds) {
+
+				double lkPlayer = probTruthful * getLkTruthful(0, expSet.numRounds, game, playerId)
+							+ probMM * getLkReport(0, expSet.numRounds, game, playerId, "MM")
+							+ probGB * getLkReport(0, expSet.numRounds, game, playerId, "GB") 
+							+ probRandom * Math.pow(0.5, expSet.numRounds);
+
+				loglk += Math.log(lkPlayer);
+			}
+		}
+
+		return loglk;
+	}
+
+	static double getLkReport(int roundStart, int roundEnd, Game game,
+			String playerId, String givenReport) {
+		double lk = 1;
+		for (int i = roundStart; i < roundEnd; i++) {
+			String report = game.rounds.get(i).getReport(playerId);
+			if (report.equals(givenReport))
+				lk *= 1 - Utils.eps;
+			else
+				lk *= Utils.eps;
+		}
+		return lk;
+	}
+
+	static double getLkTruthful(int roundStart, int roundEnd, Game game, String playerId) {
+		double lk = 1;
+		for (int i = roundStart; i < roundEnd; i++) {
+			String signal = game.rounds.get(i).getSignal(playerId);
+			String report = game.rounds.get(i).getReport(playerId);
+			if (signal.equals(report))
+				lk *= 1 - Utils.eps;
+			else
+				lk *= Utils.eps;
+		}
+		return lk;
+	}
+
+	public static Map<String, Map<Pair<String, String>, Double>> initAttraction(
+			String[] playerHitIds) {
+		Map<String, Map<Pair<String, String>, Double>> attraction = 
+				new HashMap<String, Map<Pair<String, String>, Double>>();
 		for (String player : playerHitIds) {
 			Map<Pair<String, String>, Double> payoffs = new HashMap<Pair<String, String>, Double>();
 			payoffs.put(new Pair<String, String>("MM", "MM"), 0.0);
 			payoffs.put(new Pair<String, String>("MM", "GB"), 0.0);
 			payoffs.put(new Pair<String, String>("GB", "MM"), 0.0);
 			payoffs.put(new Pair<String, String>("GB", "GB"), 0.0);
-			discountedTotalPayoff.put(player, payoffs);
+			attraction.put(player, payoffs);
 		}
-
-		for (int i = 0; i < expSet.numRounds; i++) {
-
-			Round r = new Round();
-			r.roundNum = i;
-			int worldIndex = Utils.selectByBinaryDist(expSet.priorProbs[0]);
-			r.chosenWorld = expSet.worlds.get(worldIndex);
-
-			r.result = new HashMap<String, Map<String, Object>>();
-
-			String[] signals = new String[expSet.numPlayers];
-			String[] reports = new String[expSet.numPlayers];
-			double[] mmProbs = new double[expSet.numPlayers];
-
-			discountAllPayoffs(discount, discountedTotalPayoff);
-			for (int j = 0; j < expSet.numPlayers; j++) {
-
-				String playerId = String.format("%d", j);
-
-				int signalIndex = Utils.selectByBinaryDist(r.chosenWorld
-						.get("MM"));
-				signals[j] = signalList[signalIndex];
-
-				if (i == 0) {
-
-					int reportIndex = Utils
-							.selectByBinaryDist(firstRoundMMProb);
-					reports[j] = signalList[reportIndex];
-
-				} else {
-
-					Map<String, Map<String, Object>> resultPrevRound = rounds
-							.get(i - 1).result;
-					Map<String, Double> strategy = getStrategyRL(
-							considerSignal, lambda, discountedTotalPayoff,
-							signals[j], resultPrevRound, playerId);
-					mmProbs[j] = strategy.get("MM");
-
-					int reportIndex = Utils.selectByBinaryDist(strategy
-							.get("MM"));
-					reports[j] = signalList[reportIndex];
-
-				}
-
-			}
-
-			// determine payoffs
-			int[] refPlayerIndices = new int[expSet.numPlayers];
-			double[] payoffs = determinePayoff(reports, refPlayerIndices);
-
-			// save result
-			for (int j = 0; j < expSet.numPlayers; j++) {
-
-				Map<String, Object> playerResult = new HashMap<String, Object>();
-
-				playerResult.put("signal", signals[j]);
-				playerResult.put("report", reports[j]);
-
-				if (treatment.equals("prior2-basic")
-						|| treatment.equals("prior2-outputagreement")) {
-
-					String refPlayerId = String.format("%d",
-							refPlayerIndices[j]);
-					playerResult.put("refPlayer", refPlayerId);
-
-				}
-
-				playerResult.put("reward", payoffs[j]);
-				playerResult.put("mmProb", mmProbs[j]);
-
-				String playerId = String.format("%d", j);
-				r.result.put(playerId, playerResult);
-			}
-
-			rounds.add(r);
-		}
-		return rounds;
+		return attraction;
 	}
 
-	public static List<Round> simulateOneGameSFP(boolean considerSignal,
-			double discount, double lambda) {
-		double firstRoundMMProb = 0.5;
-		List<Round> rounds = new ArrayList<Round>();
+	public static void updateAttractionsRL(
+			Map<String, Map<Pair<String, String>, Double>> attraction,
+			String playerId, double phi, String signalPrev, String reportPrev,
+			double rewardPrev) {
 	
-		String[] playerHitIds = new String[expSet.numPlayers];
-		for (int index = 0; index < expSet.numPlayers; index++) {
-			playerHitIds[index] = String.format("%d", index);
-		}
-	
-		double[] oppStrategyCount = new double[expSet.numPlayers];
-		for (int i = 0; i < oppStrategyCount.length; i++) {
-			oppStrategyCount[i] = 0;
-		}
-	
-		for (int i = 0; i < expSet.numRounds; i++) {
-	
-			Round r = new Round();
-			r.roundNum = i;
-			int worldIndex = Utils.selectByBinaryDist(expSet.priorProbs[0]);
-			r.chosenWorld = expSet.worlds.get(worldIndex);
-	
-			r.result = new HashMap<String, Map<String, Object>>();
-	
-			String[] signals = new String[expSet.numPlayers];
-			String[] reports = new String[expSet.numPlayers];
-			double[] mmProbs = new double[expSet.numPlayers];
-	
-			discountAllCounts(discount, oppStrategyCount);
-			for (int j = 0; j < expSet.numPlayers; j++) {
-	
-				String currPlayerId = String.format("%d", j);
-	
-				// get signal
-				int signalIndex = Utils.selectByBinaryDist(r.chosenWorld
-						.get("MM"));
-				signals[j] = signalList[signalIndex];
-	
-				// choose report
-				if (i == 0) {
-	
-					// first round, choose reports randomly
-					int reportIndex = Utils
-							.selectByBinaryDist(firstRoundMMProb);
-					reports[j] = signalList[reportIndex];
-	
-				} else {
-					
-					Map<String, Map<String, Object>> resultPrevRound = rounds.get(i - 1).result;
-	
-					Map<String, Double> strategy = getStrategySFP(
-							considerSignal, lambda, oppStrategyCount,
-							resultPrevRound, signals[j], currPlayerId);
-	
-					mmProbs[j] = strategy.get("MM").doubleValue();
-	
-					int reportIndex = Utils.selectByBinaryDist(mmProbs[j]);
-					reports[j] = signalList[reportIndex];
-				}
-	
-			}
-	
-			// determine payoffs
-			int[] refPlayerIndices = new int[expSet.numPlayers];
-			double[] payoffs = determinePayoff(reports, refPlayerIndices);
-	
-			// save result
-			for (int j = 0; j < expSet.numPlayers; j++) {
-	
-				Map<String, Object> playerResult = new HashMap<String, Object>();
-	
-				playerResult.put("signal", signals[j]);
-				playerResult.put("report", reports[j]);
-				
-				if (treatment.equals("prior2-basic")
-						|| treatment.equals("prior2-outputagreement")) {
-					String refPlayerId = String.format("%d",
-							refPlayerIndices[j]);
-					playerResult.put("refPlayer", refPlayerId);
-				}
-				
-				playerResult.put("reward", payoffs[j]);
-				playerResult.put("mmProb", mmProbs[j]);
-	
-				String id = String.format("%d", j);
-				r.result.put(id, playerResult);
-			}
-	
-			rounds.add(r);
-		}
-	
-		return rounds;
-	}
-
-	public static Map<String, Double> getStrategyRL(
-			boolean considerSignal,
-			double lambda,
-			Map<String, Map<Pair<String, String>, Double>> discountedTotalPayoff,
-			String signalCurrRound,
-			Map<String, Map<String, Object>> resultPrevRound, String playerId) {
-
-		Map<Pair<String, String>, Double> playerPayoff = discountedTotalPayoff
+		Map<Pair<String, String>, Double> playerAttraction = attraction
 				.get(playerId);
-		String signalPrevRound = (String) resultPrevRound.get(playerId).get(
-				"signal");
+	
+		for (Pair<String, String> key : playerAttraction.keySet()) {
+			if (key.t2.equals(reportPrev)) {
+				double newAttr = phi * playerAttraction.get(key) + rewardPrev;
+				playerAttraction.put(key, newAttr);
+			} else {
+				double newAttr = phi * playerAttraction.get(key);
+				playerAttraction.put(key, newAttr);
+			}
+		}
+	
+		attraction.put(playerId, playerAttraction);
+	}
 
-		double MMReportPayoff = 0;
-		double GBReportPayoff = 0;
+	public static void updateAttractionsSFP(
+			Map<String, Map<Pair<String, String>, Double>> attraction,
+			double experience, String playerId, double rho, String reportPrev,
+			double rewardPrev, int numMMPrev) {
+
+		Map<Pair<String, String>, Double> playerAttraction = attraction
+				.get(playerId);
+
+		for (Pair<String, String> key : playerAttraction.keySet()) {
+			if (key.t2.equals(reportPrev)) {
+				double newAttr = (rho * experience * playerAttraction.get(key) + rewardPrev)
+						/ (rho * experience + 1);
+				playerAttraction.put(key, newAttr);
+			} else {
+				double newAttr = (rho * experience * playerAttraction.get(key) + getExpectedPayoff(
+						key.t2, numMMPrev)) / (rho * experience + 1);
+				playerAttraction.put(key, newAttr);
+			}
+		}
+		attraction.put(playerId, playerAttraction);
+	}
+
+	public static void updateAttractionsEWA(
+			Map<String, Map<Pair<String, String>, Double>> attraction,
+			double experience, String playerId, double rho, double delta,
+			double phi, String signalPrev, String reportPrev,
+			double rewardPrev, String signalCurr, int numMMPrev) {
+
+		Map<Pair<String, String>, Double> playerAttraction = attraction
+				.get(playerId);
+
+		for (Pair<String, String> key : playerAttraction.keySet()) {
+			if (key.t2.equals(reportPrev)) {
+				double newAttr = (phi * experience * playerAttraction.get(key) + rewardPrev)
+						/ (rho * experience + 1);
+				playerAttraction.put(key, newAttr);
+			} else {
+				double newAttr = (phi * experience * playerAttraction.get(key) + delta
+						* getExpectedPayoff(key.t2, numMMPrev))
+						/ (rho * experience + 1);
+				playerAttraction.put(key, newAttr);
+			}
+		}
+		attraction.put(playerId, playerAttraction);
+	}
+
+	static double updateExperience(double experience, double rho) {
+		return rho * experience + 1;
+	}
+
+	public static Map<String, Double> getStrategy(
+			Map<String, Map<Pair<String, String>, Double>> attraction,
+			String playerId, boolean considerSignal, double lambda,
+			String signalCurrRound, String signalPrevRound) {
+
+		double attrMMReport = 0;
+		double attrGBReport = 0;
+
+		Map<Pair<String, String>, Double> playerAttraction = attraction
+				.get(playerId);
 
 		if (!considerSignal) {
 
-			String reportPrevRound = (String) resultPrevRound.get(playerId)
-					.get("report");
-			double rewardPrevRound = (double) resultPrevRound.get(playerId)
-					.get("reward");
-
-			Pair<String, String> obsMMSignal = new Pair<String, String>("MM",
-					reportPrevRound);
-			Pair<String, String> obsGBSignal = new Pair<String, String>("GB",
-					reportPrevRound);
-
-			playerPayoff.put(obsMMSignal, playerPayoff.get(obsMMSignal)
-					+ rewardPrevRound);
-			playerPayoff.put(obsGBSignal, playerPayoff.get(obsGBSignal)
-					+ rewardPrevRound);
-
-			MMReportPayoff = playerPayoff.get(new Pair<String, String>("MM",
+			attrMMReport = playerAttraction.get(new Pair<String, String>("MM",
 					"MM"))
-					+ playerPayoff.get(new Pair<String, String>("GB", "MM"));
-			GBReportPayoff = playerPayoff.get(new Pair<String, String>("MM",
+					+ playerAttraction
+							.get(new Pair<String, String>("GB", "MM"));
+			attrGBReport = playerAttraction.get(new Pair<String, String>("MM",
 					"GB"))
-					+ playerPayoff.get(new Pair<String, String>("GB", "GB"));
+					+ playerAttraction
+							.get(new Pair<String, String>("GB", "GB"));
 
-		} else if (considerSignal && signalPrevRound.equals(signalCurrRound)) {
+		} else if (considerSignal) {
 
-			String reportPrevRound = (String) resultPrevRound.get(playerId)
-					.get("report");
-			double rewardPrevRound = (double) resultPrevRound.get(playerId)
-					.get("reward");
-
-			Pair<String, String> obs = new Pair<String, String>(
-					signalPrevRound, reportPrevRound);
-
-			playerPayoff.put(obs, playerPayoff.get(obs) + rewardPrevRound);
-
-			MMReportPayoff = playerPayoff.get(new Pair<String, String>(
+			attrMMReport = playerAttraction.get(new Pair<String, String>(
 					signalCurrRound, "MM"));
-			GBReportPayoff = playerPayoff.get(new Pair<String, String>(
+			attrGBReport = playerAttraction.get(new Pair<String, String>(
 					signalCurrRound, "GB"));
 		}
-		discountedTotalPayoff.put(playerId, playerPayoff);
 
-		double mmProb = Utils
-				.calcMMProb(lambda, MMReportPayoff, GBReportPayoff);
-		
+		double mmProb = Utils.calcMMProb(lambda, attrMMReport, attrGBReport);
 		// Correct for the case when mmProb=1 or mmProb=0
 		if (1.0 - mmProb < Utils.eps)
 			mmProb = 1.0 - Utils.eps;
 		if (mmProb < Utils.eps)
 			mmProb = Utils.eps;
-		
+
 		Map<String, Double> strategy = ImmutableMap.of("MM", mmProb, "GB",
 				1 - mmProb);
 		return strategy;
 	}
 
-	private static Map<String, Double> getStrategySFP(boolean considerSignal,
-			double lambda, double[] oppStrategyCount,
-			Map<String, Map<String, Object>> resultPrevRound,
-			String signalCurrRound,
+	private static double getLogLkForReport(Map<String, Double> strategy,
+			String reportCurrRound, String playerId) {
+		double logLkReport = Math.log(strategy.get(reportCurrRound));
+		return logLkReport;
+	}
+
+	private static int getNumPossibleRefPlayers(
+			Map<String, Map<String, Object>> resultCurrRound,
 			String currPlayerId) {
-
-		String signalPrevRound = (String) resultPrevRound.get(currPlayerId)
-				.get("signal");
-
-		if ((considerSignal && signalPrevRound.equals(signalCurrRound))
-				|| (!considerSignal)) {
-			int numMMForRound = Utils.getNumOfGivenReport(resultPrevRound,
-					"MM", currPlayerId);
-			oppStrategyCount[numMMForRound] += 1;
-		}
-
-		Utils.normalizeDist(oppStrategyCount);
-		double mmPayoff = getExpectedPayoffSFP("MM", oppStrategyCount);
-		double gbPayoff = getExpectedPayoffSFP("GB", oppStrategyCount);
-
-		double mmProb = Utils.calcMMProb(lambda, mmPayoff, gbPayoff);
-		return ImmutableMap.of("MM", mmProb, "GB", 1 - mmProb);
-
-	}
-
-	public static void discountAllCounts(double discount,
-			double[] oppStrategyCount) {
-		for (int i = 0; i < oppStrategyCount.length; i++) {
-			oppStrategyCount[i] = oppStrategyCount[i] * discount;
-		}
-	}
-
-	public static void discountAllPayoffs(double discount,
-			Map<String, Map<Pair<String, String>, Double>> discountedTotalPayoff) {
-		for (String playerId : discountedTotalPayoff.keySet()) {
-			Map<Pair<String, String>, Double> playerPayoff = discountedTotalPayoff
-					.get(playerId);
-			for (Pair<String, String> obs : discountedTotalPayoff.get(playerId)
-					.keySet()) {
-				double payoff = playerPayoff.get(obs);
-				playerPayoff.put(obs, discount * payoff);
-			}
-			discountedTotalPayoff.put(playerId, playerPayoff);
-		}
-	}
-
-	public static double getExpectedPayoffSFP(String report, double[] roundDist) {
-		double expPayoff = 0.0;
-		for (int numMMReports = 0; numMMReports < roundDist.length; numMMReports++) {
-			expPayoff += roundDist[numMMReports]
-					* getExpectedPayoff(report, numMMReports);
-		}
-		return expPayoff;
+		String refPlayer = (String) resultCurrRound.get(currPlayerId).get(
+				"refPlayer");
+		String refReport = (String) resultCurrRound.get(refPlayer)
+				.get("report");
+		int numRefReport = Utils.getNumOfGivenReport(resultCurrRound,
+				refReport, currPlayerId);
+		return numRefReport;
 	}
 
 	public static double getExpectedPayoff(String report, int numOtherMMReports) {
@@ -939,6 +1127,35 @@ public class LogReader {
 		}
 
 		return payoffs;
+	}
+
+	/**
+	 * Check if players are playing the strategy of always clicking left/right
+	 * choice.
+	 */
+	private static void lazyStrategy() {
+		int total = 0;
+		int countLeft = 0;
+		int numAlwaysLeft = 0;
+		int numAlwaysRight = 0;
+		for (Game game : expSet.games) {
+			for (String hitId : game.playerHitIds) {
+
+				int numLeft = game.getNumLeftChosen(hitId);
+				countLeft += numLeft;
+				total += game.numRounds;
+				if (numLeft == game.numRounds)
+					numAlwaysLeft++;
+				if (numLeft == 0)
+					numAlwaysRight++;
+			}
+		}
+		System.out.println("Number of player always left: " + numAlwaysLeft);
+		System.out.println("Number of player always right: " + numAlwaysRight);
+		System.out.println("Number of left choices: " + countLeft + ", total: "
+				+ total);
+		System.out.println("Percent of left choices: " + 100.0 * countLeft
+				/ total);
 	}
 
 	public static void writeRawDataToFile() throws IOException {
@@ -1141,8 +1358,8 @@ public class LogReader {
 		strategyNames = new String[numStrategies];
 		System.out.printf("numStrategies: %d\n", numStrategies);
 
-		learntHmm = LogReader.learnHMM(expSet.games, numStrategies,
-				numRestarts, "");
+		learntHmm = LogReader
+				.learnHMM(expSet.games, numStrategies, numRestarts);
 		List<List<SigActObservation<CandySignal, CandyReport>>> seq = LogReader
 				.getActObsSequence(expSet.games);
 		double loglk = BWToleranceLearner.computeLogLk(learntHmm, seq);
@@ -1197,8 +1414,8 @@ public class LogReader {
 	}
 
 	public static Hmm<SigActObservation<CandySignal, CandyReport>> learnHMM(
-			List<Game> games, int numStrategies, int numRestarts,
-			String additional) throws IOException {
+			List<Game> games, int numStrategies, int numRestarts)
+			throws IOException {
 
 		Hmm<SigActObservation<CandySignal, CandyReport>> bestHMM = null;
 
@@ -1207,15 +1424,15 @@ public class LogReader {
 		BWToleranceLearner bwl = new BWToleranceLearner();
 		double loglk = Double.NEGATIVE_INFINITY;
 
-		String fileame = String.format("%slearntHMM%dstrategies%s.txt",
-				rootDir, numStrategies, additional);
+		String fileame = String.format("%slearntHMM%dstrategies.txt", rootDir,
+				numStrategies);
 
 		// load last best HMM if it exists
 		File hmmFile = new File(fileame);
 		if (hmmFile.exists()) {
 			bestHMM = createHMMFromFile(fileame);
 			loglk = BWToleranceLearner.computeLogLk(bestHMM, seq);
-			System.out.printf("Starting loglikelihood : %.5f\n", loglk);
+			// System.out.printf("Starting loglikelihood : %.5f\n", loglk);
 		}
 
 		for (int i = 0; i < numRestarts; i++) {
@@ -2556,10 +2773,17 @@ public class LogReader {
 				// } else
 				if (matcherReport.matches()) {
 
+					// System.out.println(currentLine);
 					// System.out.println("Real report message found");
 					// System.out.printf("%s, %s, %s, %s\n\n",
 					// matcherReport.group(1), matcherReport.group(2),
 					// matcherReport.group(3), matcherReport.group(4));
+
+					if (treatment.equals("prior2-constant")
+							|| treatment.equals("prior2-symmlowpay")) {
+						String radio = matcherReport.group(5);
+						roundInfo.saveRadio(radio);
+					}
 					// roundInfo.saveReport(matcherReport.group(2),
 					// matcherReport.group(3), matcherReport.group(4),
 					// matcherReport.group(1));

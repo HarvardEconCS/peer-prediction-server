@@ -4,6 +4,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -323,5 +324,45 @@ public class UtilsTest {
 		assertEquals(numMM, 3);
 	}
 	
+	@Test
+	public void testCalcMMProb() {
+		double attrMM; double attrGB; double lambda; double expMMProb;
+		
+		attrMM = 0.2;
+		double mmProb = Utils.calcMMProb(0.3, attrMM, attrMM);
+		assertEquals(0.5, mmProb, Utils.eps);
+		
+		attrMM = 0.3;
+		attrGB = 0.1;
+		lambda = 1;
+		mmProb = Utils.calcMMProb(lambda, attrMM, attrGB);
+		expMMProb = Math.pow(Math.E, attrMM) / (Math.pow(Math.E, attrMM) + Math.pow(Math.E, attrGB));
+		assertEquals(expMMProb, mmProb, Utils.eps);
+		
+		attrMM = 1;
+		attrGB = 0.4;
+		lambda = 10;
+		mmProb = Utils.calcMMProb(lambda, attrMM, attrGB);
+		expMMProb = 0.9975273768;
+		assertEquals(expMMProb, mmProb, Utils.eps);
+	}
+	
+	@Test
+	public void testGetNumMMReports() {
+		Game game = new Game();
+		int numPlayers = 3;
+		game.playerHitIds = new String[numPlayers];
+		for (int i = 0; i < numPlayers; i++) {
+			game.playerHitIds[i] = String.format("%d", i);
+		}
+		
+		game.rounds = new ArrayList<Round>();
+		int numRounds = 5;
+		for (int i = 0; i < numRounds; i++) {
+			Round round = new Round();
+			round.result = new HashMap<String, Map<String, Object>>();
+		}
+		
+	}
 
 }

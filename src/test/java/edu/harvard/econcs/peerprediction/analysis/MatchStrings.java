@@ -24,8 +24,9 @@ public class MatchStrings {
 			.compile("^(\\d{2}:\\d{2}.\\d{3}) ([a-zA-Z\\s0-9]+) @ HIT ([a-zA-Z\\s0-9]+) got signal ([A-Z]{2})");
 	static Pattern choseReport = null;
 	
+	// If radio is 0, then the choices are MM and GB.  Otherwise, the choices are GB and MM.
 	static final Pattern chosenReport1 = Pattern
-			.compile("^(\\d{2}:\\d{2}.\\d{3}) ([a-zA-Z\\s0-9]+) @ HIT ([a-zA-Z\\s0-9]+) chose report ([A-Z]{2}) \\(radio: [0-9]\\)");
+			.compile("^(\\d{2}:\\d{2}.\\d{3}) ([a-zA-Z\\s0-9]+) @ HIT ([a-zA-Z\\s0-9]+) chose report ([A-Z]{2}) \\(radio: ([0-9])\\)");
 	static final Pattern chosenReport2 = Pattern
 			.compile("^(\\d{2}:\\d{2}.\\d{3}) ([a-zA-Z\\s0-9]+) @ HIT ([a-zA-Z\\s0-9]+) chose report ([A-Z]{2})");
 	

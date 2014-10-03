@@ -462,5 +462,21 @@ public class Game {
 
 		return refReport;
 	}
+
+	/**
+	 * Given a player HIT ID, give the number of times the player made the left choice 
+	 * @param hitId
+	 * @return
+	 */
+	public int getNumLeftChosen(String hitId) {
+		int count = 0;
+		for (Round round : this.rounds) {
+			String report = round.getReport(hitId);
+			int radio = round.radio;
+			if ((report.equals("MM") && radio == 0) || (report.equals("GB") && radio == 1))
+				count++;
+		}
+		return count;
+	}
 	
 }

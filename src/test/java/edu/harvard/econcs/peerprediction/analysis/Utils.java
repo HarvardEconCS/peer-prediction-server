@@ -23,7 +23,7 @@ import com.google.gson.Gson;
 public class Utils {
 
 	static final double epsConstruct = 0.01;
-	static final double eps = 0.0000001;
+	static final double eps = 1e-6;
 	public static final String[] signalList = new String[] { "MM", "GB" };
 
 	public static final Gson gson = new Gson();
@@ -896,14 +896,21 @@ public class Utils {
 		}
 	}
 
-	public static double calcMMProb(double lambda, double mmPayoff,
-			double gbPayoff) {
-		double mmProb = Math.pow(Math.E, lambda * mmPayoff)
-				/ (Math.pow(Math.E, lambda * mmPayoff) + Math.pow(Math.E,
-						lambda * gbPayoff));
+	public static double calcMMProb(double lambda, double attrMMReport,
+			double attrGBPayoff) {
+		double mmProb = Math.pow(Math.E, lambda * attrMMReport)
+				/ (Math.pow(Math.E, lambda * attrMMReport) + Math.pow(Math.E,
+						lambda * attrGBPayoff));
 		return mmProb;
 	}
 
+	/**
+	 * Get number of reports that are same as the given report in the result, excluding a player
+	 * @param roundResult
+	 * @param givenReport
+	 * @param excludePlayerId
+	 * @return
+	 */
 	public static int getNumOfGivenReport(
 			Map<String, Map<String, Object>> roundResult, String givenReport,
 			String excludePlayerId) {
@@ -1033,6 +1040,21 @@ public class Utils {
 		}
 
 		return null;
+	}
+
+	public static double getNumMMReports(int roundStart, int roundEnd,
+			Game game, String excludePlayerId) {
+		int countMM = 0;
+		for (String playerId : game.playerHitIds) {
+			if (playerId.equals(excludePlayerId))
+				continue;
+			for (int i = roundStart; i <= roundEnd; i++) {
+				String report = game.rounds.get(i).getReport(playerId);
+				if (report.equals("MM"))
+					countMM++;
+			}
+		}
+		return countMM;
 	}
 
 }
