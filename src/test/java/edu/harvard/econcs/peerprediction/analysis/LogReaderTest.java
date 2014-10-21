@@ -5,6 +5,7 @@ import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertTrue;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -88,22 +89,22 @@ public class LogReaderTest {
 
 		LogReader.treatment = "prior2-basic";
 
-		double pay = LogReader.getExpectedPayoff("MM", 2);
+		double pay = LearningModelsExisting.getExpectedPayoff("MM", 2);
 		assertEquals(1.5, pay, Utils.eps);
 
-		pay = LogReader.getExpectedPayoff("MM", 0);
+		pay = LearningModelsExisting.getExpectedPayoff("MM", 0);
 		assertEquals(0.1, pay, Utils.eps);
 
-		pay = LogReader.getExpectedPayoff("MM", 1);
+		pay = LearningModelsExisting.getExpectedPayoff("MM", 1);
 		assertEquals(0.8, pay, Utils.eps);
 
-		pay = LogReader.getExpectedPayoff("GB", 2);
+		pay = LearningModelsExisting.getExpectedPayoff("GB", 2);
 		assertEquals(0.3, pay, Utils.eps);
 
-		pay = LogReader.getExpectedPayoff("GB", 0);
+		pay = LearningModelsExisting.getExpectedPayoff("GB", 0);
 		assertEquals(1.2, pay, Utils.eps);
 
-		pay = LogReader.getExpectedPayoff("GB", 1);
+		pay = LearningModelsExisting.getExpectedPayoff("GB", 1);
 		assertEquals(0.75, pay, Utils.eps);
 	}
 
@@ -196,7 +197,7 @@ public class LogReaderTest {
 
 		// treatment 1
 		LogReader.treatment = "prior2-basic";
-		double[] payoffs = LogReader.determinePayoff(reports, refPlayerIndices);
+		double[] payoffs = LogReaderTest.determinePayoff(reports, refPlayerIndices);
 
 		double[] expectedPayoffs = new double[reports.length];
 		for (int i = 0; i < expectedPayoffs.length; i++) {
@@ -209,7 +210,7 @@ public class LogReaderTest {
 
 		// treatment 2
 		LogReader.treatment = "prior2-outputagreement";
-		payoffs = LogReader.determinePayoff(reports, refPlayerIndices);
+		payoffs = LogReaderTest.determinePayoff(reports, refPlayerIndices);
 		expectedPayoffs = new double[reports.length];
 		for (int i = 0; i < expectedPayoffs.length; i++) {
 			expectedPayoffs[i] = Utils.getPayment(LogReader.treatment,
@@ -225,7 +226,7 @@ public class LogReaderTest {
 	public void testGetStrategyRL() {
 	
 		LogReader.treatment = "prior2-basic";
-		LogReader.parseLog();
+		LogReader.parseDB();
 	
 		String[] playerHitIds = new String[LogReader.expSet.numPlayers];
 		for (int j = 0; j < playerHitIds.length; j++) {
@@ -250,7 +251,7 @@ public class LogReaderTest {
 		String signalCurrRound = "MM";
 		String signalPrevRound = "MM";
 	
-		Map<String, Double> strategy = LogReader.getStrategy(attraction,
+		Map<String, Double> strategy = LearningModelsExisting.getStrategy(attraction,
 				playerId, considerSignal, lambda, signalCurrRound, signalPrevRound);
 		double expectedMMProb = 0.5;
 		assertEquals(expectedMMProb, strategy.get("MM"), Utils.eps);
@@ -266,7 +267,7 @@ public class LogReaderTest {
 			payoffs.put(new Pair<String, String>("GB", "GB"), 0.1);
 			attraction.put(player, payoffs);
 		}
-		strategy = LogReader.getStrategy(attraction, playerId,
+		strategy = LearningModelsExisting.getStrategy(attraction, playerId,
 				considerSignal, lambda, signalCurrRound,
 				signalPrevRound);
 		expectedMMProb = Math.pow(Math.E, lambda * 1.5)
@@ -279,7 +280,7 @@ public class LogReaderTest {
 	public void testUpdateAttractionsRL() {
 		String[] playerHitIds = new String[]{"0", "1", "2"};
 		Map<String, Map<Pair<String, String>, Double>> attractions = 
-				LogReader.initAttraction(playerHitIds);
+				LearningModelsExisting.initAttraction(playerHitIds);
 		for (String hitId: playerHitIds) {
 			Map<Pair<String, String>, Double> playerAttraction = attractions.get(hitId);
 			assertEquals(0.0, playerAttraction.get(new Pair<String, String>("MM", "MM")), Utils.eps);
@@ -303,7 +304,7 @@ public class LogReaderTest {
 		reportPrevRound = "GB";
 		rewardPrevRound = 1.5;
 		playerId = "2";
-		LogReader.updateAttractionsRL(attractions, playerId, phi, signalPrevRound, 
+		LearningModelsExisting.updateAttractionsRL(attractions, playerId, phi, signalPrevRound, 
 				reportPrevRound, rewardPrevRound);
 		Map<Pair<String, String>, Double> playerAttraction = attractions.get(playerId);
 		double actualAttrMMMM = playerAttraction.get(new Pair<String, String>("MM", "MM"));
@@ -320,7 +321,7 @@ public class LogReaderTest {
 		assertEquals(expAttrGBGB, actualAttrGBGB, Utils.eps);
 		
 		rewardPrevRound = 0.1;
-		LogReader.updateAttractionsRL(attractions, playerId, phi, signalPrevRound, 
+		LearningModelsExisting.updateAttractionsRL(attractions, playerId, phi, signalPrevRound, 
 				reportPrevRound, rewardPrevRound);
 		playerAttraction = attractions.get(playerId);
 		actualAttrMMMM = playerAttraction.get(new Pair<String, String>("MM", "MM"));
@@ -338,12 +339,105 @@ public class LogReaderTest {
 	}
 		
 	@Test
-	public void testEstimateRL() {
-		LogReader.treatment = "prior2-uniquetruthful";
-		LogReader.parseLog();
+	public void testS1() {
+		int numGames = 400;
+		LogReader.treatment = "prior2-basic";
+		LogReader.parseDB();
 		
+		int numTests = 3;
+		int numStrategies = 5;
+		String model = "s1";
+
+		for (int i = 0; i < numTests; i++) {
+
+			System.out.println();
+			System.out.printf("Test %s (%d)\n", model, i);
+			
+			double[] vec = Utils.getRandomVec(numStrategies);
+			double expProbTruthful = vec[0];
+			double expProbMM = vec[1];
+			double expProbGB = vec[2];
+			double expProbOP = vec[3];
+			double expEps = 0.1 * rand.nextDouble();
+			double[] point = new double[]{expProbTruthful, expProbMM, expProbGB, expProbOP, expEps};
+			
+			Map<String, Object> params = LearningModelsCustom.pointToMap(point, model);
+			
+			testS1Helper(numGames, params, model);
+		}
+
+	}
+
+	@Test
+	public void testS3Abs() {
 		int numGames = 300;
+		LogReader.treatment = "prior2-basic";
+		LogReader.parseDB();
+		
+		int numTests = 3;
+		int numStrategies = 5;
+		String model = "s3-abs";
+				
+		for (int i = 0; i < numTests; i++) {
+			
+			System.out.println();
+			System.out.printf("Testing %s (%d)\n", model, i);
+
+			double[] vec = Utils.getRandomVec(numStrategies);
+			double expProbTR = vec[0];
+			double expProbMM = vec[1];
+			double expProbGB = vec[2];
+			double expProbOP = vec[3];
+			double expEps = 0.1 * rand.nextDouble();
+//			double expDelta = rand.nextDouble()	* LearningModels.getUBCobyla(model, "delta");
+			double expDelta = 5;
+			double[] point = new double[] { expProbTR, expProbMM, expProbGB, expProbOP, expEps, expDelta };
+
+			Map<String, Object> params = LearningModelsCustom.pointToMap(point, model);
+
+			testS3Helper(numGames, params, model);
+		}
+		
+	}
+
+	@Test
+	public void testS3Rel() {
+		int numGames = 300;
+		LogReader.treatment = "prior2-basic";
+		LogReader.parseDB();
+		
+		int numTests = 1;
+		int numStrategies = 5;
+		String model = "s3-rel";
+		
+		for (int i = 0; i < numTests; i++) {
+			
+			System.out.println();
+			System.out.printf("Testing %s (%d)\n", model, i);
 	
+			double[] vec = Utils.getRandomVec(numStrategies);
+			double expProbTR = vec[0];
+			double expProbMM = vec[1];
+			double expProbGB = vec[2];
+			double expProbOP = vec[3];
+			double expEps = 0.1 * rand.nextDouble();
+			double expDelta = 5;
+			double[] point = new double[] { expProbTR, expProbMM, expProbGB, expProbOP, expEps, expDelta };
+	
+			Map<String, Object> params = LearningModelsCustom.pointToMap(point, model);
+			
+			testS3Helper(numGames, params, model);
+		}
+		
+	}
+
+
+	@Test
+	public void testRL() {
+		int numGames = 300;
+		LogReader.treatment = "prior2-uniquetruthful";
+		LogReader.parseDB();
+
 		// Test 1
 		System.out.println();
 		System.out.println("Test RL 1");
@@ -354,7 +448,7 @@ public class LogReaderTest {
 		params.put("considerSignal", expConsiderSignal);
 		params.put("phi", expPhi);
 		params.put("lambda", expLambda);
-		testRL(numGames, params);
+		testRLHelper(numGames, params);
 	
 		// Test 2
 		System.out.println();
@@ -365,10 +459,137 @@ public class LogReaderTest {
 		params.put("considerSignal", expConsiderSignal);
 		params.put("phi", expPhi);
 		params.put("lambda", expLambda);
-		testRL(numGames, params);
+		testRLHelper(numGames, params);
 	}
 
-	private void testRL(int numGames, Map<String, Object> params) {
+	@Test
+	public void testSFP() {
+		int numGames = 200;
+		LogReader.treatment = "prior2-basic";
+		LogReader.parseDB();
+	
+		// test 1
+		System.out.println();
+		System.out.println("Test SFP 1");
+		boolean expConsiderSignal = true;
+		double expRho = 0.5;
+		double expLambda = 5;
+		Map<String, Object> params = new HashMap<String, Object>();
+		params.put("considerSignal", expConsiderSignal);
+		params.put("rho", expRho);
+		params.put("lambda", expLambda);
+		testSFPHelper(numGames, params);
+	
+		// test 2
+		System.out.println();
+		System.out.println("Test SFP 2");
+		expConsiderSignal = false;
+		expRho = 0.8;
+		expLambda = 10;
+		params.put("considerSignal", expConsiderSignal);
+		params.put("rho", expRho);
+		params.put("lambda", expLambda);
+		testSFPHelper(numGames, params);
+	}
+
+	@Test
+	public void testEWA() {
+		int numGames = 400;
+		LogReader.treatment = "prior2-basic";
+		LogReader.parseDB();
+	
+		// test 1
+		System.out.println();
+		System.out.println("Test EWA 1");
+		boolean expConsiderSignal = true;
+		double expPhi = rand.nextDouble();
+		double expDelta = 0.8;
+		double expRho = 0.5;
+		double expLambda = 5;
+		Map<String, Object> params = new HashMap<String, Object>();
+		params.put("considerSignal", expConsiderSignal);
+		params.put("rho", expRho);
+		params.put("lambda", expLambda);
+		params.put("phi", expPhi);
+		params.put("delta", expDelta);
+		testEWAHelper(numGames, params);
+	
+		// test 2
+		System.out.println();
+		System.out.println("Test EWA 2");
+		expConsiderSignal = false;
+		expPhi = 0.3;
+		expDelta = 0.8;
+		expRho = 0.5;
+		expLambda = 5;
+		params = new HashMap<String, Object>();
+		params.put("considerSignal", expConsiderSignal);
+		params.put("rho", expRho);
+		params.put("lambda", expLambda);
+		params.put("phi", expPhi);
+		params.put("delta", expDelta);
+		testEWAHelper(numGames, params);
+	}
+
+	void testS3Helper(int numGames, Map<String, Object> params, String model) {
+		
+		// expected parameters
+		System.out.printf("Expected parameters: ");
+		Utils.printParams(params);
+		
+		// simulate a set of games
+		List<Game> games = new ArrayList<Game>();
+		for (int i = 0; i < numGames; i++) {
+			Game game = LogReaderTest.simulateOneGameS3(params);
+			games.add(game);
+		}
+		
+		// expected log lk
+		double loglkExp = LearningModelsCustom.computeLogLkS3(params, games);
+		System.out.printf("Expected loglk = %.2f\n", loglkExp);
+		
+		// estimate model
+		double[] point = LearningModelsCustom.setRandomStartPoint(model);
+		point = LearningModelsCustom.estimateUsingCobyla(model, games);
+
+		System.out.printf("Actual parameters: ");
+		Utils.printParams(LearningModelsCustom.pointToMap(point, model));
+				
+		assertEquals((double) params.get("probTR"), point[0], 0.1);
+		assertEquals((double) params.get("probMM"), point[1], 0.1);
+		assertEquals((double) params.get("probGB"), point[2], 0.1);	
+		assertEquals((double) params.get("probOP"), point[3], 0.1);	
+		assertEquals((double) params.get("eps"), 	point[4], 0.1);
+		assertEquals((double) params.get("delta"), 	point[5], 0.1);
+	}
+
+	void testS1Helper(int numGames, Map<String, Object> expectedParams, String model) {
+		// expected parameters
+		System.out.printf("Expected parameters: ");
+		Utils.printParams(expectedParams);
+		
+		// simulate a set of games
+		List<Game> games = new ArrayList<Game>();
+		for (int i = 0; i < numGames; i++) {
+			Game game = simulateOneGameS1(expectedParams);
+			games.add(game);
+		}
+		
+		// estimate model
+		double[] point = LearningModelsCustom.estimateUsingCobyla(model, games);
+		Map<String, Object> actualParams = LearningModelsCustom.pointToMap(point, model);
+		System.out.printf("Actual parameters: ");
+		Utils.printParams(actualParams);
+		
+		// compare parameters
+		assertEquals((double) expectedParams.get("probTR"), (double) actualParams.get("probTR"), 0.1);
+		assertEquals((double) expectedParams.get("probMM"), (double) actualParams.get("probMM"), 0.1);
+		assertEquals((double) expectedParams.get("probGB"), (double) actualParams.get("probGB"), 0.1);
+		assertEquals((double) expectedParams.get("probOP"), (double) actualParams.get("probOP"), 0.1);
+		assertEquals((double) expectedParams.get("eps"), 	(double) actualParams.get("eps"), 0.05);
+	}
+
+	void testRLHelper(int numGames, Map<String, Object> params) {
 		System.out.printf("Expected parameters: %s\n", params);
 	
 		List<Game> games = new ArrayList<Game>();
@@ -390,12 +611,242 @@ public class LogReaderTest {
 		
 		double[] point = null;
 		if (considerSignal)
-			point = LogReader.estimateUsingApacheOptimizer(games, bounds, "RLS");
+			point = PredLkAnalysis.estimateUsingApacheOptimizer(games, "RLS");
 		else 
-			point = LogReader.estimateUsingApacheOptimizer(games, bounds, "RLNS");
+			point = PredLkAnalysis.estimateUsingApacheOptimizer(games, "RLNS");
 		System.out.printf("Actual parameters: phi=%.2f lambda=%.2f, \n", point[0], point[1]);
 		assertEquals((double) params.get("phi"), point[0], 0.1);
 		assertEquals((double) params.get("lambda"), point[1], 1);
+	}
+
+	void testSFPHelper(int numGames, Map<String, Object> params) {
+		System.out.printf("Expected parameters: %s\n", params.toString());
+	
+		List<Game> games = new ArrayList<Game>();
+		for (int i = 0; i < numGames; i++) {
+			List<Round> rounds = LogReaderTest.simulateOneGameSFP(params);
+			Game game = new Game();
+			game.rounds = rounds;
+			game.playerHitIds = new String[LogReader.expSet.numPlayers];
+			for (int j = 0; j < LogReader.expSet.numPlayers; j++) {
+				game.playerHitIds[j] = String.format("%d", j);
+			}
+			games.add(game);
+		}
+	
+		boolean considerSignal = (boolean) params.get("considerSignal");
+		Map<String, Object> bounds = new HashMap<String, Object>();
+		bounds.put("lb", new double[]{0, 1});
+		bounds.put("ub", new double[]{1, 10});
+		
+		double[] point = null;
+		if (considerSignal)
+			point = PredLkAnalysis.estimateUsingApacheOptimizer(games, "SFPS");
+		else 
+			point = PredLkAnalysis.estimateUsingApacheOptimizer(games, "SFPNS");
+		System.out.printf("Actual parameters: rho=%.2f lambda=%.2f, \n", point[0], point[1]);
+		assertEquals((double) params.get("rho"), point[0], 0.1);
+		assertEquals((double) params.get("lambda"), point[1], 0.5);
+	}
+
+	void testEWAHelper(int numGames, Map<String, Object> params) {
+		System.out.printf("Expected parameters: %s\n", params.toString());
+		
+		List<Game> games = new ArrayList<Game>();
+		for (int i = 0; i < numGames; i++) {
+			List<Round> rounds = LogReaderTest.simulateOneGameEWA(params);
+			Game game = new Game();
+			game.rounds = rounds;
+			game.playerHitIds = new String[LogReader.expSet.numPlayers];
+			for (int j = 0; j < LogReader.expSet.numPlayers; j++) {
+				game.playerHitIds[j] = String.format("%d", j);
+			}
+			games.add(game);
+		}
+	
+	
+		Map<String, Object> bounds = new HashMap<String, Object>();
+		bounds.put("lb", new double[]{0, 0, 0, 1});
+		bounds.put("ub", new double[]{1, 1, 1, 10});
+		
+		boolean considerSignal = (boolean) params.get("considerSignal");
+		double[] point = null;
+		if (considerSignal) 
+			point = PredLkAnalysis.estimateUsingApacheOptimizer(games, "EWAS");
+		else
+			point = PredLkAnalysis.estimateUsingApacheOptimizer(games, "EWANS");
+		System.out.printf("Actual parameters: rho=%.2f, phi=%.2f, delta=%.2f, lambda=%.2f\n", 
+				point[0], point[1], point[2], point[3]);
+		assertEquals((double) params.get("rho"), point[0], 0.1);
+		assertEquals((double) params.get("phi"), point[1], 0.1);
+		assertEquals((double) params.get("delta"), point[2], 0.1);
+		assertEquals((double) params.get("lambda"), point[3], 1);		
+	}
+
+	Game simulateOneGameS1(Map<String, Object> params) {
+	
+		int numStrategies = 5;
+		List<Round> rounds = new ArrayList<Round>();
+		Game game = new Game();
+		
+		String[] playerHitIds = new String[LogReader.expSet.numPlayers];
+		for (int index = 0; index < LogReader.expSet.numPlayers; index++) {
+			playerHitIds[index] = String.format("%d", index);
+		}
+		game.playerHitIds = playerHitIds;
+	
+		int[] strategyIndices = new int[LogReader.expSet.numPlayers];
+		for (int j = 0; j < LogReader.expSet.numPlayers; j++) {
+			
+			double[] probDist = new double[numStrategies];
+			probDist[0] = (double) params.get("probTR");
+			probDist[1] = (double) params.get("probMM");
+			probDist[2] = (double) params.get("probGB");
+			probDist[3] = (double) params.get("probOP");
+			probDist[4] = 1 - probDist[0] - probDist[1] - probDist[2] - probDist[3];
+			strategyIndices[j] = RandomSelection.selectRandomWeighted(
+					probDist, Utils.rand);	
+		}
+		
+		double eps = (double) params.get("eps");
+		for (int i = 0; i < LogReader.expSet.numRounds; i++) {
+	
+			Round r = new Round();
+			r.roundNum = i;
+			int worldIndex = Utils.selectByBinaryDist(LogReader.expSet.priorProbs[0]);
+			r.chosenWorld = LogReader.expSet.worlds.get(worldIndex);
+	
+			r.result = new HashMap<String, Map<String, Object>>();
+	
+			String[] signals = new String[LogReader.expSet.numPlayers];
+			String[] reports = new String[LogReader.expSet.numPlayers];
+	
+			for (int j = 0; j < LogReader.expSet.numPlayers; j++) {
+	
+				int signalIndex = Utils.selectByBinaryDist(r.chosenWorld.get("MM"));
+				signals[j] = LogReader.signalList[signalIndex];
+	
+				chooseReports(strategyIndices, signals, reports, eps, j);
+				
+			}
+	
+			int[] refPlayerIndices = new int[LogReader.expSet.numPlayers];
+			double[] payoffs = LogReaderTest.determinePayoff(reports, refPlayerIndices);
+	
+			saveResult(r, signals, reports, refPlayerIndices, payoffs);
+	
+			rounds.add(r);
+		}
+		game.rounds = rounds;
+		return game;
+	}
+
+	static Game simulateOneGameS3(Map<String, Object> params) {
+	
+		boolean isAbs = (boolean) params.get("isAbs");
+		double eps = (double) params.get("eps");
+		double delta = (double) params.get("delta");
+		int numStrategies = 5;
+		
+		List<Round> rounds = new ArrayList<Round>();
+		Game game = new Game();
+		game.rounds = rounds;
+	
+		String[] playerHitIds = new String[LogReader.expSet.numPlayers];
+		for (int index = 0; index < LogReader.expSet.numPlayers; index++) {
+			playerHitIds[index] = String.format("%d", index);
+		}
+		game.playerHitIds = playerHitIds;
+	
+		// initial probabilities for strategies
+		double[] probDist = new double[numStrategies];
+		probDist[0] = (double) params.get("probTR");
+		probDist[1] = (double) params.get("probMM");
+		probDist[2] = (double) params.get("probGB");
+		probDist[3] = (double) params.get("probOP");
+		probDist[4] = 1 - probDist[0] - probDist[1] - probDist[2] - probDist[3];
+		
+		// select initial strategies
+		int[] strategyIndices = new int[LogReader.expSet.numPlayers];
+		for (int j = 0; j < LogReader.expSet.numPlayers; j++) {
+			strategyIndices[j] = RandomSelection.selectRandomWeighted(probDist, Utils.rand);	
+		}
+		
+		// initialize actual and hypothetical payoffs
+		double[] actualPayoffs = new double[LogReader.expSet.numPlayers];
+		Map<String, List<Double>> hypoPayoffMap = new HashMap<String, List<Double>>();
+		for (int j = 0; j < LogReader.expSet.numPlayers; j++) {
+			String playerId = String.format("%d", j);
+			actualPayoffs[j] = 0.0;
+			List<Double> list = new ArrayList<Double>();
+			for (int x = 0; x < numStrategies; x++) {
+				list.add(0.0);
+			}
+			hypoPayoffMap.put(playerId, list);
+		}
+	
+		for (int i = 0; i < LogReader.expSet.numRounds; i++) {
+	
+			Round r = new Round();
+			r.roundNum = i;
+			int worldIndex = Utils.selectByBinaryDist(LogReader.expSet.priorProbs[0]);
+			r.chosenWorld = LogReader.expSet.worlds.get(worldIndex);
+			r.result = new HashMap<String, Map<String, Object>>();
+	
+			// generate signals, reports, payoffs, and save them
+			String[] signals = new String[LogReader.expSet.numPlayers];
+			String[] reports = new String[LogReader.expSet.numPlayers];
+	
+			boolean[] switched = new boolean[LogReader.expSet.numPlayers];
+			// switch strategy according to criteria
+			for (int j = 0; j < LogReader.expSet.numPlayers; j++) {
+				
+				if (switched[j]) continue;
+				
+				String playerId = String.format("%d", j);
+				List<Double> hypoPayoffs = hypoPayoffMap.get(playerId);
+				Double bestAltPayoff = Collections.max(hypoPayoffs);
+				if ((isAbs && LearningModelsCustom.shouldSwitchAbsS3(bestAltPayoff, actualPayoffs[j], delta)) || 
+						(!isAbs && LearningModelsCustom.shouldSwitchRelS3(bestAltPayoff, actualPayoffs[j], delta))) {
+					strategyIndices[j] = hypoPayoffs.indexOf(bestAltPayoff);
+					switched[j] = true;
+				}
+			}
+			
+			for (int j = 0; j < LogReader.expSet.numPlayers; j++) {
+	
+				// choose signals
+				int signalIndex = Utils.selectByBinaryDist(r.chosenWorld.get("MM"));
+				signals[j] = LogReader.signalList[signalIndex];
+	
+				// choose reports
+				chooseReports(strategyIndices, signals, reports, eps, j);
+				
+			}
+	
+			// determine payoffs
+			int[] refPlayerIndices = new int[LogReader.expSet.numPlayers];
+			double[] payoffs = LogReaderTest.determinePayoff(reports, refPlayerIndices);
+	
+			// save result
+			saveResult(r, signals, reports, refPlayerIndices, payoffs);
+	
+			// update actual and hypothetical payoffs
+			for (int j = 0; j < LogReader.expSet.numPlayers; j++) {
+				String playerId = String.format("%d", j);
+	
+				actualPayoffs[j] = actualPayoffs[j] + payoffs[j];
+				List<Double> hypoPayoffs = hypoPayoffMap.get(playerId);
+				LearningModelsCustom.updateHypoPayoffsS3(hypoPayoffs, playerId,
+						signals[j], r, LogReader.treatment);
+	
+			}
+			
+			rounds.add(r);
+		}
+		
+		game.rounds = rounds;
+		return game;
 	}
 
 	static List<Round> simulateOneGameRL(Map<String, Object> params) {
@@ -408,7 +859,8 @@ public class LogReaderTest {
 			playerHitIds[index] = String.format("%d", index);
 		}
 	
-		Map<String, Map<Pair<String, String>, Double>> attraction = LogReader.initAttraction(playerHitIds);
+		Map<String, Map<Pair<String, String>, Double>> attraction = 
+				LearningModelsExisting.initAttraction(playerHitIds);
 	
 		for (int i = 0; i < LogReader.expSet.numRounds; i++) {
 	
@@ -453,9 +905,9 @@ public class LogReaderTest {
 					double phi = (double) params.get("phi");
 					double lambda = (double) params.get("lambda");
 	
-					LogReader.updateAttractionsRL(attraction, playerId, phi,
+					LearningModelsExisting.updateAttractionsRL(attraction, playerId, phi,
 							signalPrevRound, reportPrevRound, rewardPrevRound);
-					Map<String, Double> strategy = LogReader.getStrategy(attraction,
+					Map<String, Double> strategy = LearningModelsExisting.getStrategy(attraction,
 							playerId, considerSignal, lambda, signals[j],
 							signalPrevRound);
 	
@@ -470,98 +922,14 @@ public class LogReaderTest {
 	
 			// determine payoffs
 			int[] refPlayerIndices = new int[LogReader.expSet.numPlayers];
-			double[] payoffs = LogReader.determinePayoff(reports, refPlayerIndices);
+			double[] payoffs = LogReaderTest.determinePayoff(reports, refPlayerIndices);
 	
-			// save result
-			for (int j = 0; j < LogReader.expSet.numPlayers; j++) {
-	
-				Map<String, Object> playerResult = new HashMap<String, Object>();
-	
-				playerResult.put("signal", signals[j]);
-				playerResult.put("report", reports[j]);
-	
-				if (LogReader.treatment.equals("prior2-basic")
-						|| LogReader.treatment.equals("prior2-outputagreement")) {
-	
-					String refPlayerId = String.format("%d",
-							refPlayerIndices[j]);
-					playerResult.put("refPlayer", refPlayerId);
-	
-				}
-	
-				playerResult.put("reward", payoffs[j]);
-				playerResult.put("mmProb", mmProbs[j]);
-	
-				String playerId = String.format("%d", j);
-				r.result.put(playerId, playerResult);
-			}
+			saveResult(r, signals, reports, refPlayerIndices, payoffs);
 	
 			rounds.add(r);
 		}
 		return rounds;
 	}
-
-	@Test
-	public void testEstimateSFP() {
-		int numGames = 200;
-		LogReader.treatment = "prior2-basic";
-		LogReader.parseLog();
-	
-		// test 1
-		System.out.println();
-		System.out.println("Test SFP 1");
-		boolean expConsiderSignal = true;
-		double expRho = 0.5;
-		double expLambda = 5;
-		Map<String, Object> params = new HashMap<String, Object>();
-		params.put("considerSignal", expConsiderSignal);
-		params.put("rho", expRho);
-		params.put("lambda", expLambda);
-		testSFP(numGames, params);
-	
-		// test 2
-		System.out.println();
-		System.out.println("Test SFP 2");
-		expConsiderSignal = false;
-		expRho = 0.8;
-		expLambda = 10;
-		params.put("considerSignal", expConsiderSignal);
-		params.put("rho", expRho);
-		params.put("lambda", expLambda);
-		testSFP(numGames, params);
-	}
-
-	private void testSFP(int numGames, Map<String, Object> params) {
-		System.out.printf("Expected parameters: %s\n", params.toString());
-	
-		List<Game> games = new ArrayList<Game>();
-		for (int i = 0; i < numGames; i++) {
-			List<Round> rounds = LogReaderTest.simulateOneGameSFP(params);
-			Game game = new Game();
-			game.rounds = rounds;
-			game.playerHitIds = new String[LogReader.expSet.numPlayers];
-			for (int j = 0; j < LogReader.expSet.numPlayers; j++) {
-				game.playerHitIds[j] = String.format("%d", j);
-			}
-			games.add(game);
-		}
-	
-		boolean considerSignal = (boolean) params.get("considerSignal");
-		Map<String, Object> bounds = new HashMap<String, Object>();
-		bounds.put("lb", new double[]{0, 1});
-		bounds.put("ub", new double[]{1, 10});
-		
-		double[] point = null;
-		if (considerSignal)
-			point = LogReader.estimateUsingApacheOptimizer(games, bounds, "SFPS");
-		else 
-			point = LogReader.estimateUsingApacheOptimizer(games, bounds, "SFPNS");
-		System.out.printf("Actual parameters: rho=%.2f lambda=%.2f, \n", point[0], point[1]);
-		assertEquals((double) params.get("rho"), point[0], 0.1);
-		assertEquals((double) params.get("lambda"), point[1], 0.5);
-	}
-
-	
 
 	static List<Round> simulateOneGameSFP(Map<String, Object> params) {
 		double firstRoundMMProb = 0.5;
@@ -574,7 +942,7 @@ public class LogReaderTest {
 	
 		// initialize experience and attraction
 		double experiences = Utils.eps;
-		Map<String, Map<Pair<String, String>, Double>> attractions = LogReader.initAttraction(playerHitIds);
+		Map<String, Map<Pair<String, String>, Double>> attractions = LearningModelsExisting.initAttraction(playerHitIds);
 	
 		for (int i = 0; i < LogReader.expSet.numRounds; i++) {
 	
@@ -625,14 +993,14 @@ public class LogReaderTest {
 					double lambda = (double) params.get("lambda");
 	
 					// update attractions
-					LogReader.updateAttractionsSFP(attractions, experiences, playerId,
+					LearningModelsExisting.updateAttractionsSFP(attractions, experiences, playerId,
 							rho, reportPrev, rewardPrev, numOtherMMReportsPrev);
 	
 					// update experience
-					experiences = LogReader.updateExperience(experiences, rho);
+					experiences = LearningModelsExisting.updateExperience(experiences, rho);
 	
 					// get strategy
-					Map<String, Double> strategy = LogReader.getStrategy(attractions,
+					Map<String, Double> strategy = LearningModelsExisting.getStrategy(attractions,
 							playerId, considerSignal, lambda, signals[j],
 							signalPrev);
 	
@@ -646,29 +1014,9 @@ public class LogReaderTest {
 	
 			// determine payoffs
 			int[] refPlayerIndices = new int[LogReader.expSet.numPlayers];
-			double[] payoffs = LogReader.determinePayoff(reports, refPlayerIndices);
+			double[] payoffs = LogReaderTest.determinePayoff(reports, refPlayerIndices);
 	
-			// save result
-			for (int j = 0; j < LogReader.expSet.numPlayers; j++) {
-	
-				Map<String, Object> playerResult = new HashMap<String, Object>();
-	
-				playerResult.put("signal", signals[j]);
-				playerResult.put("report", reports[j]);
-	
-				if (LogReader.treatment.equals("prior2-basic")
-						|| LogReader.treatment.equals("prior2-outputagreement")) {
-					String refPlayerId = String.format("%d",
-							refPlayerIndices[j]);
-					playerResult.put("refPlayer", refPlayerId);
-				}
-	
-				playerResult.put("reward", payoffs[j]);
-				playerResult.put("mmProb", mmProbs[j]);
-	
-				String id = String.format("%d", j);
-				r.result.put(id, playerResult);
-			}
+			saveResult(r, signals, reports, refPlayerIndices, payoffs);
 	
 			rounds.add(r);
 		}
@@ -676,79 +1024,6 @@ public class LogReaderTest {
 		return rounds;
 	}
 
-	@Test
-	public void testEstimateEWA() {
-		int numGames = 400;
-		LogReader.treatment = "prior2-basic";
-		LogReader.parseLog();
-	
-		// test 1
-		System.out.println();
-		System.out.println("Test EWA 1");
-		boolean expConsiderSignal = true;
-		double expPhi = 0.3;
-		double expDelta = 0.8;
-		double expRho = 0.5;
-		double expLambda = 5;
-		Map<String, Object> params = new HashMap<String, Object>();
-		params.put("considerSignal", expConsiderSignal);
-		params.put("rho", expRho);
-		params.put("lambda", expLambda);
-		params.put("phi", expPhi);
-		params.put("delta", expDelta);
-		testEWA(numGames, params);
-	
-		// test 2
-		System.out.println();
-		System.out.println("Test EWA 2");
-		expConsiderSignal = false;
-		expPhi = 0.3;
-		expDelta = 0.8;
-		expRho = 0.5;
-		expLambda = 5;
-		params = new HashMap<String, Object>();
-		params.put("considerSignal", expConsiderSignal);
-		params.put("rho", expRho);
-		params.put("lambda", expLambda);
-		params.put("phi", expPhi);
-		params.put("delta", expDelta);
-		testEWA(numGames, params);
-	}
-
-	private void testEWA(int numGames, Map<String, Object> params) {
-		System.out.printf("Expected parameters: %s\n", params.toString());
-		
-		List<Game> games = new ArrayList<Game>();
-		for (int i = 0; i < numGames; i++) {
-			List<Round> rounds = LogReaderTest.simulateOneGameEWA(params);
-			Game game = new Game();
-			game.rounds = rounds;
-			game.playerHitIds = new String[LogReader.expSet.numPlayers];
-			for (int j = 0; j < LogReader.expSet.numPlayers; j++) {
-				game.playerHitIds[j] = String.format("%d", j);
-			}
-			games.add(game);
-		}
-	
-
-		Map<String, Object> bounds = new HashMap<String, Object>();
-		bounds.put("lb", new double[]{0, 0, 0, 1});
-		bounds.put("ub", new double[]{1, 1, 1, 10});
-		
-		boolean considerSignal = (boolean) params.get("considerSignal");
-		double[] point = null;
-		if (considerSignal) 
-			point = LogReader.estimateUsingApacheOptimizer(games, bounds, "EWAS");
-		else
-			point = LogReader.estimateUsingApacheOptimizer(games, bounds, "EWANS");
-		System.out.printf("Actual parameters: rho=%.2f, phi=%.2f, delta=%.2f, lambda=%.2f\n", 
-				point[0], point[1], point[2], point[3]);
-		assertEquals((double) params.get("rho"), point[0], 0.1);
-		assertEquals((double) params.get("phi"), point[1], 0.1);
-		assertEquals((double) params.get("delta"), point[2], 0.1);
-		assertEquals((double) params.get("lambda"), point[3], 1);		
-	}
-	
 	static List<Round> simulateOneGameEWA(Map<String, Object> params) {
 	
 		double firstRoundMMProb = 0.5;
@@ -761,7 +1036,7 @@ public class LogReaderTest {
 	
 		// initialize experience and attraction
 		double experiences = Utils.eps;
-		Map<String, Map<Pair<String, String>, Double>> attractions = LogReader.initAttraction(playerHitIds);
+		Map<String, Map<Pair<String, String>, Double>> attractions = LearningModelsExisting.initAttraction(playerHitIds);
 	
 		for (int i = 0; i < LogReader.expSet.numRounds; i++) {
 	
@@ -814,15 +1089,15 @@ public class LogReaderTest {
 					double lambda = (double) params.get("lambda");
 	
 					// update attractions
-					LogReader.updateAttractionsEWA(attractions, experiences, playerId,
+					LearningModelsExisting.updateAttractionsEWA(attractions, experiences, playerId,
 							rho, delta, phi, signalPrev, reportPrev,
 							rewardPrev, signals[j], numMMPrev);
 	
 					// update experience
-					experiences = LogReader.updateExperience(experiences, rho);
+					experiences = LearningModelsExisting.updateExperience(experiences, rho);
 	
 					// get strategy
-					Map<String, Double> strategy = LogReader.getStrategy(attractions,
+					Map<String, Double> strategy = LearningModelsExisting.getStrategy(attractions,
 							playerId, considerSignal, lambda, signals[j],
 							signalPrev);
 	
@@ -836,29 +1111,9 @@ public class LogReaderTest {
 	
 			// determine payoffs
 			int[] refPlayerIndices = new int[LogReader.expSet.numPlayers];
-			double[] payoffs = LogReader.determinePayoff(reports, refPlayerIndices);
+			double[] payoffs = LogReaderTest.determinePayoff(reports, refPlayerIndices);
 	
-			// save result
-			for (int j = 0; j < LogReader.expSet.numPlayers; j++) {
-	
-				Map<String, Object> playerResult = new HashMap<String, Object>();
-	
-				playerResult.put("signal", signals[j]);
-				playerResult.put("report", reports[j]);
-	
-				if (LogReader.treatment.equals("prior2-basic")
-						|| LogReader.treatment.equals("prior2-outputagreement")) {
-					String refPlayerId = String.format("%d",
-							refPlayerIndices[j]);
-					playerResult.put("refPlayer", refPlayerId);
-				}
-	
-				playerResult.put("reward", payoffs[j]);
-				playerResult.put("mmProb", mmProbs[j]);
-	
-				String id = String.format("%d", j);
-				r.result.put(id, playerResult);
-			}
+			saveResult(r, signals, reports, refPlayerIndices, payoffs);
 	
 			rounds.add(r);
 		}
@@ -866,411 +1121,97 @@ public class LogReaderTest {
 		return rounds;
 	}
 
-	@Test
-	public void testEstimateS2() {
-		int numGames = 400;
-		LogReader.treatment = "prior2-basic";
-		LogReader.parseLog();
-	
-		// test 1
-		System.out.println();
-		System.out.println("Test S2 1");
-		double expProbTruthful = 0.3;
-		double expProbMM = 0.4;
-		double expProbGB = 0.1;
-		Map<String, Object> params = new HashMap<String, Object>();
-		params.put("probTruthful", expProbTruthful);
-		params.put("probMM", expProbMM);
-		params.put("probGB", expProbGB);
-		testS2(numGames, params);
-	
-		// test 2
-		System.out.println();
-		System.out.println("Test S2 2");
-		expProbTruthful = 0.5;
-		expProbMM = 0.1;
-		expProbGB = 0.3;
-		params = new HashMap<String, Object>();
-		params.put("probTruthful", expProbTruthful);
-		params.put("probMM", expProbMM);
-		params.put("probGB", expProbGB);
-		testS2(numGames, params);
-	}
-
-	private void testS2(int numGames, Map<String, Object> params) {
-		System.out.printf("Expected parameters: %s\n", params.toString());
-		
-		// simulate a set of games
-		List<Game> games = new ArrayList<Game>();
-		for (int i = 0; i < numGames; i++) {
-			Game game = LogReaderTest.simulateOneGameS2(params);
-			games.add(game);
-		}
-		
-		double[] point = LogReader.estimateUsingCobyla(games, "S2");
-		System.out.printf("Actual parameters: probTruthful=%.2f, probMM=%.2f, probGB=%.2f\n", 
-				point[0], point[1], point[2]);
-		assertEquals((double) params.get("probTruthful"), point[0], 0.1);
-		assertEquals((double) params.get("probMM"), point[1], 0.1);
-		assertEquals((double) params.get("probGB"), point[2], 0.1);	
-		
-	}
-	
-	static Game simulateOneGameS2(Map<String, Object> params) {
-	
-		List<Round> rounds = new ArrayList<Round>();
-		Game game = new Game();
-		
-		String[] playerHitIds = new String[LogReader.expSet.numPlayers];
-		for (int index = 0; index < LogReader.expSet.numPlayers; index++) {
-			playerHitIds[index] = String.format("%d", index);
-		}
-		game.playerHitIds = playerHitIds;
-	
-		double[] strategyIndices = new double[LogReader.expSet.numPlayers];
+	private static void saveResult(Round r, String[] signals, String[] reports,
+			int[] refPlayerIndices, double[] payoffs) {
 		for (int j = 0; j < LogReader.expSet.numPlayers; j++) {
-			
-			double[] probDist = new double[4];
-			probDist[0] = (double) params.get("probTruthful");
-			probDist[1] = (double) params.get("probMM");
-			probDist[2] = (double) params.get("probGB");
-			probDist[3] = 1 - probDist[0] - probDist[1] - probDist[2];
-			strategyIndices[j] = RandomSelection.selectRandomWeighted(probDist, LogReader.rand);	
-		}
-		
-		
-		for (int i = 0; i < LogReader.expSet.numRounds; i++) {
-	
-			Round r = new Round();
-			r.roundNum = i;
-			int worldIndex = Utils.selectByBinaryDist(LogReader.expSet.priorProbs[0]);
-			r.chosenWorld = LogReader.expSet.worlds.get(worldIndex);
-	
-			r.result = new HashMap<String, Map<String, Object>>();
-	
-			String[] signals = new String[LogReader.expSet.numPlayers];
-			String[] reports = new String[LogReader.expSet.numPlayers];
-			double[] mmProbs = new double[LogReader.expSet.numPlayers];
-	
-			for (int j = 0; j < LogReader.expSet.numPlayers; j++) {
-	
-				int signalIndex = Utils.selectByBinaryDist(r.chosenWorld.get("MM"));
-				signals[j] = LogReader.signalList[signalIndex];
-	
-				if (strategyIndices[j] == 0) {
-					// truthful strategy
-					reports[j] = signals[j];
-				} else if (strategyIndices[j] == 1) {
-					// MM strategy
-					reports[j] = "MM";
-				} else if (strategyIndices[j] == 2) {
-					// GB strategy
-					reports[j] = "GB";
-				} else if (strategyIndices[j] == 3) {
-					// random strategy
-					int reportIndex = Utils.selectByBinaryDist(0.5);
-					reports[j] = LogReader.signalList[reportIndex];
-				}
-				
-			}
-	
-			// determine payoffs
-			int[] refPlayerIndices = new int[LogReader.expSet.numPlayers];
-			double[] payoffs = LogReader.determinePayoff(reports, refPlayerIndices);
-	
-			// save result
-			for (int j = 0; j < LogReader.expSet.numPlayers; j++) {
-	
-				Map<String, Object> playerResult = new HashMap<String, Object>();
-	
-				playerResult.put("signal", signals[j]);
-				playerResult.put("report", reports[j]);
-	
-				if (LogReader.treatment.equals("prior2-basic")
-						|| LogReader.treatment.equals("prior2-outputagreement")) {
-	
-					String refPlayerId = String.format("%d",
-							refPlayerIndices[j]);
-					playerResult.put("refPlayer", refPlayerId);
-	
-				}
-	
-				playerResult.put("reward", payoffs[j]);
-				playerResult.put("mmProb", mmProbs[j]);
-	
-				String playerId = String.format("%d", j);
-				r.result.put(playerId, playerResult);
-			}
-	
-			rounds.add(r);
-		}
-		game.rounds = rounds;
-		return game;
-	}
-	
-	@Test
-	public void testEstimateS1() {
-		int numGames = 400;
-		LogReader.treatment = "prior2-basic";
-		LogReader.parseLog();
-	
-		// test 1
-		System.out.println();
-		System.out.println("Test S1 1");
-		int switchRound = 10;
-		double expDiffThreshold = 0.8;
-		double expProbTruthful = 0.3;
-		double expProbMM = 0.4;
-		double expProbGB = 0.1;
-		Map<String, Object> params = new HashMap<String, Object>();
-		params.put("switchRound", switchRound);
-		params.put("diffThreshold", expDiffThreshold);
-		params.put("probTruthful", expProbTruthful);
-		params.put("probMM", expProbMM);
-		params.put("probGB", expProbGB);
-		testS1(numGames, params);
-	
-		// test 2
-		System.out.println();
-		System.out.println("Test S1 2");
-		switchRound = 15;
-		expDiffThreshold = 0.4;
-		expProbTruthful = 0.5;
-		expProbMM = 0.1;
-		expProbGB = 0.3;
-		params = new HashMap<String, Object>();
-		params.put("switchRound", switchRound);
-		params.put("diffThreshold", expDiffThreshold);
-		params.put("probTruthful", expProbTruthful);
-		params.put("probMM", expProbMM);
-		params.put("probGB", expProbGB);
-		testS1(numGames, params);
-	}
 
-	private void testS1(int numGames, Map<String, Object> params) {
-		System.out.printf("Expected parameters: %s\n", params.toString());
-		
-		// simulate a set of games
-		List<Game> games = new ArrayList<Game>();
-		for (int i = 0; i < numGames; i++) {
-			Game game = LogReaderTest.simulateOneGameS1(params);
-			games.add(game);
-		}
-		
-		int switchRound = (int) params.get("switchRound");
-		String modelName = String.format("S1-%d", switchRound);
-		
-		double[] point = LogReader.estimateUsingCobyla(games, modelName);
-		System.out.printf("Actual parameters: diffThreshold=%.2f, probTruthful=%.2f, probMM=%.2f, probGB=%.2f\n",
-						point[0], point[1], point[2], point[3]);
-		assertEquals((double) params.get("diffThreshold"), 	point[0], 0.1);
-		assertEquals((double) params.get("probTruthful"), 	point[1], 0.1);
-		assertEquals((double) params.get("probMM"), 		point[2], 0.1);
-		assertEquals((double) params.get("probGB"), 		point[3], 0.1);	
-	}
+			Map<String, Object> playerResult = new HashMap<String, Object>();
 
-	static Game simulateOneGameS1(Map<String, Object> params) {
-	
-		List<Round> rounds = new ArrayList<Round>();
-		Game game = new Game();
-		game.rounds = rounds;
-	
-		String[] playerHitIds = new String[LogReader.expSet.numPlayers];
-		for (int index = 0; index < LogReader.expSet.numPlayers; index++) {
-			playerHitIds[index] = String.format("%d", index);
-		}
-		game.playerHitIds = playerHitIds;
-	
-		double[] probDist = new double[4];
-		probDist[0] = (double) params.get("probTruthful");
-		probDist[1] = (double) params.get("probMM");
-		probDist[2] = (double) params.get("probGB");
-		probDist[3] = 1 - probDist[0] - probDist[1] - probDist[2];
-		
-		double[] strategyIndices = new double[LogReader.expSet.numPlayers];
-		for (int j = 0; j < LogReader.expSet.numPlayers; j++) {
-			strategyIndices[j] = RandomSelection.selectRandomWeighted(probDist, LogReader.rand);	
-		}
-		
-		int switchRound = (int) params.get("switchRound");
-		for (int i = 0; i < switchRound; i++) {
-	
-			Round r = new Round();
-			r.roundNum = i;
-			int worldIndex = Utils.selectByBinaryDist(LogReader.expSet.priorProbs[0]);
-			r.chosenWorld = LogReader.expSet.worlds.get(worldIndex);
-	
-			r.result = new HashMap<String, Map<String, Object>>();
-	
-			String[] signals = new String[LogReader.expSet.numPlayers];
-			String[] reports = new String[LogReader.expSet.numPlayers];
-			double[] mmProbs = new double[LogReader.expSet.numPlayers];
-	
-			for (int j = 0; j < LogReader.expSet.numPlayers; j++) {
-	
-				int signalIndex = Utils.selectByBinaryDist(r.chosenWorld.get("MM"));
-				signals[j] = LogReader.signalList[signalIndex];
-	
-				if (strategyIndices[j] == 0) {
-					// truthful strategy
-					reports[j] = signals[j];
-				} else if (strategyIndices[j] == 1) {
-					// MM strategy
-					reports[j] = "MM";
-				} else if (strategyIndices[j] == 2) {
-					// GB strategy
-					reports[j] = "GB";
-				} else if (strategyIndices[j] == 3) {
-					// random strategy
-					int reportIndex = Utils.selectByBinaryDist(0.5);
-					reports[j] = LogReader.signalList[reportIndex];
-				}
-				
+			playerResult.put("signal", signals[j]);
+			playerResult.put("report", reports[j]);
+
+			if (LogReader.treatment.equals("prior2-basic")
+					|| LogReader.treatment.equals("prior2-outputagreement")) {
+
+				String refPlayerId = String.format("%d", refPlayerIndices[j]);
+				playerResult.put("refPlayer", refPlayerId);
+
 			}
-	
-			// determine payoffs
-			int[] refPlayerIndices = new int[LogReader.expSet.numPlayers];
-			double[] payoffs = LogReader.determinePayoff(reports, refPlayerIndices);
-	
-			// save result
-			for (int j = 0; j < LogReader.expSet.numPlayers; j++) {
-	
-				Map<String, Object> playerResult = new HashMap<String, Object>();
-	
-				playerResult.put("signal", signals[j]);
-				playerResult.put("report", reports[j]);
-	
-				if (LogReader.treatment.equals("prior2-basic")
-						|| LogReader.treatment.equals("prior2-outputagreement")) {
-	
-					String refPlayerId = String.format("%d",
-							refPlayerIndices[j]);
-					playerResult.put("refPlayer", refPlayerId);
-	
-				}
-	
-				playerResult.put("reward", payoffs[j]);
-				playerResult.put("mmProb", mmProbs[j]);
-	
-				String playerId = String.format("%d", j);
-				r.result.put(playerId, playerResult);
-			}
-	
-			rounds.add(r);
-		}
-		
-		double diffThreshold = (double) params.get("diffThreshold");
-		for (int j = 0; j < LogReader.expSet.numPlayers; j++) {
-			
+
+			playerResult.put("reward", payoffs[j]);
+
 			String playerId = String.format("%d", j);
+			r.result.put(playerId, playerResult);
+		}
+	}
+
+	private static void chooseReports(int[] strategyIndices, String[] signals,
+			String[] reports, double eps, int j) {
+		
+		if (strategyIndices[j] == 0) {
+			// truthful strategy
+			int index = Utils.selectByBinaryDist(1 - eps);
+			if (index == 0)
+				reports[j] = signals[j];
+			else
+				reports[j] = Utils.getOtherReport(signals[j]);
 			
-			double countTotal = switchRound * LogReader.expSet.numPlayers;
-			double countMM = Utils.getNumMMReports(0, switchRound - 1, game, playerId);
-			double percentMM = countMM / countTotal;
-			double percentGB = 1 - percentMM;
+		} else if (strategyIndices[j] == 1) {
+			// MM strategy
+			int index = Utils.selectByBinaryDist(1 - eps);
+			if (index == 0)
+				reports[j] = "MM";
+			else
+				reports[j] = "GB";
 			
-			if (percentMM - percentGB >= diffThreshold) {
-				strategyIndices[j] = 1;
-			} else if (percentGB - percentMM >= diffThreshold) {
-				strategyIndices[j] = 2;
-			}
+		} else if (strategyIndices[j] == 2) {
+			// GB strategy
+			int index = Utils.selectByBinaryDist(1 - eps);
+			if (index == 0)
+				reports[j] = "GB";
+			else
+				reports[j] = "MM";
+			
+		} else if (strategyIndices[j] == 3) {
+			// Opposite strategy
+			int index = Utils.selectByBinaryDist(1 - eps);
+			if (index == 0)
+				reports[j] = Utils.getOtherReport(signals[j]);
+			else
+				reports[j] = signals[j];
+			
+		} else if (strategyIndices[j] == 4) {
+			// random strategy
+			int reportIndex = Utils.selectByBinaryDist(0.5);
+			reports[j] = LogReader.signalList[reportIndex];
 		}
 		
-		for (int i = switchRound; i < LogReader.expSet.numRounds; i++) {
-	
-			Round r = new Round();
-			r.roundNum = i;
-			int worldIndex = Utils.selectByBinaryDist(LogReader.expSet.priorProbs[0]);
-			r.chosenWorld = LogReader.expSet.worlds.get(worldIndex);
-	
-			r.result = new HashMap<String, Map<String, Object>>();
-	
-			String[] signals = new String[LogReader.expSet.numPlayers];
-			String[] reports = new String[LogReader.expSet.numPlayers];
-			double[] mmProbs = new double[LogReader.expSet.numPlayers];
-	
-			for (int j = 0; j < LogReader.expSet.numPlayers; j++) {
-	
-				int signalIndex = Utils.selectByBinaryDist(r.chosenWorld.get("MM"));
-				signals[j] = LogReader.signalList[signalIndex];
-	
-				if (strategyIndices[j] == 0) {
-					// truthful strategy
-					reports[j] = signals[j];
-				} else if (strategyIndices[j] == 1) {
-					// MM strategy
-					reports[j] = "MM";
-				} else if (strategyIndices[j] == 2) {
-					// GB strategy
-					reports[j] = "GB";
-				} else if (strategyIndices[j] == 3) {
-					// random strategy
-					int reportIndex = Utils.selectByBinaryDist(0.5);
-					reports[j] = LogReader.signalList[reportIndex];
-				}
-				
-			}
-	
-			// determine payoffs
-			int[] refPlayerIndices = new int[LogReader.expSet.numPlayers];
-			double[] payoffs = LogReader.determinePayoff(reports, refPlayerIndices);
-	
-			// save result
-			for (int j = 0; j < LogReader.expSet.numPlayers; j++) {
-	
-				Map<String, Object> playerResult = new HashMap<String, Object>();
-	
-				playerResult.put("signal", signals[j]);
-				playerResult.put("report", reports[j]);
-	
-				if (LogReader.treatment.equals("prior2-basic")
-						|| LogReader.treatment.equals("prior2-outputagreement")) {
-	
-					String refPlayerId = String.format("%d",
-							refPlayerIndices[j]);
-					playerResult.put("refPlayer", refPlayerId);
-	
-				}
-	
-				playerResult.put("reward", payoffs[j]);
-				playerResult.put("mmProb", mmProbs[j]);
-	
-				String playerId = String.format("%d", j);
-				r.result.put(playerId, playerResult);
-			}
-	
-			rounds.add(r);
-		}
-		
-		game.rounds = rounds;
-		return game;
 	}
 
 	@Test
-	public void testGetLkTruthful() {
+	public void testGetLkStrategy() {
 		LogReader.treatment = "prior2-basic";
-		LogReader.parseLog();
+		LogReader.parseDB();
 		
-		Game g = simulateGameWithPureStrategy("Truthful");
-		int roundStart = 4;
-		int roundEnd = 7;
-		double lk = LogReader.getLkTruthful(roundStart, roundEnd, g, "0");
-		assertEquals(Math.pow(1 - Utils.eps, roundEnd - roundStart), lk, Utils.eps);
+		testGetLkStrategyHelper("TR");
+		
+		testGetLkStrategyHelper("MM");
+		
+		testGetLkStrategyHelper("GB");
+
 	}
-	
-	@Test
-	public void testGetLkReport() {
-		LogReader.treatment = "prior2-basic";
-		LogReader.parseLog();
-		
-		Game g = simulateGameWithPureStrategy("MM");
+
+	private void testGetLkStrategyHelper(String strategy) {
+		Game g = simulateGameWithPureStrategy(strategy);
 		int roundStart = 4;
 		int roundEnd = 7;
-		double lk = LogReader.getLkReport(roundStart, roundEnd, g, "0", "MM");
+		double strError = Utils.eps;
+		String playerId = "0";
+		double lk = LearningModelsCustom.helperGetLkStrategy(g, playerId, roundStart, roundEnd, strategy, strError);
 		assertEquals(Math.pow(1 - Utils.eps, roundEnd - roundStart), lk, Utils.eps);
 		
-		lk = LogReader.getLkReport(roundStart, roundEnd, g, "0", "GB");
-		assertEquals(Math.pow(Utils.eps, roundEnd - roundStart), lk, Utils.eps);
+		double lkRandom = LearningModelsCustom.helperGetLkStrategy(g, playerId, roundStart, roundEnd, "RA", strError);
+		assertEquals(Math.pow(0.5, roundEnd - roundStart), lkRandom, Utils.eps);
 	}
 
 	static Game simulateGameWithPureStrategy(String strategy) {
@@ -1294,14 +1235,13 @@ public class LogReaderTest {
 		
 				String[] signals = new String[LogReader.expSet.numPlayers];
 				String[] reports = new String[LogReader.expSet.numPlayers];
-	//			double[] mmProbs = new double[LogReader.expSet.numPlayers];
 		
 				for (int j = 0; j < LogReader.expSet.numPlayers; j++) {
 		
 					int signalIndex = Utils.selectByBinaryDist(r.chosenWorld.get("MM"));
 					signals[j] = LogReader.signalList[signalIndex];
 					
-					if (strategy.equals("Truthful"))
+					if (strategy.equals("TR"))
 						reports[j] = signals[j];
 					else if (strategy.equals("MM"))
 						reports[j] = "MM";
@@ -1343,4 +1283,52 @@ public class LogReaderTest {
 			game.rounds = rounds;
 			return game;
 		}
+	
+	@Test
+	public void testStrategyIndexToString() {
+		assertEquals("TR", LearningModelsCustom.strategyIndexToStringS3(0));
+		assertEquals("MM", LearningModelsCustom.strategyIndexToStringS3(1));
+		assertEquals("GB", LearningModelsCustom.strategyIndexToStringS3(2));
+		assertEquals("OP", LearningModelsCustom.strategyIndexToStringS3(3));
+		assertEquals("RA", LearningModelsCustom.strategyIndexToStringS3(4));
+	}
+
+	public static double[] determinePayoff(String[] reports,
+			int[] refPlayerIndices) {
+	
+		double[] payoffs = new double[reports.length];
+	
+		if (LogReader.treatment.equals("prior2-basic")
+				|| LogReader.treatment.equals("prior2-outputagreement")) {
+	
+			for (int j = 0; j < reports.length; j++) {
+	
+				String myReport = reports[j];
+				refPlayerIndices[j] = Utils.chooseRefPlayer(j);
+				String refReport = reports[refPlayerIndices[j]];
+				payoffs[j] = Utils.getPayment(LogReader.treatment, myReport, refReport);
+			}
+	
+		} else if (LogReader.treatment.equals("prior2-uniquetruthful")
+				|| LogReader.treatment.equals("prior2-symmlowpay")) {
+	
+			int totalNumMM = 0;
+			for (int j = 0; j < reports.length; j++) {
+				if (reports[j].equals("MM"))
+					totalNumMM++;
+			}
+	
+			for (int j = 0; j < reports.length; j++) {
+				String myReport = reports[j];
+				int numOtherMMReports = totalNumMM;
+				if (myReport.equals("MM"))
+					numOtherMMReports = totalNumMM - 1;
+				payoffs[j] = Utils.getPayment(LogReader.treatment, myReport,
+						numOtherMMReports);
+			}
+	
+		}
+	
+		return payoffs;
+	}
 }

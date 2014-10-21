@@ -1042,19 +1042,45 @@ public class Utils {
 		return null;
 	}
 
-	public static double getNumMMReports(int roundStart, int roundEnd,
-			Game game, String excludePlayerId) {
+	/**
+	 * roundStart inclusive, roundEnd exclusive
+	 * @param game
+	 * @param excludePlayerId
+	 * @param roundStart
+	 * @param roundEnd
+	 * @return
+	 */
+	public static int getNumMMReports(Game game, String excludePlayerId,
+			int roundStart, int roundEnd) {
 		int countMM = 0;
 		for (String playerId : game.playerHitIds) {
 			if (playerId.equals(excludePlayerId))
 				continue;
-			for (int i = roundStart; i <= roundEnd; i++) {
+			for (int i = roundStart; i < roundEnd; i++) {
 				String report = game.rounds.get(i).getReport(playerId);
 				if (report.equals("MM"))
 					countMM++;
 			}
 		}
 		return countMM;
+	}
+
+	public static String getOtherReport(String report) {
+		if (report.equals("MM"))
+			return "GB";
+		else
+			return "MM";
+	}
+
+	public static void printParams(Map<String, Object> params) {
+		List<String> keys = new ArrayList<String>();
+		keys.addAll(params.keySet());
+		Collections.sort(keys);
+		for (String key : keys) {
+			if (key.equals("isAbs")) continue;
+			System.out.printf("%s=%.3f, ", key, params.get(key));
+		}
+		System.out.println();
 	}
 
 }

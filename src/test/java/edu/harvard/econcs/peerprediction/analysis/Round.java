@@ -53,6 +53,36 @@ public class Round {
 		return result.get(hitId).get("signal").toString();
 	}
 	
+	public double getReward(String hitId) {
+		return Double.parseDouble(result.get(hitId).get("reward").toString());
+	}
+
+	public double getHypoReward(String treatment, String playerId,
+			String hypotheticalReport) {
+		if (treatment.equals("prior2-basic")
+				|| treatment.equals("prior2-outputagreement")) {
+			
+			String refPlayer = result.get(playerId).get("refPlayer").toString();
+			String refReport = result.get(refPlayer).get("report").toString();
+			return Utils.getPayment(treatment, hypotheticalReport, refReport);
+			
+		} else {
+				
+			int numMMInOtherReports = 0;
+			for (String hitId : result.keySet()) {
+				if (hitId.equals(playerId))
+					continue;
+				else {
+					String report = result.get(hitId).get("report").toString();
+					if (report.equals("MM"))
+						numMMInOtherReports++;
+				}
+			}
+			return Utils.getPayment(treatment, hypotheticalReport,
+					numMMInOtherReports);
+		}
+	}
+
 	public String toString() {
 		return String.format("round %s, chosen world:%s\n"
 				+ "result: %s\n", roundNum, chosenWorld, result);
