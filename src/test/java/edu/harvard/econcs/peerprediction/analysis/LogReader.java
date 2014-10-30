@@ -22,38 +22,23 @@ import java.util.Scanner;
 import java.util.regex.Matcher;
 
 import net.andrewmao.models.games.SigActObservation;
-import be.ac.ulg.montefiore.run.jahmm.Hmm;
 
 public class LogReader {
 
 	static String dbUrl = "jdbc:mysql://localhost/peerprediction";
 	static String dbClass = "com.mysql.jdbc.Driver";
 	static String setId = "vary-payment";
-//	 static String treatment = "prior2-basic";
+	
+	 static String treatment = "prior2-basic";
 //	 static String treatment = "prior2-outputagreement";
 //	 static String treatment = "prior2-uniquetruthful";
 //	 static String treatment = "prior2-symmlowpay";
-	static String treatment = "prior2-constant";
+//	 static String treatment = "prior2-constant";
 
 	static final String rootDir = "/Users/alicexigao/Dropbox/peer-prediction/data/"
 			+ treatment + "/";
 
 	static Experiment expSet;
-
-	// For HMM estimation
-	static int numStrategies = -1;
-	static String[] strategyNames = null;
-	static int numRestarts = 1;
-	static int numHmmStates = 4;
-	static double tol = 0.02;
-	static Hmm<SigActObservation<CandySignal, CandyReport>> learntHmm = null;
-	static int mmState = -1;
-	static int gbState = -1;
-	static int truthfulState = -1;
-	static int mixedState = -1;
-	static int mixed2State = -1;
-
-	static String[] signalList = new String[] { "MM", "GB" };
 
 	public static void main(String[] args) throws Exception {
 
@@ -61,15 +46,15 @@ public class LogReader {
 		dir.mkdirs();
 
 		// Parsing game log and exit survey, and print info
-		 parseTextfile();
+		parseTextfile();
 //		parseDB();
 		// writePlayerCommentsToFile();
-		// printTreatmentInfo();
+		printTreatmentInfo();
 
 		// Statistics of raw data
 //		writeRawDataToFile();
-		// graphRawData();
-		// calcAvgBonus();
+//		 graphRawData();
+		 calcAvgBonus();
 
 	}
 
@@ -114,7 +99,7 @@ public class LogReader {
 			Statement numGameStmt = con.createStatement();
 			ResultSet numGameRS = numGameStmt.executeQuery(numGameQuery);
 			numGameRS.next();
-			expSet.numTotalGames = numGameRS.getInt(1);
+			expSet.numGames = numGameRS.getInt(1);
 
 			String expQuery = String
 					.format("select * from experiment "
@@ -125,10 +110,10 @@ public class LogReader {
 			expRS = expStmt.executeQuery(expQuery);
 
 			while (expRS.next()) {
-				String gameId = expRS.getString("id");
 				String expLog = expRS.getString("results");
-
 				Game game = parseGameLog(expLog);
+				
+				String gameId = expRS.getString("id");
 				game.id = gameId;
 
 				for (int i = 0; i < expSet.numRounds; i++) {
@@ -160,7 +145,6 @@ public class LogReader {
 
 					String comment = exitSurveyRS.getString("comment");
 					ExitSurvey exitSurvey = new ExitSurvey(comment);
-					// exitSurveys.put(hitId, comment);
 					game.exitSurvey.put(hitId, exitSurvey);
 				}
 
@@ -176,15 +160,11 @@ public class LogReader {
 					game.bonus.put(hitId, bonus);
 				}
 
-				expSet.addGame(game);
+				expSet.games.add(game);
 			}
 
 			// set parameters for this treatment
-			expSet.numGames = expSet.games.size();
-//			expSet.numPlayers = expSet.games.get(0).numPlayers;
-//			expSet.numRounds = expSet.games.get(0).numRounds;
-			expSet.worlds = expSet.games.get(0).worlds;
-			expSet.priorProbs = expSet.games.get(0).priorProbs;
+			expSet.nonKilledGames = expSet.games.size();
 
 		} catch (ClassNotFoundException e) {
 			e.printStackTrace();
@@ -223,10 +203,22 @@ public class LogReader {
 		expSet.numGames = Integer.parseInt(str.split(":")[1]);
 
 		str = reader.readLine();
+		expSet.nonKilledGames = Integer.parseInt(str.split(":")[1]);
+
+		// prior probabilities
+		str = reader.readLine();
+		
+		// worlds
+		str = reader.readLine();
+		
+		str = reader.readLine();
 		while (str.startsWith("Game ")) {
 			Game game = new Game();
 			expSet.games.add(game);
 
+			// game id
+			game.id = str.substring(5);
+			
 			List<String> playerStrings = new ArrayList<String>();
 			for (int j = 0; j < expSet.numPlayers; j++) {
 				playerStrings.add(reader.readLine());
@@ -264,7 +256,6 @@ public class LogReader {
 							|| treatment.equals("prior2-outputagreement")) {
 						res.put("refPlayer", resultArray[2]);
 					}
-					
 					
 					round.result.put(game.playerHitIds[j], res);
 				}
@@ -310,40 +301,42 @@ public class LogReader {
 		BufferedWriter writer = new BufferedWriter(new FileWriter(rootDir
 				+ "rawData.txt"));
 
-		writer.write(String.format("number of players per game:%d\n"
+		writer.write(String.format(
+				"number of players per game:%d\n"
 				+ "number of rounds per game:%d\n"
-				// + "number of games: %d\n"
-				+ "number of games without disconnected player:%d\n",
-		// + "prior probabilities: %s\n"
-		// + "worlds: %s\n",
+				+ "number of games:%d\n"
+				+ "number of games without disconnected player:%d\n"
+				+ "prior probabilities:%s\n"
+				+ "worlds:%s\n",
 				expSet.numPlayers, expSet.numRounds,
-				// expSet.numTotalGames,
-				expSet.numGames
-		// expSet.priorProbs,
-		// expSet.worlds
+				expSet.numGames,
+				expSet.nonKilledGames,
+				expSet.priorProbs,
+				expSet.worlds
 				));
 
-		int gameIndex = 0;
 		for (Game game : expSet.games) {
-			writer.write(String.format("Game %d\n", gameIndex));
+			writer.write(String.format("Game %s\n", game.id));
+			
 			List<String> playerIds = new ArrayList<String>();
 			for (String hitId : game.playerHitIds) {
 				playerIds.add(hitId);
 			}
 			for (String hitId : game.playerHitIds) {
+				
 				int playerIndex = playerIds.indexOf(hitId);
 				writer.write(String.format("%d:", playerIndex));
+				
 				for (int i = 0; i < game.rounds.size(); i++) {
+					
 					Round r = game.rounds.get(i);
 					String signal = r.getSignal(hitId);
 					String report = r.getReport(hitId);
 
 					if (treatment.equals("prior2-basic")
 							|| treatment.equals("prior2-outputagreement")) {
-						String refPlayer = (String) r.result.get(hitId).get(
-								"refPlayer");
-
 						// Treatments 1 and 2, write reference player
+						String refPlayer = (String) r.getRefPlayer(hitId);
 						writer.write(String.format("(%s,%s,%d)", signal,
 								report, playerIds.indexOf(refPlayer)));
 					} else {
@@ -357,9 +350,7 @@ public class LogReader {
 						writer.write(";");
 					}
 				}
-				// playerIndex++;
 			}
-			gameIndex++;
 		}
 
 		if (treatment.equals("prior2-basic")) {
@@ -422,8 +413,10 @@ public class LogReader {
 			lineIndex++;
 			matcher = MatchStrings.priorPattern.matcher(currentLine);
 			if (matcher.matches()) {
-				g.savePriorProb(matcher.group(2));
-				g.savePriorWorlds(matcher.group(3));
+				if (expSet.priorProbs == null)
+					expSet.savePriorProbs(matcher.group(2));
+				if (expSet.worlds == null)
+					expSet.savePriorWorlds(matcher.group(3));
 			} else
 				throw new ParseException("Did not find prior message",
 						lineIndex);
@@ -436,10 +429,13 @@ public class LogReader {
 					expSet.numPlayers = Integer.parseInt(matcher.group(2));
 				if (expSet.numRounds == -1)
 					expSet.numRounds = Integer.parseInt(matcher.group(3));
+				
 				g.savePlayerHitIds(matcher.group(4));
-				if (treatment.equals("prior2-basic") || treatment.equals("prior2-outputagreement")) {
-					g.savePaymentRule(matcher.group(5));
-				}
+				
+//				if (treatment.equals("prior2-basic") 
+//						|| treatment.equals("prior2-outputagreement")) {
+////					g.savePaymentRule(matcher.group(5));
+//				}
 			} else
 				throw new ParseException(
 						"Did not find general information message", lineIndex);
@@ -449,30 +445,30 @@ public class LogReader {
 				lineIndex++;
 				matcher = MatchStrings.experimentRoundStart
 						.matcher(currentLine);
-				if (matcher.matches()) {
-				} else
+				if (!matcher.matches()) {
 					throw new ParseException(
 							"Did not find experiment round start message",
 							lineIndex);
+				}
 
 				currentLine = sc.nextLine();
 				lineIndex++;
 				matcher = MatchStrings.experimentRoundFinish
 						.matcher(currentLine);
-				if (matcher.matches()) {
-				} else
+				if (!matcher.matches()) {
 					throw new ParseException(
 							"Did not find experiment round finish message",
 							lineIndex);
+				}
 			}
 
 			currentLine = sc.nextLine();
 			lineIndex++;
 			matcher = MatchStrings.experimentFinish.matcher(currentLine);
-			if (matcher.matches()) {
-			} else
+			if (!matcher.matches()) {
 				throw new ParseException(
 						"Did not find experiment finish message", lineIndex);
+			}
 
 		} catch (ParseException e) {
 			e.printStackTrace();
@@ -485,7 +481,7 @@ public class LogReader {
 	}
 
 	private static Round parseRoundLog(String roundResults, Game game) {
-		Round roundInfo = new Round();
+		Round r = new Round();
 
 		Scanner sc = null;
 		String currentLine = null;
@@ -498,7 +494,7 @@ public class LogReader {
 			lineIndex++;
 			Matcher matcher = MatchStrings.roundStart.matcher(currentLine);
 			if (matcher.matches()) {
-				roundInfo.roundNum = Integer.parseInt(matcher.group(2));
+				r.roundNum = Integer.parseInt(matcher.group(2));
 			} else
 				throw new ParseException("Did not find round start message",
 						lineIndex);
@@ -508,7 +504,7 @@ public class LogReader {
 			Matcher matcherChosenWorld = MatchStrings.chosenWorld
 					.matcher(currentLine);
 			if (matcherChosenWorld.matches()) {
-				roundInfo.saveChosenWorld(matcherChosenWorld.group(2));
+				r.saveChosenWorld(matcherChosenWorld.group(2));
 			} else
 				throw new ParseException("Did not find chosen world message",
 						lineIndex);
@@ -546,7 +542,7 @@ public class LogReader {
 					if (treatment.equals("prior2-constant")
 							|| treatment.equals("prior2-symmlowpay")) {
 						String radio = matcherReport.group(5);
-						roundInfo.saveRadio(radio);
+						r.saveRadio(radio);
 					}
 
 				} else {
@@ -563,7 +559,7 @@ public class LogReader {
 			Matcher matcherResult = MatchStrings.roundResult
 					.matcher(currentLine);
 			if (matcherResult.matches()) {
-				roundInfo.saveResult(matcherResult.group(2));
+				r.saveResult(matcherResult.group(2));
 			} else
 				throw new ParseException("Did not find round result message",
 						lineIndex);
@@ -588,17 +584,17 @@ public class LogReader {
 			Matcher matcherEnd = MatchStrings.roundEnd.matcher(currentLine);
 			if (matcherEnd.matches()) {
 				String endTimeString = matcherEnd.group(1);
-				roundInfo.endTime = endTimeString;
+				r.endTime = endTimeString;
 				int min = Integer.parseInt(endTimeString.substring(0, 2));
 				int sec = Integer.parseInt(endTimeString.substring(3, 5));
 				int millisec = Integer.parseInt(endTimeString.substring(6, 9));
 				int totalMillisec = min * 60 * 1000 + sec * 1000 + millisec;
-				roundInfo.duration = totalMillisec;
+				r.duration = totalMillisec;
 			} else
 				throw new ParseException("Did not find round end message",
 						lineIndex);
 
-			return roundInfo;
+			return r;
 
 		} catch (ParseException e) {
 			e.printStackTrace();
@@ -624,7 +620,8 @@ public class LogReader {
 
 			for (String hitId : game.playerHitIds) {
 				
-				List<SigActObservation<CandySignal, CandyReport>> signalReportPairs = game.getSignalReportPairList(hitId);
+				List<SigActObservation<CandySignal, CandyReport>> signalReportPairs = 
+						game.getSignalReportPairList(hitId);
 				ExitSurvey survey = game.exitSurvey.get(hitId);
 
 				if (survey == null)
@@ -649,13 +646,21 @@ public class LogReader {
 
 	}
 
-	private static void printTreatmentInfo() {
-		System.out.printf("treatment: %s\n" + "total num of games: %d\n"
-				+ "non-killed games: %d\n" + "Prior probs: %s\n"
-				+ "Prior worlds: %s\n" + "numPlayers / game: %d\n"
-				+ "numRounds: %d\n\n", treatment, expSet.numTotalGames,
-				expSet.numGames, Arrays.toString(expSet.priorProbs),
-				expSet.worlds, expSet.numPlayers, expSet.numRounds);
+	static void printTreatmentInfo() {
+		System.out.printf("treatment: %s\n"
+				+ "total num of games: %d\n"
+				+ "non-killed games: %d\n"
+//				+ "Prior probs: %s\n"
+//				+ "Prior worlds: %s\n"
+				+ "numPlayers per game: %d\n"
+				+ "numRounds: %d\n\n", 
+				treatment, 
+				expSet.numGames,
+				expSet.nonKilledGames, 
+//				Arrays.toString(expSet.priorProbs),
+//				expSet.worlds, 
+				expSet.numPlayers, 
+				expSet.numRounds);
 
 	}
 
@@ -663,30 +668,29 @@ public class LogReader {
 		System.out.println("Write average bonus");
 
 		int numPlayersPerGame = expSet.numPlayers;
-		int totalNumPlayers = numPlayersPerGame * expSet.numGames;
+		int numPlayers = numPlayersPerGame * expSet.nonKilledGames;
 
-		double avgReward = 0;
+		double totalReward = 0;
 		for (Game game : expSet.games) {
 			for (String hitId : game.playerHitIds) {
 				for (Round round : game.rounds) {
-					double reward = (double) round.result.get(hitId).get(
-							"reward");
-					avgReward += reward;
+					double reward = (double) round.getReward(hitId);
+					totalReward += reward;
 				}
 			}
 		}
-		avgReward = avgReward / totalNumPlayers / expSet.numRounds;
+		double avgReward = totalReward / numPlayers / expSet.numRounds;
 		System.out.printf("Average reward: %.2f\n", avgReward);
 	}
 
 	/**
-	 * For the figure in EC'14 paper
+	 * For the raw data figure in EC'14 paper
 	 */
 	public static void graphRawData() throws IOException {
 		System.out.println("Graph raw data");
 	
 		int numPlayersPerGame = expSet.numPlayers;
-		int totalNumPlayers = numPlayersPerGame * expSet.numGames;
+		int totalNumPlayers = numPlayersPerGame * expSet.nonKilledGames;
 	
 		double[] numMMSignalsMMReports = new double[expSet.numRounds];
 		double[] numMMSignalsGBReports = new double[expSet.numRounds];

@@ -28,35 +28,7 @@ public class LogLkFunctionApache implements MultivariateFunction {
 		Map<String, Object> params = new HashMap<String, Object>();
 		double loglk = Double.NEGATIVE_INFINITY;
 
-		if (model.startsWith("S2")) {
-
-			params.put("probTr", point[1]);
-			params.put("probMM", point[2]);
-			params.put("probGB", point[3]);
-			params.put("eps", 	 point[3]);
-			params.put("delta",  point[4]);
-			String[] givenParams = model.split("-");
-			double switchRound = Double.parseDouble(givenParams[1]);
-			params.put("switchRound", switchRound);
-
-			loglk = LearningModelsCustom.computeLogLkS3(params, games);
-			if (point[0] + point[1] + point[2] > 1)
-				loglk = loglk - penCoeff
-						* Math.pow(point[0] + point[1] + point[2] - 1, 2);
-
-		} else if (model.startsWith("S1")) {
-
-			params.put("probTr", point[0]);
-			params.put("probMM", point[1]);
-			params.put("probGB", point[2]);
-			params.put("eps", 	 point[3]);
-
-			loglk = LearningModelsCustom.computeLogLkS1(params, games);
-			if (point[0] + point[1] + point[2] > 1)
-				loglk = loglk - penCoeff
-						* Math.pow(point[0] + point[1] + point[2] - 1, 2);
-			
-		} else if (model.equals("RLS")) {
+		if (model.equals("RLS")) {
 
 			params.put("considerSignal", true);
 			params.put("phi", 	 point[0]);

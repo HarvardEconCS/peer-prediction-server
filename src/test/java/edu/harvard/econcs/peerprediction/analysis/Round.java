@@ -7,15 +7,16 @@ import com.google.gson.reflect.TypeToken;
 
 public class Round {
 
-	int roundNum;
-	
+	int roundNum = -1;
+
 	Map<String, Double> chosenWorld;
 	Map<String, Map<String, Object>> result;
-	
+
+	int radio = -1;
+
 	int duration; // in milliseconds
 	String endTime;
-	int radio;
-	
+
 	public Round() {
 		chosenWorld = new HashMap<String, Double>();
 		result = new HashMap<String, Map<String, Object>>();
@@ -52,28 +53,32 @@ public class Round {
 	public String getSignal(String hitId) {
 		return result.get(hitId).get("signal").toString();
 	}
-	
+
 	public double getReward(String hitId) {
 		return Double.parseDouble(result.get(hitId).get("reward").toString());
+	}
+
+	public String getRefPlayer(String hitId) {
+		return result.get(hitId).get("refPlayer").toString();
 	}
 
 	public double getHypoReward(String treatment, String playerId,
 			String hypotheticalReport) {
 		if (treatment.equals("prior2-basic")
 				|| treatment.equals("prior2-outputagreement")) {
-			
-			String refPlayer = result.get(playerId).get("refPlayer").toString();
-			String refReport = result.get(refPlayer).get("report").toString();
+
+			String refPlayer = this.getRefPlayer(playerId);
+			String refReport = this.getReport(refPlayer);
 			return Utils.getPayment(treatment, hypotheticalReport, refReport);
-			
+
 		} else {
-				
+
 			int numMMInOtherReports = 0;
 			for (String hitId : result.keySet()) {
 				if (hitId.equals(playerId))
 					continue;
 				else {
-					String report = result.get(hitId).get("report").toString();
+					String report = this.getReport(hitId).toString();
 					if (report.equals("MM"))
 						numMMInOtherReports++;
 				}
@@ -84,9 +89,9 @@ public class Round {
 	}
 
 	public String toString() {
-		return String.format("round %s, chosen world:%s\n"
-				+ "result: %s\n", roundNum, chosenWorld, result);
-		
+		return String.format("round %s, chosen world:%s\n" + "result: %s\n",
+				roundNum, chosenWorld, result);
+
 	}
 
 }

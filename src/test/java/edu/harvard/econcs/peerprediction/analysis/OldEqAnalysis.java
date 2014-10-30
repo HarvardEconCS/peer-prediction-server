@@ -14,10 +14,10 @@ public class OldEqAnalysis {
 		if (LogReader.treatment.equals("prior2-basic")
 				|| LogReader.treatment.equals("prior2-outputagreement")
 				|| LogReader.treatment.equals("prior2-symmlowpay")) {
-			OldEqAnalysis.gameSymmetricConvergenceType();
+			gameSymmetricConvergenceType();
 			// gameSymmetricConvergenceTypeRelaxed(3);
 		} else if (LogReader.treatment.equals("prior2-uniquetruthful")) {
-			OldEqAnalysis.gameConvergenceTypeT3();
+			gameConvergenceTypeT3();
 			// gameAsymmetricConvergenceTypeRelaxed(3);
 		}
 	}
@@ -28,7 +28,7 @@ public class OldEqAnalysis {
 		int numMM = 0;
 		int numGB = 0;
 		int numUnclassified = 0;
-		int numTotal = LogReader.expSet.numGames;
+		int numTotal = LogReader.expSet.nonKilledGames;
 	
 		for (Game game : LogReader.expSet.games) {
 	
@@ -78,7 +78,7 @@ public class OldEqAnalysis {
 	
 		System.out.println(String.format(
 				"3GB: %d, 3MM: %d, HO: %d, Unclassified: %d, Total: %d",
-				num1MM3GB, num3MM1GB, numHO, numUnclassified, LogReader.expSet.numGames));
+				num1MM3GB, num3MM1GB, numHO, numUnclassified, LogReader.expSet.nonKilledGames));
 	
 	}
 

@@ -4,12 +4,25 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import com.google.common.collect.ImmutableMap;
-
 import net.andrewmao.misc.Pair;
+
+import org.apache.commons.math3.exception.MathIllegalStateException;
+import org.apache.commons.math3.optim.InitialGuess;
+import org.apache.commons.math3.optim.PointValuePair;
+import org.apache.commons.math3.optim.SimpleBounds;
+import org.apache.commons.math3.optim.SimpleValueChecker;
+import org.apache.commons.math3.optim.nonlinear.scalar.GoalType;
+import org.apache.commons.math3.optim.nonlinear.scalar.ObjectiveFunction;
+import org.apache.commons.math3.optim.nonlinear.scalar.noderiv.CMAESOptimizer;
+import org.apache.commons.math3.random.JDKRandomGenerator;
+
+import com.google.common.collect.ImmutableMap;
 
 public class LearningModelsExisting {
 
+	/**
+	 * Reinforcement learning
+	 */
 	public static double computeLogLkRL(Map<String, Object> bestParam,
 			List<Game> games) {
 	
@@ -97,6 +110,9 @@ public class LearningModelsExisting {
 		return loglk;
 	}
 
+	/**
+	 * Stochastic fictitious play
+	 */
 	public static double computeLogLkSFP(Map<String, Object> bestParam,
 			List<Game> games) {
 	
@@ -193,6 +209,9 @@ public class LearningModelsExisting {
 		return loglk;
 	}
 
+	/**
+	 * Experience weighted attraction
+	 */
 	public static double computeLogLkEWA(Map<String, Object> bestParam,
 			List<Game> games) {
 	
@@ -461,6 +480,89 @@ public class LearningModelsExisting {
 		}
 	
 		return -1;
+	}
+
+	static Map<String, Object> getBounds(String model) {
+		Map<String, Object> bounds = new HashMap<String, Object>();
+		if (model.equals("s1")) {
+			bounds.put("lb", new double[] { 0, 0, 0, 0 });
+			bounds.put("ub", new double[] { 1, 1, 1, 0.5 });
+			bounds.put("sigma", new double[] { 0.5, 0.5, 0.5, 0.1 });
+	
+		} else if (model.startsWith("s3")) {
+			bounds.put("lb", new double[] { 0, 0, 0, 0, 0 });
+			bounds.put("ub", new double[] { 1, 1, 1, 0.5, 1 });
+	
+		} else if (model.startsWith("RL") || model.startsWith("SFP")) {
+			bounds.put("lb", new double[] { 0, 1 });
+			bounds.put("ub", new double[] { 1, 10 });
+	
+		} else if (model.startsWith("EWA")) {
+			bounds.put("lb", new double[] { 0, 0, 0, 1 });
+			bounds.put("ub", new double[] { 1, 1, 1, 10 });
+	
+		}
+		return bounds;
+	}
+
+	static double[] estimateUsingApacheOptimizer(List<Game> games, String model) {
+	
+		// objective function
+		LogLkFunctionApache function = new LogLkFunctionApache(games, model);
+	
+		// simple upper and lower bounds
+		Map<String, Object> bounds = getBounds(model);
+		double[] lb = (double[]) bounds.get("lb");
+		double[] ub = (double[]) bounds.get("ub");
+		double[] sigma = (double[]) bounds.get("sigma");
+	
+		// optimizer
+		// BOBYQAOptimizer optimizer = new BOBYQAOptimizer(lb.length + 2, 10,
+		// 1e-12);
+		JDKRandomGenerator random = new JDKRandomGenerator();
+		random.setSeed(1503);
+		SimpleValueChecker checker = new SimpleValueChecker(1E-3, 1E-6);
+		CMAESOptimizer cmaesOptimizer = new CMAESOptimizer(Integer.MAX_VALUE,
+				1e-10, true, 1, 1, random, false, checker);
+	
+		// starting point
+		double[] startPoint = LearningModelsCustom.setRandomStartPoint(model);
+	
+		double[] point = startPoint;
+		boolean shouldStop = false;
+		while (!shouldStop) {
+	
+			PointValuePair optimum = null;
+			try {
+				optimum = cmaesOptimizer.optimize(new ObjectiveFunction(
+						function), GoalType.MAXIMIZE, new CMAESOptimizer.Sigma(
+						sigma), new CMAESOptimizer.PopulationSize(25),
+						new InitialGuess(startPoint), new SimpleBounds(lb, ub));
+	
+				// optimum = optimizer.optimize(new MaxEval(10000000),
+				// new ObjectiveFunction(function), GoalType.MAXIMIZE,
+				// new InitialGuess(startPoint), new SimpleBounds(lb, ub));
+			} catch (MathIllegalStateException e) {
+				e.printStackTrace();
+				System.exit(0);
+				shouldStop = false;
+				startPoint = LearningModelsCustom.setRandomStartPoint(model);
+				continue;
+			}
+	
+			point = optimum.getPoint();
+			// System.out.println(Arrays.toString(point));
+	
+			if (!LearningModelsCustom.constraintsViolated(model, point)) {
+				System.out.println("constraints violated");
+				shouldStop = true;
+			} else {
+				function.squarePenCoeff();
+				startPoint = LearningModelsCustom.setRandomStartPoint(model);
+			}
+		}
+	
+		return point;
 	}
 
 }

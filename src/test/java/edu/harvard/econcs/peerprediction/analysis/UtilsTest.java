@@ -40,14 +40,6 @@ public class UtilsTest {
 	}
 	
 	@Test
-	public void testProbRefReportGivenSignalAndStrategy() {
-		double prob1 = Utils.getProbRefReportGivenSignalAndStrategy(
-				"MM", "MM", 1.0, 1.0, priorProbs, prior);
-		assertEquals(1, prob1, Utils.eps);
-
-	}
-
-	@Test
 	public void testGetRandomList() {
 		List<Double> list = Utils.getRandomList(3);
 		double total = 0;
@@ -69,116 +61,7 @@ public class UtilsTest {
 
 	}
 
-	@Test
-	public void testProbRefReportsGivenSignalAndStrategy() {
-		double prob1 = Utils.getProbRefReportsGivenSignalAndStrategy(3,
-				0, "MM", 1.0, 1.0, priorProbs, prior);
-		assertEquals(1, prob1, Utils.eps);
 
-		double prob2 = Utils.getProbRefReportsGivenSignalAndStrategy(2,
-				1, "MM", 1.0, 1.0, priorProbs, prior);
-		assertEquals(0, prob2, Utils.eps);
-
-		double prob3 = Utils.getProbRefReportsGivenSignalAndStrategy(1,
-				2, "MM", 1.0, 1.0, priorProbs, prior);
-		assertEquals(0, prob3, Utils.eps);
-
-		double prob4 = Utils.getProbRefReportsGivenSignalAndStrategy(0,
-				3, "MM", 1.0, 1.0, priorProbs, prior);
-		assertEquals(0, prob4, Utils.eps);
-
-		double prob5 = Utils.getProbRefReportsGivenSignalAndStrategy(0,
-				3, "MM", 0.5, 0.5, priorProbs, prior);
-		assertEquals(0.125, prob5, Utils.eps);
-
-		double prob6 = Utils.getProbRefReportsGivenSignalAndStrategy(0,
-				3, "GB", 0.5, 0.5, priorProbs, prior);
-		assertEquals(0.125, prob6, Utils.eps);
-
-		double prob7 = Utils.getProbRefReportsGivenSignalAndStrategy(1,
-				2, "GB", 0.5, 0.5, priorProbs, prior);
-		assertEquals(0.375, prob7, Utils.eps);
-
-	}
-
-	@Test
-	public void testProbSignalsGivenSignal() {
-
-		double prob0MMGivenMM = Utils.getProbSignalsGivenSignal(0, 3,
-				"MM", priorProbs, prior);
-		assertEquals(1213.0 / 9000, prob0MMGivenMM, Utils.eps);
-
-		double prob1MMGivenMM = Utils.getProbSignalsGivenSignal(1, 2,
-				"MM", priorProbs, prior);
-		assertEquals(697.0 / 3000, prob1MMGivenMM, Utils.eps);
-
-		double prob2MMGivenMM = Utils.getProbSignalsGivenSignal(2, 1,
-				"MM", priorProbs, prior);
-		assertEquals(1093.0 / 3000, prob2MMGivenMM, Utils.eps);
-
-		double prob3MMGivenMM = Utils.getProbSignalsGivenSignal(3, 0,
-				"MM", priorProbs, prior);
-		assertEquals(2417.0 / 9000, prob3MMGivenMM, Utils.eps);
-
-		double prob0MMGivenGB = Utils.getProbSignalsGivenSignal(0, 3,
-				"GB", priorProbs, prior);
-		assertEquals(4177.0 / 11000, prob0MMGivenGB, Utils.eps);
-
-		double prob1MMGivenGB = Utils.getProbSignalsGivenSignal(1, 2,
-				"GB", priorProbs, prior);
-		assertEquals(3639.0 / 11000, prob1MMGivenGB, Utils.eps);
-
-		double prob2MMGivenGB = Utils.getProbSignalsGivenSignal(2, 1,
-				"GB", priorProbs, prior);
-		assertEquals(2091.0 / 11000, prob2MMGivenGB, Utils.eps);
-
-		double prob3MMGivenGB = Utils.getProbSignalsGivenSignal(3, 0,
-				"GB", priorProbs, prior);
-		assertEquals(1093.0 / 11000, prob3MMGivenGB, Utils.eps);
-	}
-
-	@Test
-	public void testProbSignalGivenSignal() {
-
-		double probMMGivenMM = Utils.getProbSignalGivenSignal("MM",
-				"MM", priorProbs, prior);
-		assertEquals(53.0 / 90, probMMGivenMM, Utils.eps);
-
-		double probMMGivenGB = Utils.getProbSignalGivenSignal("MM",
-				"GB", priorProbs, prior);
-		assertEquals(37.0 / 110, probMMGivenGB, Utils.eps);
-
-	}
-
-	@Test
-	public void testProbMM() {
-		double probMM = Utils.getProbMM(priorProbs, prior);
-		assertEquals(9.0 / 20, probMM, Utils.eps);
-
-	}
-
-	@Test
-	public void testMixedPayoff() {
-
-		String treatment = "prior2-symmlowpay";
-		double alwaysMMPayoffT5 = Utils.getMixedPayoff(treatment,
-				priorProbs, prior, 1.0, 1.0);
-		assertEquals(0.15, alwaysMMPayoffT5, Utils.eps);
-
-		double alwaysGBPayoffT5 = Utils.getMixedPayoff(treatment,
-				priorProbs, prior, 0.0, 0.0);
-		assertEquals(0.15, alwaysGBPayoffT5, Utils.eps);
-
-		treatment = "prior2-uniquetruthful";
-		double alwaysMMPayoffT3 = Utils.getMixedPayoff(treatment,
-				priorProbs, prior, 1.0, 1.0);
-		assertEquals(0.8, alwaysMMPayoffT3, Utils.eps);
-
-		double alwaysGBPayoffT3 = Utils.getMixedPayoff(treatment,
-				priorProbs, prior, 0.0, 0.0);
-		assertEquals(0.8, alwaysGBPayoffT3, Utils.eps);
-
-	}
 
 	@Test
 	public void testGetPayment() {
@@ -258,72 +141,6 @@ public class UtilsTest {
 
 	}
 
-	@Test
-	public void testGetOppPopStr() {
-		List<String> reports = new ArrayList<String>();
-		reports.add("MM");
-		reports.add("MM");
-		reports.add("MM");
-		Map<String, Double> strategy = Utils.getOppPopStr(reports);
-		assertEquals(strategy.get("MM"), 1, 0.00001);
-		assertEquals(strategy.get("GB"), 0, 0.00001);
-
-		reports.clear();
-		reports.add("MM");
-		reports.add("MM");
-		reports.add("GB");
-		strategy = Utils.getOppPopStr(reports);
-		assertEquals(0.66666667, strategy.get("MM"), 0.00000001);
-		assertEquals(0.33333333, strategy.get("GB"), 0.00000001);
-
-		reports.clear();
-		reports.add("MM");
-		reports.add("GB");
-		reports.add("GB");
-		strategy = Utils.getOppPopStr(reports);
-		assertEquals(0.33333333, strategy.get("MM"), 0.00000001);
-		assertEquals(0.66666667, strategy.get("GB"), 0.00000001);
-
-		reports.clear();
-		reports.add("GB");
-		reports.add("GB");
-		reports.add("GB");
-		strategy = Utils.getOppPopStr(reports);
-		assertEquals(0, strategy.get("MM"), 0.00000001);
-		assertEquals(1, strategy.get("GB"), 0.00000001);
-
-		reports.clear();
-		reports.add("GB");
-		reports.add("GB");
-		strategy = Utils.getOppPopStr(reports);
-		assertEquals(0, strategy.get("MM"), 0.00000001);
-		assertEquals(1, strategy.get("GB"), 0.00000001);
-
-		reports.clear();
-		reports.add("MM");
-		reports.add("GB");
-		strategy = Utils.getOppPopStr(reports);
-		assertEquals(0.5, strategy.get("MM"), 0.00000001);
-		assertEquals(0.5, strategy.get("GB"), 0.00000001);
-
-		reports.clear();
-		reports.add("MM");
-		reports.add("MM");
-		strategy = Utils.getOppPopStr(reports);
-		assertEquals(1, strategy.get("MM"), 0.00000001);
-		assertEquals(0, strategy.get("GB"), 0.00000001);
-
-	}
-	
-	@Test
-	public void testCountRefReports() {
-		List<String> refReports = new ArrayList<String>();
-		refReports.add("MM");refReports.add("GB");refReports.add("GB");
-		refReports.add("MM");refReports.add("MM");
-		int numMM = Utils.getNumMMInRefReports(refReports);
-		assertEquals(numMM, 3);
-	}
-	
 	@Test
 	public void testCalcMMProb() {
 		double attrMM; double attrGB; double lambda; double expMMProb;

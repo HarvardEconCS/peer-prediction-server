@@ -12,6 +12,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -47,22 +48,22 @@ public class HMMAnalysis {
 		// Set number of strategies
 		if (LogReader.treatment.equals("prior2-basic")
 				|| LogReader.treatment.equals("prior2-outputagreement")) {
-			LogReader.numStrategies = 4;
+			HMMAnalysis.numStrategies = 4;
 		} else if (LogReader.treatment.equals("prior2-uniquetruthful")) {
-			LogReader.numStrategies = 4;
+			HMMAnalysis.numStrategies = 4;
 		} else if (LogReader.treatment.equals("prior2-symmlowpay")) {
-			LogReader.numStrategies = 4;
+			HMMAnalysis.numStrategies = 4;
 		} else if (LogReader.treatment.equals("prior2-constant")) {
-			LogReader.numStrategies = 4;
+			HMMAnalysis.numStrategies = 4;
 		}
-		LogReader.strategyNames = new String[LogReader.numStrategies];
-		System.out.printf("numStrategies: %d\n", LogReader.numStrategies);
+		HMMAnalysis.strategyNames = new String[HMMAnalysis.numStrategies];
+		System.out.printf("numStrategies: %d\n", HMMAnalysis.numStrategies);
 	
-		LogReader.learntHmm = HMMAnalysis
-				.learnHMM(LogReader.expSet.games, LogReader.numStrategies, LogReader.numRestarts);
+		HMMAnalysis.learntHmm = HMMAnalysis
+				.learnHMM(LogReader.expSet.games, HMMAnalysis.numStrategies, HMMAnalysis.numRestarts);
 		List<List<SigActObservation<CandySignal, CandyReport>>> seq = HMMAnalysis
 				.getActObsSequence(LogReader.expSet.games);
-		double loglk = BWToleranceLearner.computeLogLk(LogReader.learntHmm, seq);
+		double loglk = BWToleranceLearner.computeLogLk(HMMAnalysis.learntHmm, seq);
 	
 		/*
 		 * // list of signal and report observations
@@ -95,19 +96,19 @@ public class HMMAnalysis {
 		 * saveHMMDataToFile(filename, learntHmm); } }
 		 */
 		// compute steady state prob
-		double[] steadyState = HMMAnalysis.calcSteadyStateProb(LogReader.learntHmm);
+		double[] steadyState = HMMAnalysis.calcSteadyStateProb(HMMAnalysis.learntHmm);
 	
 		// write HMM to console
 		System.out.printf("Ending loglikelihood : %.5f\n"
 				+ "Resulting HMM: %s\n" + "Steady state probabilities: %s\n",
-				loglk, LogReader.learntHmm, Arrays.toString(steadyState));
+				loglk, HMMAnalysis.learntHmm, Arrays.toString(steadyState));
 	
 		// write HMM to file
 		BufferedWriter writer = new BufferedWriter(new FileWriter(LogReader.rootDir
-				+ LogReader.numStrategies + "StateHmm.txt"));
+				+ HMMAnalysis.numStrategies + "StateHmm.txt"));
 		writer.write(String.format("Ending loglikelihood : %.5f\n"
 				+ "Resulting HMM: %s\n" + "Steady state probabilities: %s\n",
-				loglk, LogReader.learntHmm, Arrays.toString(steadyState)));
+				loglk, HMMAnalysis.learntHmm, Arrays.toString(steadyState)));
 		writer.flush();
 		writer.close();
 	
@@ -161,80 +162,80 @@ public class HMMAnalysis {
 	public static void setStrategyNames() throws IOException {
 		System.out.println("Give strategies names");
 	
-		for (int i = 0; i < LogReader.numStrategies; i++) {
-			Opdf<SigActObservation<CandySignal, CandyReport>> opdf = LogReader.learntHmm
+		for (int i = 0; i < HMMAnalysis.numStrategies; i++) {
+			Opdf<SigActObservation<CandySignal, CandyReport>> opdf = HMMAnalysis.learntHmm
 					.getOpdf(i);
 	
-			Opdf<SigActObservation<CandySignal, CandyReport>> opdf1 = LogReader.learntHmm
+			Opdf<SigActObservation<CandySignal, CandyReport>> opdf1 = HMMAnalysis.learntHmm
 					.getOpdf(i);
 	
 			if (Utils.isMMStrategy(opdf)) {
-				if (LogReader.mmState == -1) {
-					LogReader.strategyNames[i] = "MM";
-					LogReader.mmState = i;
+				if (HMMAnalysis.mmState == -1) {
+					HMMAnalysis.strategyNames[i] = "MM";
+					HMMAnalysis.mmState = i;
 				} else {
-					Opdf<SigActObservation<CandySignal, CandyReport>> opdf2 = LogReader.learntHmm
-							.getOpdf(LogReader.mmState);
+					Opdf<SigActObservation<CandySignal, CandyReport>> opdf2 = HMMAnalysis.learntHmm
+							.getOpdf(HMMAnalysis.mmState);
 	
 					if (Utils.isBetterMMStrategy(opdf1, opdf2)) {
 	
-						LogReader.strategyNames[LogReader.mmState] = "Mixed";
-						LogReader.mixedState = LogReader.mmState;
+						HMMAnalysis.strategyNames[HMMAnalysis.mmState] = "Mixed";
+						HMMAnalysis.mixedState = HMMAnalysis.mmState;
 	
-						LogReader.strategyNames[i] = "MM";
-						LogReader.mmState = i;
+						HMMAnalysis.strategyNames[i] = "MM";
+						HMMAnalysis.mmState = i;
 					}
 				}
 			} else if (Utils.isGBStrategy(opdf)) {
-				if (LogReader.gbState == -1) {
-					LogReader.strategyNames[i] = "GB";
-					LogReader.gbState = i;
+				if (HMMAnalysis.gbState == -1) {
+					HMMAnalysis.strategyNames[i] = "GB";
+					HMMAnalysis.gbState = i;
 				} else {
-					Opdf<SigActObservation<CandySignal, CandyReport>> opdf4 = LogReader.learntHmm
-							.getOpdf(LogReader.gbState);
+					Opdf<SigActObservation<CandySignal, CandyReport>> opdf4 = HMMAnalysis.learntHmm
+							.getOpdf(HMMAnalysis.gbState);
 	
 					if (Utils.isBetterGBStrategy(opdf1, opdf4)) {
-						LogReader.strategyNames[LogReader.gbState] = "Mixed";
-						LogReader.mixedState = LogReader.gbState;
+						HMMAnalysis.strategyNames[HMMAnalysis.gbState] = "Mixed";
+						HMMAnalysis.mixedState = HMMAnalysis.gbState;
 	
-						LogReader.strategyNames[i] = "GB";
-						LogReader.gbState = i;
+						HMMAnalysis.strategyNames[i] = "GB";
+						HMMAnalysis.gbState = i;
 					}
 				}
 			} else if (Utils.isTruthfulStrategy(opdf)) {
-				if (LogReader.truthfulState == -1) {
-					LogReader.strategyNames[i] = "Truthful";
-					LogReader.truthfulState = i;
+				if (HMMAnalysis.truthfulState == -1) {
+					HMMAnalysis.strategyNames[i] = "Truthful";
+					HMMAnalysis.truthfulState = i;
 				} else {
-					Opdf<SigActObservation<CandySignal, CandyReport>> opdf3 = LogReader.learntHmm
-							.getOpdf(LogReader.truthfulState);
+					Opdf<SigActObservation<CandySignal, CandyReport>> opdf3 = HMMAnalysis.learntHmm
+							.getOpdf(HMMAnalysis.truthfulState);
 	
 					if (Utils.isBetterTruthfulStrategy(opdf1, opdf3)) {
 	
-						LogReader.strategyNames[LogReader.truthfulState] = "Mixed";
-						LogReader.mixedState = LogReader.truthfulState;
+						HMMAnalysis.strategyNames[HMMAnalysis.truthfulState] = "Mixed";
+						HMMAnalysis.mixedState = HMMAnalysis.truthfulState;
 	
-						LogReader.strategyNames[i] = "Truthful";
-						LogReader.truthfulState = i;
+						HMMAnalysis.strategyNames[i] = "Truthful";
+						HMMAnalysis.truthfulState = i;
 					}
 				}
 			}
 	
-			if (LogReader.strategyNames[i] == null) {
-				if (LogReader.mixedState == -1) {
-					LogReader.strategyNames[i] = "Mixed";
-					LogReader.mixedState = i;
+			if (HMMAnalysis.strategyNames[i] == null) {
+				if (HMMAnalysis.mixedState == -1) {
+					HMMAnalysis.strategyNames[i] = "Mixed";
+					HMMAnalysis.mixedState = i;
 				} else {
-					LogReader.strategyNames[i] = "Mixed2";
-					LogReader.mixed2State = i;
+					HMMAnalysis.strategyNames[i] = "Mixed2";
+					HMMAnalysis.mixed2State = i;
 				}
 			}
 		}
 		System.out.printf("Strategy names: %s\n"
 				+ "MM strategy: %d, GB strategy: %d, "
 				+ "Truthful strategy: %d, Mixed strategies: %d, %d\n",
-				Arrays.toString(LogReader.strategyNames), LogReader.mmState, LogReader.gbState,
-				LogReader.truthfulState, LogReader.mixedState, LogReader.mixed2State);
+				Arrays.toString(HMMAnalysis.strategyNames), HMMAnalysis.mmState, HMMAnalysis.gbState,
+				HMMAnalysis.truthfulState, HMMAnalysis.mixedState, HMMAnalysis.mixed2State);
 	}
 
 	public static void writeStateSeq() throws IOException {
@@ -247,7 +248,7 @@ public class HMMAnalysis {
 			for (String hitId : game.playerHitIds) {
 				List<SigActObservation<CandySignal, CandyReport>> observList = game.getSignalReportPairList(hitId);
 				ViterbiCalculator vi = new ViterbiCalculator(observList,
-						LogReader.learntHmm);
+						HMMAnalysis.learntHmm);
 				int[] stateSeq = vi.stateSequence();
 				game.stateSeq.put(hitId, stateSeq);
 			}
@@ -255,7 +256,7 @@ public class HMMAnalysis {
 	
 		// Write state sequence to csv
 		BufferedWriter writer = new BufferedWriter(new FileWriter(LogReader.rootDir
-				+ "stateSeq" + LogReader.numStrategies + "States.csv"));
+				+ "stateSeq" + HMMAnalysis.numStrategies + "States.csv"));
 	
 		writer.write(String.format("hitId,"));
 		for (int i = 1; i <= LogReader.expSet.numRounds; i++) {
@@ -288,7 +289,7 @@ public class HMMAnalysis {
 			game.strategyComboTypeArray = new int[LogReader.expSet.numRounds];
 	
 			for (int roundIndex = 0; roundIndex < LogReader.expSet.numRounds; roundIndex++) {
-				int[] numPlayerForStrategy = new int[LogReader.numStrategies];
+				int[] numPlayerForStrategy = new int[HMMAnalysis.numStrategies];
 				for (String hitId : game.playerHitIds) {
 	
 					int strategyIndexForRound = game.stateSeq.get(hitId)[roundIndex];
@@ -298,10 +299,10 @@ public class HMMAnalysis {
 				if (!LogReader.treatment.equals("prior2-uniquetruthful")) {
 					// other treatments
 	
-					for (int strategyIndex = 0; strategyIndex < LogReader.numStrategies; strategyIndex++) {
+					for (int strategyIndex = 0; strategyIndex < HMMAnalysis.numStrategies; strategyIndex++) {
 						if (numPlayerForStrategy[strategyIndex] == LogReader.expSet.numPlayers
-								&& (strategyIndex == LogReader.mmState
-										|| strategyIndex == LogReader.gbState || strategyIndex == LogReader.truthfulState)) {
+								&& (strategyIndex == HMMAnalysis.mmState
+										|| strategyIndex == HMMAnalysis.gbState || strategyIndex == HMMAnalysis.truthfulState)) {
 							// all players are playing MM, GB or Truthful
 							// strategy
 							game.strategyComboTypeArray[roundIndex] = strategyIndex;
@@ -313,22 +314,22 @@ public class HMMAnalysis {
 					}
 				} else {
 					// "prior2-uniquetruthful"
-					if (LogReader.truthfulState != -1
-							&& numPlayerForStrategy[LogReader.truthfulState] == LogReader.numStrategies) {
+					if (HMMAnalysis.truthfulState != -1
+							&& numPlayerForStrategy[HMMAnalysis.truthfulState] == HMMAnalysis.numStrategies) {
 						// truthful equilibrium
-						game.strategyComboTypeArray[roundIndex] = LogReader.truthfulState;
-					} else if (LogReader.mixedState != -1
-							&& numPlayerForStrategy[LogReader.mixedState] == LogReader.numStrategies) {
+						game.strategyComboTypeArray[roundIndex] = HMMAnalysis.truthfulState;
+					} else if (HMMAnalysis.mixedState != -1
+							&& numPlayerForStrategy[HMMAnalysis.mixedState] == HMMAnalysis.numStrategies) {
 						// mixed strategy equilibrium
-						game.strategyComboTypeArray[roundIndex] = LogReader.mixedState;
-					} else if (LogReader.mmState != -1 && LogReader.gbState != -1
-							&& numPlayerForStrategy[LogReader.mmState] == 1
-							&& numPlayerForStrategy[LogReader.gbState] == 3) {
+						game.strategyComboTypeArray[roundIndex] = HMMAnalysis.mixedState;
+					} else if (HMMAnalysis.mmState != -1 && HMMAnalysis.gbState != -1
+							&& numPlayerForStrategy[HMMAnalysis.mmState] == 1
+							&& numPlayerForStrategy[HMMAnalysis.gbState] == 3) {
 						// 1 MM 3 GB
 						game.strategyComboTypeArray[roundIndex] = 4;
-					} else if (LogReader.mmState != -1 && LogReader.gbState != -1
-							&& numPlayerForStrategy[LogReader.mmState] == 3
-							&& numPlayerForStrategy[LogReader.gbState] == 1) {
+					} else if (HMMAnalysis.mmState != -1 && HMMAnalysis.gbState != -1
+							&& numPlayerForStrategy[HMMAnalysis.mmState] == 3
+							&& numPlayerForStrategy[HMMAnalysis.gbState] == 1) {
 						// 3 MM 1 GB
 						game.strategyComboTypeArray[roundIndex] = 5;
 					} else {
@@ -342,7 +343,7 @@ public class HMMAnalysis {
 	
 		// Write hmm type to CSV
 		BufferedWriter writerCsv = new BufferedWriter(new FileWriter(LogReader.rootDir
-				+ "hmmType" + LogReader.numStrategies + "Strategies.csv"));
+				+ "hmmType" + HMMAnalysis.numStrategies + "Strategies.csv"));
 		for (Game game : LogReader.expSet.games) {
 			writerCsv.write(String.format("%s,", game.id));
 			for (int i = 0; i < game.strategyComboTypeArray.length; i++) {
@@ -359,7 +360,7 @@ public class HMMAnalysis {
 		writerCsv.close();
 	
 		// Determine hmm type count
-		int[][] hmmTypeCount = new int[LogReader.expSet.numRounds][LogReader.numStrategies + 2];
+		int[][] hmmTypeCount = new int[LogReader.expSet.numRounds][HMMAnalysis.numStrategies + 2];
 		for (Game game : LogReader.expSet.games) {
 			for (int i = 0; i < LogReader.expSet.numRounds; i++) {
 				if (game.strategyComboTypeArray[i] == -1)
@@ -371,11 +372,11 @@ public class HMMAnalysis {
 	
 		// Write hmmTypeCount to CSV file
 		writerCsv = new BufferedWriter(new FileWriter(LogReader.rootDir + "hmmTypeCount"
-				+ LogReader.numStrategies + "Strategies.csv"));
+				+ HMMAnalysis.numStrategies + "Strategies.csv"));
 	
 		// write headings
-		for (int j = 0; j < LogReader.numStrategies; j++) {
-			writerCsv.write(String.format("%s,", LogReader.strategyNames[j]));
+		for (int j = 0; j < HMMAnalysis.numStrategies; j++) {
+			writerCsv.write(String.format("%s,", HMMAnalysis.strategyNames[j]));
 		}
 		if (LogReader.treatment.equals("prior2-uniquetruthful")) {
 			writerCsv.write(String.format("%s,", "1MM3GB"));
@@ -385,14 +386,14 @@ public class HMMAnalysis {
 	
 		// write data
 		for (int i = 0; i < LogReader.expSet.numRounds; i++) {
-			for (int j = 0; j < LogReader.numStrategies; j++) {
+			for (int j = 0; j < HMMAnalysis.numStrategies; j++) {
 				writerCsv.write(String.format("%d,", hmmTypeCount[i][j]));
 			}
 			if (LogReader.treatment.equals("prior2-uniquetruthful")) {
 				writerCsv.write(String.format("%d,",
-						hmmTypeCount[i][LogReader.numStrategies]));
+						hmmTypeCount[i][HMMAnalysis.numStrategies]));
 				writerCsv.write(String.format("%d,",
-						hmmTypeCount[i][LogReader.numStrategies + 1]));
+						hmmTypeCount[i][HMMAnalysis.numStrategies + 1]));
 			}
 			writerCsv.write("\n");
 		}
@@ -401,33 +402,33 @@ public class HMMAnalysis {
 	
 		// Write hmmTypeCount to matlab file
 		BufferedWriter writerMatlab = new BufferedWriter(new FileWriter(LogReader.rootDir
-				+ "hmmType" + LogReader.numStrategies + "Strategies.m"));
+				+ "hmmType" + HMMAnalysis.numStrategies + "Strategies.m"));
 	
 		// write data arrays
-		for (int j = 0; j < LogReader.numStrategies; j++) {
+		for (int j = 0; j < HMMAnalysis.numStrategies; j++) {
 	
 			if (LogReader.treatment.equals("prior2-symmlowpay")) {
 				// treatment 4
-				if (LogReader.strategyNames[j].equals("Mixed")
-						|| LogReader.strategyNames[j].equals("Mixed2")) {
+				if (HMMAnalysis.strategyNames[j].equals("Mixed")
+						|| HMMAnalysis.strategyNames[j].equals("Mixed2")) {
 					continue;
 				}
 			} else if (LogReader.treatment.equals("prior2-uniquetruthful")) {
 				// treatment 3, skip MM and GB strategies
-				if (LogReader.strategyNames[j].equals("MM")
-						|| LogReader.strategyNames[j].equals("GB")) {
+				if (HMMAnalysis.strategyNames[j].equals("MM")
+						|| HMMAnalysis.strategyNames[j].equals("GB")) {
 					continue;
 				}
 			} else {
 				// not treatment 3, skip mixed strategy
-				if (LogReader.strategyNames[j].equals("Mixed")) {
+				if (HMMAnalysis.strategyNames[j].equals("Mixed")) {
 					continue;
 				}
 			}
 	
-			writerMatlab.write(String.format("%s = [", LogReader.strategyNames[j]));
+			writerMatlab.write(String.format("%s = [", HMMAnalysis.strategyNames[j]));
 			for (int i = 0; i < LogReader.expSet.numRounds; i++) {
-				double percent = hmmTypeCount[i][j] * 1.0 / LogReader.expSet.numGames;
+				double percent = hmmTypeCount[i][j] * 1.0 / LogReader.expSet.nonKilledGames;
 				writerMatlab.write(String.format("%.10f ", percent));
 			}
 			writerMatlab.write("]';\n");
@@ -437,16 +438,16 @@ public class HMMAnalysis {
 			// write data for treatment 3
 			writerMatlab.write(String.format("oneMMThreeGB = ["));
 			for (int i = 0; i < LogReader.expSet.numRounds; i++) {
-				double percent = hmmTypeCount[i][LogReader.numStrategies] * 1.0
-						/ LogReader.expSet.numGames;
+				double percent = hmmTypeCount[i][HMMAnalysis.numStrategies] * 1.0
+						/ LogReader.expSet.nonKilledGames;
 				writerMatlab.write(String.format("%.10f ", percent));
 			}
 			writerMatlab.write("]';\n");
 	
 			writerMatlab.write(String.format("threeMMOneGB = ["));
 			for (int i = 0; i < LogReader.expSet.numRounds; i++) {
-				double percent = hmmTypeCount[i][LogReader.numStrategies + 1] * 1.0
-						/ LogReader.expSet.numGames;
+				double percent = hmmTypeCount[i][HMMAnalysis.numStrategies + 1] * 1.0
+						/ LogReader.expSet.nonKilledGames;
 				writerMatlab.write(String.format("%.10f ", percent));
 			}
 			writerMatlab.write("]';\n");
@@ -455,13 +456,13 @@ public class HMMAnalysis {
 		writerMatlab.write(String.format("Unclassified = ["));
 		for (int i = 0; i < LogReader.expSet.numRounds; i++) {
 			double num = 1.0;
-			for (int j = 0; j < LogReader.numStrategies; j++) {
-				num -= hmmTypeCount[i][j] * 1.0 / LogReader.expSet.numGames;
+			for (int j = 0; j < HMMAnalysis.numStrategies; j++) {
+				num -= hmmTypeCount[i][j] * 1.0 / LogReader.expSet.nonKilledGames;
 			}
 			if (LogReader.treatment.equals("prior2-uniquetruthful")) {
-				num -= hmmTypeCount[i][LogReader.numStrategies] * 1.0 / LogReader.expSet.numGames;
-				num -= hmmTypeCount[i][LogReader.numStrategies + 1] * 1.0
-						/ LogReader.expSet.numGames;
+				num -= hmmTypeCount[i][HMMAnalysis.numStrategies] * 1.0 / LogReader.expSet.nonKilledGames;
+				num -= hmmTypeCount[i][HMMAnalysis.numStrategies + 1] * 1.0
+						/ LogReader.expSet.nonKilledGames;
 			}
 			num -= 0.0000000001;
 			writerMatlab.write(String.format("%.10f ", num));
@@ -557,7 +558,7 @@ public class HMMAnalysis {
 		System.out.println("Write hmm strategy change heat map");
 	
 		BufferedWriter writer1 = new BufferedWriter(new FileWriter(LogReader.rootDir
-				+ "heatMap" + LogReader.numStrategies + "StrategiesReverseCompare.m"));
+				+ "heatMap" + HMMAnalysis.numStrategies + "StrategiesReverseCompare.m"));
 	
 		List<int[]> seqList = new ArrayList<int[]>();
 		for (Game game : LogReader.expSet.games) {
@@ -670,17 +671,17 @@ public class HMMAnalysis {
 		writer1.write("cs={{");
 		for (int i = 0; i <= 3; i++) {
 			double num = i * 1.0 / 3;
-			if (LogReader.mmState == i) {
+			if (HMMAnalysis.mmState == i) {
 				writer1.write(String.format("{%.2f, 'rgb(%s)'},", num, mmColor));
-			} else if (LogReader.gbState == i) {
+			} else if (HMMAnalysis.gbState == i) {
 				writer1.write(String.format("{%.2f, 'rgb(%s)'},", num, gbColor));
-			} else if (LogReader.truthfulState == i) {
+			} else if (HMMAnalysis.truthfulState == i) {
 				writer1.write(String.format("{%.2f, 'rgb(%s)'},", num,
 						truthfulColor));
-			} else if (LogReader.mixedState == i) {
+			} else if (HMMAnalysis.mixedState == i) {
 				writer1.write(String.format("{%.2f, 'rgb(%s)'},", num,
 						mixedColor));
-			} else if (LogReader.mixed2State == i) {
+			} else if (HMMAnalysis.mixed2State == i) {
 				writer1.write(String.format("{%.2f, 'rgb(%s)'},", num,
 						mixed2Color));
 			}
@@ -694,7 +695,7 @@ public class HMMAnalysis {
 	public static void writeStrategyDistribution() throws IOException {
 		System.out.println("Write hmm strategy distribution");
 	
-		int[][] strategyCount = new int[LogReader.numStrategies][LogReader.expSet.numRounds];
+		int[][] strategyCount = new int[HMMAnalysis.numStrategies][LogReader.expSet.numRounds];
 		for (Game game : LogReader.expSet.games) {
 			for (String hitId : game.playerHitIds) {
 				int[] strategySeq = game.stateSeq.get(hitId);
@@ -704,20 +705,20 @@ public class HMMAnalysis {
 				}
 			}
 		}
-		double[][] strategyDistribution = new double[LogReader.numStrategies][LogReader.expSet.numRounds];
-		int totalNumPlayers = LogReader.expSet.numGames * LogReader.expSet.numPlayers;
+		double[][] strategyDistribution = new double[HMMAnalysis.numStrategies][LogReader.expSet.numRounds];
+		int totalNumPlayers = LogReader.expSet.nonKilledGames * LogReader.expSet.numPlayers;
 		for (int roundIndex = 0; roundIndex < LogReader.expSet.numRounds; roundIndex++) {
-			for (int strategyIndex = 0; strategyIndex < LogReader.numStrategies; strategyIndex++) {
+			for (int strategyIndex = 0; strategyIndex < HMMAnalysis.numStrategies; strategyIndex++) {
 				strategyDistribution[strategyIndex][roundIndex] = strategyCount[strategyIndex][roundIndex]
 						* 1.0 / totalNumPlayers;
 			}
 		}
 	
 		BufferedWriter writer = new BufferedWriter(new FileWriter(LogReader.rootDir
-				+ "strategyDistribution" + LogReader.numStrategies + "Strategies.m"));
+				+ "strategyDistribution" + HMMAnalysis.numStrategies + "Strategies.m"));
 	
-		for (int strategyIndex = 0; strategyIndex < LogReader.numStrategies; strategyIndex++) {
-			writer.write(LogReader.strategyNames[strategyIndex] + " = [");
+		for (int strategyIndex = 0; strategyIndex < HMMAnalysis.numStrategies; strategyIndex++) {
+			writer.write(HMMAnalysis.strategyNames[strategyIndex] + " = [");
 			for (int roundIndex = 0; roundIndex < LogReader.expSet.numRounds; roundIndex++) {
 				writer.write(String.format("%.10f ",
 						strategyDistribution[strategyIndex][roundIndex]));
@@ -728,9 +729,9 @@ public class HMMAnalysis {
 		writer.write(String.format("\n\n" + "figure;\n" + "hBar = bar(1:%d, ",
 				LogReader.expSet.numRounds));
 		if (LogReader.treatment.equals("prior2-symmlowpay")) {
-			if (LogReader.numStrategies == 4)
+			if (HMMAnalysis.numStrategies == 4)
 				writer.write("[Truthful MM Mixed Mixed2]");
-			else if (LogReader.numStrategies == 3)
+			else if (HMMAnalysis.numStrategies == 3)
 				writer.write("[Truthful MM Mixed]");
 		} else {
 			writer.write("[Truthful GB MM Mixed]");
@@ -747,9 +748,9 @@ public class HMMAnalysis {
 	
 		writer.write("lh = legend(");
 		if (LogReader.treatment.equals("prior2-symmlowpay")) {
-			if (LogReader.numStrategies == 4)
+			if (HMMAnalysis.numStrategies == 4)
 				writer.write("'Truthful', 'MM', 'Mixed', 'Mixed2'");
-			else if (LogReader.numStrategies == 3)
+			else if (HMMAnalysis.numStrategies == 3)
 				writer.write("'Truthful', 'MM', 'Mixed'");
 		} else {
 			writer.write("'Truthful', 'GB', 'MM', 'Mixed'");
@@ -757,9 +758,9 @@ public class HMMAnalysis {
 		writer.write(", 'Location', 'Best');\n" + "set(lh, 'FontSize', 20);\n");
 	
 		if (LogReader.treatment.equals("prior2-symmlowpay")) {
-			if (LogReader.numStrategies == 4)
+			if (HMMAnalysis.numStrategies == 4)
 				writer.write("set(hBar,{'FaceColor'},{'g';[1 0.64 0];[0.5 0.5 0.5];[0.8 0.8 0.8];});\n");
-			else if (LogReader.numStrategies == 3)
+			else if (HMMAnalysis.numStrategies == 3)
 				writer.write("set(hBar,{'FaceColor'},{'g';[1 0.64 0];[0.8 0.8 0.8];});\n");
 		} else {
 			writer.write("set(hBar,{'FaceColor'},{'g';'b';[1 0.64 0];[0.8 0.8 0.8];});\n");
@@ -775,11 +776,11 @@ public class HMMAnalysis {
 				+ "strategyChangePredictedByHmm.m"));
 	
 		writer3.write("a = [");
-		for (int i = 0; i < LogReader.numStrategies; i++) {
-			for (int j = 0; j < LogReader.numStrategies; j++) {
-				double aij = LogReader.learntHmm.getAij(i, j);
+		for (int i = 0; i < HMMAnalysis.numStrategies; i++) {
+			for (int j = 0; j < HMMAnalysis.numStrategies; j++) {
+				double aij = HMMAnalysis.learntHmm.getAij(i, j);
 				writer3.write(" " + aij);
-				if (j < LogReader.numStrategies - 1)
+				if (j < HMMAnalysis.numStrategies - 1)
 					writer3.write(",");
 				else
 					writer3.write(";");
@@ -788,25 +789,25 @@ public class HMMAnalysis {
 		writer3.write("];\n");
 	
 		writer3.write("p = [");
-		for (int i = 0; i < LogReader.numStrategies; i++) {
-			writer3.write(LogReader.learntHmm.getPi(i) + ",");
+		for (int i = 0; i < HMMAnalysis.numStrategies; i++) {
+			writer3.write(HMMAnalysis.learntHmm.getPi(i) + ",");
 		}
 		writer3.write("];\n");
 	
-		writer3.write("m = zeros(50," + LogReader.numStrategies + ");\n"
+		writer3.write("m = zeros(50," + HMMAnalysis.numStrategies + ");\n"
 				+ "m(1,:) = p;\n" + "for i =2:50\n" + "m(i,:) = m(i-1,:)*a;\n"
 				+ "end\n" + "x = 1:50;\n" + "plot(");
-		for (int i = 1; i <= LogReader.numStrategies; i++) {
+		for (int i = 1; i <= HMMAnalysis.numStrategies; i++) {
 			writer3.write("x, m(:," + i + ")");
-			if (i < LogReader.numStrategies)
+			if (i < HMMAnalysis.numStrategies)
 				writer3.write(",");
 		}
 		writer3.write(")\n");
 	
 		writer3.write("legend(");
-		for (int i = 0; i < LogReader.numStrategies; i++) {
-			writer3.write("'" + LogReader.strategyNames[i] + "'");
-			if (i < LogReader.numStrategies - 1)
+		for (int i = 0; i < HMMAnalysis.numStrategies; i++) {
+			writer3.write("'" + HMMAnalysis.strategyNames[i] + "'");
+			if (i < HMMAnalysis.numStrategies - 1)
 				writer3.write(",");
 		}
 		writer3.write(")");
@@ -869,7 +870,7 @@ public class HMMAnalysis {
 			loglk = BWToleranceLearner.computeLogLk(savedHmm, seq);
 	
 			int numParams = (numStates * numStates + 2 * numStates - 1);
-			int numData = LogReader.expSet.numGames * LogReader.expSet.numPlayers
+			int numData = LogReader.expSet.nonKilledGames * LogReader.expSet.numPlayers
 					* LogReader.expSet.numRounds;
 			bic = -2 * loglk + numParams * Math.log(numData);
 	
@@ -1021,5 +1022,30 @@ public class HMMAnalysis {
 				pi, aij, opdfs);
 		return hmm;
 	}
+
+	static int mmState = -1;
+	static int gbState = -1;
+	static int truthfulState = -1;
+	static int mixedState = -1;
+	static int mixed2State = -1;
+	static Hmm<SigActObservation<CandySignal, CandyReport>> learntHmm = null;
+	static double tol = 0.02;
+	static String[] strategyNames = null;
+	// For HMM estimation
+	static int numStrategies = -1;
+	public static Map<String, Object> estimateHMM(List<Game> trainingSet) {
+		Hmm<SigActObservation<CandySignal, CandyReport>> bestHmm = null;
+		try {
+			bestHmm = learnHMM(trainingSet, HMMAnalysis.numHmmStates, HMMAnalysis.numRestarts);
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		Map<String, Object> bestParam = new HashMap<String, Object>();
+		bestParam.put("HMM", bestHmm);
+		return bestParam;
+	}
+
+	static int numHmmStates = 4;
+	static int numRestarts = 1;
 
 }

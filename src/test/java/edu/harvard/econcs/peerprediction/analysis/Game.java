@@ -7,14 +7,12 @@ import java.util.Map;
 
 import net.andrewmao.models.games.SigActObservation;
 
-import com.google.gson.reflect.TypeToken;
-
 public class Game {
 
 	String id;
 
-	List<Map<String, Double>> worlds;
-	double[] priorProbs;
+//	List<Map<String, Double>> worlds;
+//	List<Double> priorProbs;
 
 	String[] playerHitIds;
 	List<Round> rounds;
@@ -35,39 +33,21 @@ public class Game {
 	Map<String, int[]> stateSeq;
 
 	public Game() {
-		worlds = new ArrayList<Map<String, Double>>();
+//		worlds = new ArrayList<Map<String, Double>>();
 		rounds = new ArrayList<Round>();
 		bonus = new HashMap<String, Double>();
 		exitSurvey = new HashMap<String, ExitSurvey>();
 	}
 
-	public void savePriorProb(String probString) {
-		priorProbs = Utils.gson.fromJson(probString, double[].class);
-	}
-
-	public void savePriorWorlds(String worldsString) {
-		Object[] worldsArray = Utils.gson.fromJson(worldsString, Object[].class);
-		for (int i = 0; i < worldsArray.length; i++) {
-			Map<String, Double> worldMap = Utils.gson.fromJson(
-					worldsArray[i].toString(),
-					new TypeToken<Map<String, Double>>() {
-					}.getType());
-			worlds.add(worldMap);
-		}
-	}
-
 	public void savePlayerHitIds(String playerNamesString) {
 		playerHitIds = Utils.gson.fromJson(playerNamesString, String[].class);
-	}
-
-	public void savePaymentRule(String paymentRuleString) {
-//		paymentArrayT12 = gson.fromJson(paymentRuleString, double[].class);	
 	}
 	
 	public List<SigActObservation<CandySignal, CandyReport>> getSignalReportPairList(
 			String hitId) {
 
-		List<SigActObservation<CandySignal, CandyReport>> list = new ArrayList<SigActObservation<CandySignal, CandyReport>>();
+		List<SigActObservation<CandySignal, CandyReport>> list = 
+				new ArrayList<SigActObservation<CandySignal, CandyReport>>();
 		for (Round round : rounds) {
 			String signal = round.getSignal(hitId);
 			String report = round.getReport(hitId);
@@ -76,10 +56,32 @@ public class Game {
 		}
 
 		return list;
-
 	}
+
+//	public void savePriorProb(String probString) {
+//	double[] priorProbArray = Utils.gson.fromJson(probString, double[].class);
+//	List<Double> priorProbList = new ArrayList<Double>();
+//	for (double prob : priorProbArray) {
+//		priorProbList.add(prob);
+//	}
+//	priorProbs = priorProbList;
+//}
+
+//public void savePriorWorlds(String worldsString) {
+//	Object[] worldsArray = Utils.gson.fromJson(worldsString, Object[].class);
+//	for (int i = 0; i < worldsArray.length; i++) {
+//		Map<String, Double> worldMap = Utils.gson.fromJson(
+//				worldsArray[i].toString(),
+//				new TypeToken<Map<String, Double>>() {
+//				}.getType());
+//		worlds.add(worldMap);
+//	}
+//}
 	
-	
+//	public void savePaymentRule(String paymentRuleString) {
+////		paymentArrayT12 = gson.fromJson(paymentRuleString, double[].class);	
+//	}
+
 //	public int getNumMM(String hitId) {
 //		int count = 0;
 //		for (Round round : rounds) {
